@@ -25,7 +25,7 @@ class StructSVM(object):
         self.psi  = psi
         self.mvc  = most_violated_constraint
         
-        
+        self.classifier = None
     
     def _current_solution(self, W):
         ''' quadratic programming 
@@ -40,10 +40,13 @@ class StructSVM(object):
         '''
         import mosek
         import sys
+        
         def streamprinter(text): 
             sys.stdout.write(text) 
             sys.stdout.flush()
-            
+        
+        inf = 0
+        
         # Open MOSEK and create an environment and task 
         # Make a MOSEK environment 
         env = mosek.Env () 
@@ -84,7 +87,7 @@ class StructSVM(object):
         avg_phi_gt = [0 for i in range(self.wsize)]
         for s in self.S:
             for i_p,p in enumerate(self.psi(*s)): 
-                avg_phi_gt[i_p] += p / float(Ssize)
+                avg_phi_gt[i_p] += 1.0/ float(Ssize) * p
         
         ## set the constraints
         for j in range(NUMCON): 
@@ -95,7 +98,9 @@ class StructSVM(object):
             avg_loss = 0
             for i_y,y_ in enumerate(W[j]):
                 # average loss
-                avg_loss += self.loss(self.S[i_y][1], y_) / float(Ssize)
+                avg_loss += \
+                    self.w_loss / float(Ssize) *\
+                    self.loss(self.S[i_y][1], y_) 
                 
                 # average psi
                 for i_p,p in enumerate(self.psi(self.S[i_y][0],y_)): 
@@ -109,9 +114,9 @@ class StructSVM(object):
             ## Input row j of A 
             task.putavec(
                 mosek.accmode.con, # Input rows of A. 
-                j,           # Variable (column) index. 
-                range(NVAR), # Column index of non-zeros in column j. 
-                aval,        # Non-zero Values of row j. 
+                j,             # Variable (column) index. 
+                range(NUMVAR), # Column index of non-zeros in column j. 
+                aval,          # Non-zero Values of row j. 
                 )
         
             ## set bounds on constraints
@@ -125,10 +130,10 @@ class StructSVM(object):
         
         # Set the bounds on variable j 
         # blx[j] <= x_j <= bux[j] 
-        task.putboundlist(mosek.accmode.var,range(NVAR),bkx,blx,bux)
+        task.putboundlist(mosek.accmode.var,range(NUMVAR),bkx,blx,bux)
         
         # Set the linear term c_j in the objective. 
-        task.putclist(range(NVAR),c)
+        task.putclist(range(NUMVAR),c)
         
         # Set up and input quadratic objective
         task.putqobj(qsubi,qsubj,qval)
@@ -148,16 +153,32 @@ class StructSVM(object):
         [prosta,solsta] = task.getsolutionstatus(mosek.soltype.itr)
         
         # Output a solution 
-        xx = np.zeros(NUMVAR, float) 
+        xx = [0 for i in range(NUMVAR)] 
         task.getsolutionslice(mosek.soltype.itr, mosek.solitem.xx, 0,NUMVAR, xx)
         
         w,xi = xx[:self.wsize], xx[-1]
         
         return w,xi
         
-    def _stop_condition(self,w,xi):
-        pass
+    def _stop_condition(self,w,xi,ys):
+        cond = 0
+        for z,y_ in zip(self.S,ys):
+            cond += self.loss(z,y_)
+            psi_xy_ = self.psi(x,y_)
+            psi_xz  = self.psi(x,z)
+            cond -= sum([
+                w[i]*(psi_xy_[i] - psi_xz[i]) \
+                for i in range(len(w))
+                ])
         
+        cond /= float(len(self.S))
+        
+        if cond <= xi + self.epsilon:
+            return True
+        else:
+            return False
+            
+            
     def train(self):
         ''' optimize with algorithm:
         "Cutting-plane training of structural SVMs"
@@ -189,7 +210,7 @@ class StructSVM(object):
             W.append(ys)
             
             ## stop condition
-            if self._stop_condition(w,xi): break
+            if self._stop_condition(w,xi,ys): break
             else: niter+= 1
         
         ## return values
@@ -198,11 +219,84 @@ class StructSVM(object):
             'number of contraints': len(W),
             }
         return w, xi, info
-        
+
         
 if __name__=='__main__':
+    import random
     
     ## test svm struct
     
-    pass
+    ## training set: N dimensionnal Gaussians
+    K = 1000 # number of training examples
+    L = 5    # number of classes
+    N = 10   # feature size
+    
+    sigma = 1. # sigma for the gaussians
+    
+    # 1 - generate centers
+    G = []
+    for l in range(L):
+        G.append([random.random()*10 for n in range(N)])
+        
+    # 2 - generate training set
+    S = []
+    for k in range(K):
+        z = random.randint(0,L-1)
+        x = [random.gauss(g,sigma) for g in G[z]]
+        S.append((x,z))
+    
+    ## specific functions for struct svm learning
+    def my_loss(z,y_):
+        if y_!= z: return 1
+        else: return 0
+    
+    class My_psi(object):
+        def __init__(self,nclass):
+            self.nclass = nclass
+        def __call__(self,x,y):
+            v = []
+            for n in range(self.nclass):
+                if y==n: v += [val for val in x]
+                else:    v += [0 for v in x]
+                return v
+                
+    my_psi = My_psi(L)
+    
+    
+    class My_mvc(object):
+        ## most violated constraint
+        def __init__(self,nclass):
+            self.nclass = nclass
+           
+        def _score(self,w,x,y):
+            n = len(w)
+            return sum([w[i]*my_psi(x,y)[i] for i in range(n)])
+            
+        def __call__(self,w,x,z):
+            scores = [
+                (self._score(w,x,y_) - my_loss(z,y_), y_)\
+                for y_ in range(self.nclass)
+                ]
+            return min(scores)[1]
+            
+    my_mvc = My_mvc(L)
+            
+    ## run svm struct
+    svm = StructSVM(S, my_loss, my_psi, my_mvc, C=10, w_loss=100)
+    w,xi,info = svm.train()
+    
+    class My_classifier(object):
+        def __init__(self,w,classes):
+            self.w = w
+            self.classes = classes
+        def __call__(self,x):
+            scores = [
+                (sum([w[i]*my_psi(x,s)[i] for i in range(len(w))]),s)\
+                for s in self.classes
+                ]
+            y = min(scores)[1]
+            return y
+    my_classifier = My_classifier(w,range(L))
+    
+    class_train = [(s[1],my_classifier(s[0])) for s in S]
     
