@@ -16,13 +16,11 @@ reload(svmStruct)
 
 def main():
     ## load volume names 
-    datadir = '../data/'
-    sys.path += [os.path.abspath(datadir)]
-    import data
+    import config
     
     ## paths
-    dir_reg     = '..\\01_register\\'
-    dir_prior   = '../02_train_mean/'    
+    dir_reg     = config.dir_reg
+    dir_prior   = config.dir_prior
     
     ## params
     params = {
@@ -62,7 +60,7 @@ def main():
         
         ## training images and segmentations
         training_set = []
-        for train in data.vols:
+        for train in config.vols:
             if vol==train: continue
             print '  load training data: {}'.format(train)
             
@@ -151,7 +149,7 @@ def main():
         ## end process
         
     for test in ['01/']:
-    # for test in data.vols:
+    # for test in config.vols:
         process(test)
     
     
