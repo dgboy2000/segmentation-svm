@@ -146,7 +146,7 @@ class StructSVM(object):
         
         # Print a summary containing information 
         # about the solution for debugging purposes 
-        task.solutionsummary(mosek.streamtype.msg)
+        #task.solutionsummary(mosek.streamtype.msg)
         
         prosta = [] 
         solsta = [] 
@@ -179,7 +179,7 @@ class StructSVM(object):
             return False
             
             
-    def train(self):
+    def train(self, verb=0):
         ''' optimize with algorithm:
         "Cutting-plane training of structural SVMs"
         Machine Learning 2009
@@ -198,26 +198,37 @@ class StructSVM(object):
         niter = 0
         while 1:
             ## compute current solution (qp + constraints)
+            if verb>0: print "compute current solution"
             w,xi = self._current_solution(W)
+            if verb>1: print "  w={}, xi={:.2}".format(w,xi)
         
             ## find most violated constraint
+            if verb>0: print "find most violated constraint"
             ys = []
             for s in self.S:
                 y_ = self.mvc(w, *s)
                 ys.append(y_)
-                
+            if verb>1: print "  ys={}".format(ys)
+            
             ## add to test set
             W.append(ys)
             
             ## stop condition
-            if self._stop_condition(w,xi,ys): break
+            if self._stop_condition(w,xi,ys): 
+                if verb>0: print "stop condition True"
+                break
             else: niter+= 1
+            
+            if verb>1: print "iteration #{}".format(niter)
         
         ## return values
         info = {
             'number of iterations': niter, 
             'number of contraints': len(W),
             }
+        if verb>0: 
+            for msg in info: print "{}={}".format(msg,info[msg])
+            
         return w, xi, info
 
         
@@ -258,7 +269,7 @@ if __name__=='__main__':
             for n in range(self.nclass):
                 if y==n: v += [val for val in x]
                 else:    v += [0 for v in x]
-                return v
+            return v
                 
     my_psi = My_psi(L)
     
@@ -283,7 +294,7 @@ if __name__=='__main__':
             
     ## run svm struct
     svm = StructSVM(S, my_loss, my_psi, my_mvc, C=10, w_loss=100)
-    w,xi,info = svm.train()
+    w,xi,info = svm.train(verb=2)
     
     class My_classifier(object):
         def __init__(self,w,classes):
