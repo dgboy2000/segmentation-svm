@@ -33,7 +33,7 @@ class PriorGenerator:
         a = np.asarray(atlas, dtype=int)
         
         ## set unwanted labels to background label (labelset[0])
-        bg = labelset[0]
+        bg = self.labelset[0]
         a.flat[~np.in1d(a, self.labelset)] = bg
         
         ## compute background mask
@@ -131,18 +131,17 @@ def segment_mean_prior(
     ## parameters
     beta    = kwargs.pop('beta', 1.)
     lmbda   = kwargs.pop('lmbda', 1.) * np.ones(nlabel)
-    verb    = kwargs.pop('verb', 0)
+    # verb    = kwargs.pop('verb', 0)
 
     ## compute laplacian
     if laplacian is None:
-        if verb>0: print '  compute laplacian'
+        logger.info('compute laplacian')
             
         L, border, B = compute_laplacian(
             image,
             marked=marked,
             beta=beta, 
             weight_function=weight_function,
-            verb=verb,
             )
     else:
         L,border,B = laplacian
@@ -179,7 +178,7 @@ def segment_mean_prior(
                 # )
             
         ## solve
-        if verb>0: print '  solve'
+        logger.info('solve')
         P = LL + D
         q = BB*xm - D*x0 + Y
         x = solve_qp(P, q, **kwargs)
@@ -199,7 +198,6 @@ def segment_mean_prior(
             linterm = add_linear_term.reshape((-1,nlabel))
             linterm = np.asmatrix(linterm[unknown,:])
         
-        if verb>0: print ' ',
         for il in range(nlabel):
             D = lmbda[il]*sparse.eye(nvar,nvar)
             if cmap is not None:
@@ -212,18 +210,17 @@ def segment_mean_prior(
             if add_linear_term is not None:
                 Y = linterm[:,il]
             
-            if verb>0: print 'solve label #{},'.format(il),
             P = L + D
             q = B*xm - D*x0 + Y
             _x = solve_qp(P, q, **kwargs)
             x[:,il] = _x
-        if verb>0: print
+
         
     ## reshape solution
-    if verb>0: print '  reshape solution'
     sol = np.zeros((image.size,nlabel))
-    sol[unkwown,:] = x
+    sol[unknown,:] = x
     sol = sol.ravel('F')
+    import pdb; pdb.set_trace()
     # sol = np.zeros(image.shape, dtype=int)
     # sol.flat[unknown] = labelset[
         # np.argmax(x.reshape((-1, nlabel), order='F'), axis=1)
@@ -245,7 +242,7 @@ def solve_qp(P,q, maxiter=1e2, tol=1e-3):
         solve: min(X): Xt*P*X + 2Xt*q + cst
     '''
     maxiter = int(maxiter)
-    if 1:#'use_cvxopt':
+    if 0:#'use_cvxopt':
         import cvxopt
         from cvxopt import solvers
         
@@ -279,6 +276,7 @@ def solve_qp(P,q, maxiter=1e2, tol=1e-3):
 def energy_mean_prior(
         prior,
         prob_segmentation,
+        cmap=None,
         seeds=[],
         weight_function=None,
         laplacian=None,
@@ -289,8 +287,7 @@ def energy_mean_prior(
     # assume prior has shape (nvar, nlabel)
     nlabel      = np.max(prior['ij'][1]) + 1 
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
-    # inds        = np.arange(segmentation.size)
-    inds        = segmentation.size/nlabel
+    inds        = np.arange(prob_segmentation.size/nlabel)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
     nvar        = unknown.size
@@ -310,7 +307,7 @@ def energy_mean_prior(
     ## prior matrix
     pmat = sparse.coo_matrix(
         (pr_data,pr_ij),
-        shape=(image.size,nlabel),
+        shape=(inds.size,nlabel),
         ).tocsr()
     
     ## generate segmentation vector
@@ -326,7 +323,7 @@ def energy_mean_prior(
     
     en = 0
     for il in range(nlabel):
-        x0 = pmat[unknown, il].asarray().ravel()
+        x0 = np.asarray(pmat[unknown, il].todense()).ravel()
         en += np.sum(Cmap*(x[:,il]-x0)**2)
         
     return float(en)
@@ -334,6 +331,7 @@ def energy_mean_prior(
 ##------------------------------------------------------------------------------
 def energy_RW(
         image,
+        lbelset,
         prob_segmentation,
         seeds=[],
         weight_function=None,
@@ -341,23 +339,24 @@ def energy_RW(
         **kwargs
         ):
     ## constants
-    nlabel      = np.max(prior['ij'][1]) + 1 
-    labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
+    lbset       = np.asarray(lbelset)
+    nlabel      = len(lbset)
     inds        = np.arange(image.size)
-    marked      = np.where(np.in1d(seeds,labelset))[0]
+    marked      = np.where(np.in1d(seeds,lbset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
     nvar        = unknown.size
+    beta    = kwargs.pop('beta', 1.)
     
     ## generate segmentation vector
     # segvar = segmentation.flat[unknown]
     # segvar[~np.in1d(segvar,labelset)] = labelset[0]
     # x = np.asmatrix(np.c_[segvar]==labelset, dtype=float)
     x = prob_segmentation.reshape((-1,nlabel), order='F')
-    x = x[unknown,:]
+    x = np.asmatrix(x[unknown,:])
     
     ## compute laplacian
     if laplacian is None:
-        if verb>0: print '  compute laplacian'
+        logger.info('compute laplacian')
         L, border, B = compute_laplacian(
             image,
             marked=marked,
@@ -410,14 +409,14 @@ def compute_laplacian(
     N  = im.size
     
     ## compute weights
-    if verb>0: print '    weight_function'
+    logger.info('weight_function')
     if weight_function is None:
         # if no wf provided, use standard with provided beta
         weight_function = lambda x: weight_std(x,beta=beta)
     ij, data = weight_function(im)
     
     ## affinity matrix
-    if verb>0: print '    laplacian matrix'
+    logger.info('laplacian matrix')
     A = sparse.coo_matrix((data, ij), shape=(N,N))
     A = A + A.T
     
@@ -430,7 +429,7 @@ def compute_laplacian(
         
     ## if marked is not None,
     ## keep only unknown pixels, and marked pixels touching unknown
-    if verb>0: print '    decompose into Lu, B'
+    logger.info('decompose into Lu, B')
     unknown = np.setdiff1d(np.arange(im.size), marked, assume_unique=True)
     
     mask = np.ones(im.shape, dtype=int)
@@ -442,6 +441,8 @@ def compute_laplacian(
 
     Lu = L[unknown,:][:,unknown]
     B  = L[unknown,:][:,border]
+    
+    import pdb; pdb.set_trace()
     
     return Lu,border,B
     
@@ -476,6 +477,24 @@ def weight_std(image, beta=1.0):
     return ij, data
     
 ##------------------------------------------------------------------------------
+    
+import logging
+logger = logging.getLogger('rw logger')
+loglevel = logging.WARNING
+logger.setLevel(loglevel)
+# create console handler with a higher log level
+if len(logger.handlers)==0:
+    ch = logging.StreamHandler()
+    ch.setLevel(loglevel)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
+else:
+    logger.handlers[0].setLevel(loglevel)
+
     
     
 if __name__=='__main__':
