@@ -195,7 +195,7 @@ class StructSVM(object):
         self.wsize = len(self.psi(*self.S[0]))
         w = 0
         
-        niter = 0
+        niter = 1
         while 1:
             ## compute current solution (qp + constraints)
             if verb>0: print "compute current solution"
