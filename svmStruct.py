@@ -1,5 +1,12 @@
 import logging
 
+class DataContainer(object):
+    def __init__(self, data):
+        self.data = data
+    def __hash__(self):
+        return id(self.data)
+
+
 class StructSVM(object):
     def __init__(
             self, 
@@ -16,13 +23,22 @@ class StructSVM(object):
                 psi     : (vector) = psi(x,y)
                 most_violated_constraint : y_ = most_violated_constraint(w,x,y)
         '''
-        self.S = training_set
+        S = []
+        for x,z in training_set:
+            S.append((DataContainer(x), DataContainer(z)))
+        self.S = S
+        
         self.C = kwargs.pop('C',1.)
         self.epsilon = kwargs.pop('epsilon',1e-5)
+        self.nitermax = kwargs.pop('nitermax',100)
         
-        self.loss = loss_function
-        self.psi  = psi
-        self.mvc  = most_violated_constraint
+        self.user_loss = loss_function
+        self.user_psi  = psi
+        self.user_mvc  = most_violated_constraint
+        
+        self.psi_cache  = {}
+        self.loss_cache = {}
+        self.mvc_cache  = {}
         
         self.classifier = None
         
@@ -217,6 +233,20 @@ class StructSVM(object):
             return False
             
             
+    def psi(self, x,y):
+        if (x,y) in self.psi_cache:
+            return self.psi_cache[(x,y)]
+        else:
+            v = self.user_psi(x.data,y.data)
+            self.psi_cache[(x,y)] = v
+            return v
+            
+    def loss(self,z,y):
+        return self.user_loss(z.data,y.data)
+        
+    def mvc(self,w,x,z):
+        return DataContainer(self.user_mvc(w,x.data,z.data))
+            
     def train(self, verb=0):
         ''' optimize with algorithm:
         "Cutting-plane training of structural SVMs"
@@ -255,6 +285,9 @@ class StructSVM(object):
             if self._stop_condition(w,xi,ys): 
                 self.logger.info("stop condition reached")
                 break
+            elif iter >= self.nitermax:
+                self.logger.info("max number of iterations reached")
+                break
             else: niter+= 1
             
             self.logger.info("iteration #{}".format(niter))
@@ -277,11 +310,11 @@ if __name__=='__main__':
     ## test svm struct
     
     ## training set: N dimensionnal Gaussians
-    K = 1000 # number of training examples
+    K = 500  # number of training examples
     L = 5    # number of classes
     N = 10   # feature size
     
-    sigma = 1e-2 # sigma for the gaussians
+    sigma = 1e0 # sigma for the gaussians
     
     # 1 - generate centers
     G = []
@@ -340,6 +373,7 @@ if __name__=='__main__':
         my_mvc, 
         C=100, 
         epsilon=1e-3,
+        nitermax=100,
         loglevel=logging.INFO,
         )
     w,xi,info = svm.train()
@@ -358,6 +392,7 @@ if __name__=='__main__':
     my_classifier = My_classifier(w,range(L))
     
     class_train = [(s[1],my_classifier(s[0])) for s in S]
+    print 'mis-classified training samples:'
     for e in class_train:
         if e[0]!=e[1]: print e
         

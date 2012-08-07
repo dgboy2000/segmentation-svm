@@ -1,5 +1,15 @@
+'''
+    Notes:
+        - the energy should only be computed wrt to the unkwnown pixels.
+        In some place we sloppily include known pixels in the computation.
+        These do not matter since a constant does not change the solution.
+
+'''
+
+
 import sys
 import os
+import logging
 
 import numpy as np
 
@@ -8,7 +18,7 @@ sys.path += [os.path.abspath('../')]
 
 from rwsegment import ioanalyze
 from rwsegment import weight_functions as wf
-from rwsegment import rwmean
+from rwsegment import rwmean_svm
 reload(rwmean), reload(wf)
 
 import svmStruct 
@@ -23,26 +33,27 @@ def main():
     dir_prior   = config.dir_prior
     
     ## params
+    labelset = [0,13,14,15,16]
     params = {
         ## rw params
-        labelset=[0,13,14,15,16],
-        # 'lmbda': 1e-2, ## to learn !
+        'labelset':labelset,
         'tol': 1e-3,
         'maxiter': 1e2,
         
         ## svm params
-        'w_loss': 1e2,
-        'C': 5000,
+        'C': 100,
+        'nitermax':100,
+        'loglevel':logging.INFO,
         }
         
     ## weight functions
     weight_functions = {
         'std_b10'     : lambda im: wfunc.weight_std(im, beta=10),
-        'std_b50'     : lambda im: wfunc.weight_std(im, beta=50),
-        'std_b100'    : lambda im: wfunc.weight_std(im, beta=100),
-        'inv_b100o1'  : lambda im: wfunc.weight_inv(im, beta=100, offset=1),
+        # 'std_b50'     : lambda im: wfunc.weight_std(im, beta=50),
+        # 'std_b100'    : lambda im: wfunc.weight_std(im, beta=100),
+        # 'inv_b100o1'  : lambda im: wfunc.weight_inv(im, beta=100, offset=1),
         'pdiff_r1b50' : lambda im: wfunc.weight_patch_diff(im, r0=1, beta=50),
-        'pdiff_r1b100': lambda im: wfunc.weight_patch_diff(im, r0=1, beta=100),
+        # 'pdiff_r1b100': lambda im: wfunc.weight_patch_diff(im, r0=1, beta=100),
         }
         
         
@@ -61,7 +72,7 @@ def main():
         ## training images and segmentations
         training_set = []
         for train in config.vols:
-            if vol==train: continue
+            if test==train: continue
             print '  load training data: {}'.format(train)
             
             file_seg = dir_reg + test + train + 'regseg.hdr'
@@ -69,82 +80,120 @@ def main():
             im  = ioanalyze.load(file_im)
             seg = ioanalyze.load(file_seg)
             
-            training_set.append((im, seg))
+            bin = (np.c_[seg.ravel()]==labelset).ravel('F')
+            
+            training_set.append((im, bin))
         
+
         
         ## loss function
-        def loss_function(y,y_):
-            ''' (-1)(2X-1)t(2X_-1) '''
-            n = y.size
-            return float(2*np.sum((y!=y_).astype(int)) - n)
+        class Loss(object):
+            def __init__(self, nlabel):
+                self.nlabel = nlabel
+            def __call__(self,z,y_):
+                ''' 1 - (z.y_)/nnode '''
+                nnode = z.size/float(self.nlabel)
+                return 1.0 - 1.0/nnode * np.dot(z,y_)
         
         ## psi
-        def psi(x,y):
-            ''' - sum(a){Ea(x,y)} '''
-            
-            ## energy value for each weighting function
-            v = []
-            for wf in weighting_functions:
+        class Psi(object):
+            def __init__(self, 
+                    prior, weight_functions, params, **kwargs):
+                self.prior = prior
+                self.weight_functions = weight_functions
+                self.seeds = kwargs.pop('seeds', [])
+                self.params = params
+                
+            def __call__(self, x,y):
+                ''' - sum(a){Ea(x,y)} '''
+                
+                ## energy value for each weighting function
+                v = []
+                for wf in self.weight_functions:
+                    v.append(
+                        rwmean_svm.energy_RW(
+                            x,y,
+                            weight_function=wf, 
+                            seeds=self.seeds,
+                            **self.params
+                        ))
+                        
+                ## last coef is prior
                 v.append(
-                    rwmean.energy_RW(
-                        x,y,
-                        weight_function=wf, 
-                        seeds=seeds,
-                        **params
+                    rwmean_svm.energy_mean_prior(
+                        self.prior,y,
+                        seeds=self.seeds,
+                        **self.params
                     ))
                     
-            ## last coef is prior
-            v.append(
-                rwmean.energy_mean_prior(
-                    prior,y,
-                    seeds=seeds,
-                    **params
-                ))
-                
-            ## psi[a] = minus energy[a]
-            return np.asmatrix(-np.c_[v])
+                ## psi[a] = minus energy[a]
+                return np.asmatrix(-np.c_[v])
         
         
         ## most violated constraint
-        def most_violated_constraint(w,x,y):
-            ''' y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
-            
-            ## combine all weight functions
-            def wwf(im):    
-                ''' meta weight function'''
-                data = 0
-                for iwf, wf in enumerate(weight_functions):
-                    ij,_data = wf(x)
-                    data += w[iwf]*wf
-                return ij, wwf
-            
-            ## loss as a linear term in the function
-            ## loss(X,X_) = -(2X_-1)t(2X-1)
-            labelset = np.asarray(params['labelset'])
-            linloss = 2*(2*np.asmatrix(np.c_[y]==labelset) - 1.0)
-            
-            ## best y_ most different from y
-            y_ = segment_mean_prior(
-                x, 
-                prior, 
-                seeds=seeds,
-                weight_function=wwf,
-                add_linear_term=linloss,
-                **params
-                )
+        class Most_violated_constraint(object):
+            def __init__(
+                    self, prior, 
+                    weight_functions, 
+                    labelset, 
+                    params,
+                    **kwargs):
+                self.prior = prior
+                self.weight_functions = weight_functions
+                self.labelset = labelset
+                self.params = params
+                self.seeds = kwargs.pop('seeds', [])
                 
-            return y_
+            def __call__(self,w,x,z):
+                ''' y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
+                
+                ## combine all weight functions
+                def wwf(im):    
+                    ''' meta weight function'''
+                    data = 0
+                    for iwf, wf in enumerate(self.weight_functions):
+                        ij,_data = wf(im)
+                        data += w[iwf]*_data
+                    return ij, data
+                
+                ## loss as a linear term in the function
+                nnode = x.size
+                labelset = np.asarray(self.labelset)
+                linloss = 1./nnode*z
+                
+                ## best y_ most different from y
+                y_ = rwmean_svm.segment_mean_prior(
+                    x, 
+                    self.prior, 
+                    seeds=self.seeds,
+                    weight_function=wwf,
+                    add_linear_term=linloss,
+                    **self.params
+                    )
+                    
+                return y_
+        
+        
+        loss = Loss(len(labelset))
+        psi = Psi(prior,weight_functions,params,seeds=seeds)
+        mvc = Most_violated_constraint( 
+            prior, 
+            weight_functions, 
+            labelset, 
+            params,
+            seeds=seeds,
+            )
         
         ## learn struct svm
         svm = StructSVM(
             training_set,
-            loss_function,
+            loss,
             psi,
-            most_violated_contraint,
+            mvc,
             **params
             )
-        
-        
+            
+        w,xi,info = svm.train()
         
         ## end process
         
