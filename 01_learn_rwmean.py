@@ -60,6 +60,10 @@ def main():
     def process(test):
         ## learn rwmean parameters
         
+        outdir = test
+        if not os.path.isdir(outdir):
+            os.makedirs(outdir)
+        
         ## load mask and prior
         print 'load mask and prior'
         file_mask  = dir_prior + test + 'mask.hdr'
@@ -194,6 +198,11 @@ def main():
             )
             
         w,xi,info = svm.train()
+        np.savetxt(outdir + 'w',w)
+        np.savetxt(outdir + 'xi',xi)
+        
+        ## segment test image with trained w
+        
         
         ## end process
         
