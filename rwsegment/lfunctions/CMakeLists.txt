@@ -1,0 +1,9 @@
+PROJECT(LFUNC)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+ADD_LIBRARY( lfunctions SHARED
+    lfunctions.cpp
+  )
+  
+set_target_properties(lfunctions PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libs)
