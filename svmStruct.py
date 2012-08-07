@@ -31,14 +31,17 @@ class StructSVM(object):
         loglevel = kwargs.pop('loglevel',logging.WARNING)
         logger.setLevel(loglevel)
         # create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        # create formatter and add it to the handlers
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        # add the handlers to the logger
-        logger.addHandler(ch)
+        if len(logger.handlers)==0:
+            ch = logging.StreamHandler()
+            ch.setLevel(loglevel)
+            # create formatter and add it to the handlers
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            ch.setFormatter(formatter)
+            # add the handlers to the logger
+            logger.addHandler(ch)
+        else:
+            logger.handlers[0].setLevel(loglevel)
     
         self.logger = logger
     
@@ -81,7 +84,7 @@ class StructSVM(object):
         blx = [ -inf for i in range(self.wsize)] + [0.0]
         bux = [ +inf for i in range(self.wsize)] + [+inf]
         
-        c = [0 for i in range(len(W))] + [self.C]
+        c = [0 for i in range(self.wsize)] + [self.C]
         
         qsubi = range(self.wsize)
         qsubj = qsubi
@@ -158,6 +161,8 @@ class StructSVM(object):
         # Input the objective sense (minimize/maximize) 
         task.putobjsense(mosek.objsense.minimize)
         
+        # import pdb; pdb.set_trace()
+        
         # Optimize 
         task.optimize() 
         
@@ -172,6 +177,22 @@ class StructSVM(object):
         # Output a solution 
         xx = [0 for i in range(NUMVAR)] 
         task.getsolutionslice(mosek.soltype.itr, mosek.solitem.xx, 0,NUMVAR, xx)
+        
+        # if solsta == mosek.solsta.optimal or \
+            # solsta == mosek.solsta.near_optimal: 
+            # print("Optimal solution: %s" % xx) 
+        # elif solsta == mosek.solsta.dual_infeas_cer: 
+            # print("Primal or dual infeasibility.\n") 
+        # elif solsta == mosek.solsta.prim_infeas_cer: 
+            # print("Primal or dual infeasibility.\n") 
+        # elif solsta == mosek.solsta.near_dual_infeas_cer: 
+            # print("Primal or dual infeasibility.\n") 
+        # elif solsta == mosek.solsta.near_prim_infeas_cer: 
+            # print("Primal or dual infeasibility.\n") 
+        # elif mosek.solsta.unknown: 
+            # print("Unknown solution status") 
+        # else: 
+            # print("Other solution status")
         
         w,xi = xx[:self.wsize], xx[-1]
         
@@ -190,6 +211,7 @@ class StructSVM(object):
         cond /= float(len(self.S))
         
         if cond <= xi + self.epsilon:
+            # import pdb; pdb.set_trace()
             return True
         else:
             return False
@@ -235,7 +257,7 @@ class StructSVM(object):
                 break
             else: niter+= 1
             
-            self.logger.debug("iteration #{}".format(niter))
+            self.logger.info("iteration #{}".format(niter))
         
         ## return values
         info = {
@@ -305,6 +327,7 @@ if __name__=='__main__':
                 (self._score(w,x,y_) - my_loss(z,y_), y_)\
                 for y_ in range(self.nclass)
                 ]
+            #import pdb; pdb.set_trace()
             return min(scores)[1]
             
     my_mvc = My_mvc(L)
@@ -316,6 +339,7 @@ if __name__=='__main__':
         my_psi,
         my_mvc, 
         C=100, 
+        epsilon=1e-3,
         loglevel=logging.INFO,
         )
     w,xi,info = svm.train()
@@ -334,4 +358,8 @@ if __name__=='__main__':
     my_classifier = My_classifier(w,range(L))
     
     class_train = [(s[1],my_classifier(s[0])) for s in S]
+    for e in class_train:
+        if e[0]!=e[1]: print e
+        
+    
     
