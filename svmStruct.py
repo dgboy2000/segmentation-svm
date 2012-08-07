@@ -1,4 +1,4 @@
- 
+import logging
 
 class StructSVM(object):
     def __init__(
@@ -18,7 +18,6 @@ class StructSVM(object):
         '''
         self.S = training_set
         self.C = kwargs.pop('C',1.)
-        self.w_loss  = kwargs.pop('w_loss',1.)
         self.epsilon = kwargs.pop('epsilon',1e-5)
         
         self.loss = loss_function
@@ -26,6 +25,22 @@ class StructSVM(object):
         self.mvc  = most_violated_constraint
         
         self.classifier = None
+        
+        # create logger with 'spam_application'
+        logger = logging.getLogger('svm logger')
+        loglevel = kwargs.pop('loglevel',logging.WARNING)
+        logger.setLevel(loglevel)
+        # create console handler with a higher log level
+        ch = logging.StreamHandler()
+        ch.setLevel(loglevel)
+        # create formatter and add it to the handlers
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        # add the handlers to the logger
+        logger.addHandler(ch)
+    
+        self.logger = logger
     
     def _current_solution(self, W):
         ''' quadratic programming 
@@ -41,6 +56,8 @@ class StructSVM(object):
         import mosek
         import sys
         
+        mosek.iparam.log = 0
+        
         def streamprinter(text): 
             sys.stdout.write(text) 
             sys.stdout.flush()
@@ -52,11 +69,11 @@ class StructSVM(object):
         env = mosek.Env () 
         
         # Attach a printer to the environment 
-        env.set_Stream (mosek.streamtype.log, streamprinter) 
+        # env.set_Stream (mosek.streamtype.log, streamprinter) 
         
         # Create a task 
         task = env.Task() 
-        task.set_Stream (mosek.streamtype.log, streamprinter)
+        # task.set_Stream (mosek.streamtype.log, streamprinter)
         
         # Set up and input bounds and linear coefficients
         bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
@@ -99,7 +116,7 @@ class StructSVM(object):
             for i_y,y_ in enumerate(W[j]):
                 # average loss
                 avg_loss += \
-                    self.w_loss / float(Ssize) *\
+                    1. / float(Ssize) *\
                     self.loss(self.S[i_y][1], y_) 
                 
                 # average psi
@@ -162,14 +179,13 @@ class StructSVM(object):
         
     def _stop_condition(self,w,xi,ys):
         cond = 0
-        for z,y_ in zip(self.S,ys):
+        for s,y_ in zip(self.S,ys):
+            x,z = s
             cond += self.loss(z,y_)
             psi_xy_ = self.psi(x,y_)
             psi_xz  = self.psi(x,z)
-            cond -= sum([
-                w[i]*(psi_xy_[i] - psi_xz[i]) \
-                for i in range(len(w))
-                ])
+            for i in range(len(w)):
+                cond -= w[i]*(psi_xy_[i] - psi_xz[i])
         
         cond /= float(len(self.S))
         
@@ -198,41 +214,42 @@ class StructSVM(object):
         niter = 1
         while 1:
             ## compute current solution (qp + constraints)
-            if verb>0: print "compute current solution"
+            self.logger.info("compute current solution")
             w,xi = self._current_solution(W)
-            if verb>1: print "  w={}, xi={:.2}".format(w,xi)
+            self.logger.debug("w={}, xi={:.2}".format(w,xi))
         
             ## find most violated constraint
-            if verb>0: print "find most violated constraint"
+            self.logger.info("find most violated constraint")
             ys = []
             for s in self.S:
                 y_ = self.mvc(w, *s)
                 ys.append(y_)
-            if verb>1: print "  ys={}".format(ys)
+            self.logger.debug("ys={}".format(ys))
             
             ## add to test set
             W.append(ys)
             
             ## stop condition
             if self._stop_condition(w,xi,ys): 
-                if verb>0: print "stop condition True"
+                self.logger.info("stop condition reached")
                 break
             else: niter+= 1
             
-            if verb>1: print "iteration #{}".format(niter)
+            self.logger.debug("iteration #{}".format(niter))
         
         ## return values
         info = {
             'number of iterations': niter, 
             'number of contraints': len(W),
             }
-        if verb>0: 
-            for msg in info: print "{}={}".format(msg,info[msg])
+        
+        for msg in info: self.logger.info("{}={}".format(msg,info[msg]))
             
         return w, xi, info
 
         
 if __name__=='__main__':
+
     import random
     
     ## test svm struct
@@ -242,7 +259,7 @@ if __name__=='__main__':
     L = 5    # number of classes
     N = 10   # feature size
     
-    sigma = 1. # sigma for the gaussians
+    sigma = 1e-2 # sigma for the gaussians
     
     # 1 - generate centers
     G = []
@@ -293,8 +310,15 @@ if __name__=='__main__':
     my_mvc = My_mvc(L)
             
     ## run svm struct
-    svm = StructSVM(S, my_loss, my_psi, my_mvc, C=10, w_loss=100)
-    w,xi,info = svm.train(verb=2)
+    svm = StructSVM(
+        S, 
+        my_loss, 
+        my_psi,
+        my_mvc, 
+        C=100, 
+        loglevel=logging.INFO,
+        )
+    w,xi,info = svm.train()
     
     class My_classifier(object):
         def __init__(self,w,classes):
