@@ -195,7 +195,7 @@ def segment_mean_prior(
         
         
         if add_linear_term is not None:
-            linterm = add_linear_term.reshape((-1,nlabel))
+            linterm = add_linear_term.reshape((-1,nlabel), order='F')
             linterm = np.asmatrix(linterm[unknown,:])
         
         for il in range(nlabel):
@@ -220,11 +220,7 @@ def segment_mean_prior(
     sol = np.zeros((image.size,nlabel))
     sol[unknown,:] = x
     sol = sol.ravel('F')
-    import pdb; pdb.set_trace()
-    # sol = np.zeros(image.shape, dtype=int)
-    # sol.flat[unknown] = labelset[
-        # np.argmax(x.reshape((-1, nlabel), order='F'), axis=1)
-        # ]
+    # import ipdb; ipdb.set_trace()
 
     ## output arguments
     rargs = []
@@ -241,6 +237,11 @@ def solve_qp(P,q, maxiter=1e2, tol=1e-3):
     '''
         solve: min(X): Xt*P*X + 2Xt*q + cst
     '''
+    if P.nnz==0:
+        logger.warning('in QP, P=0. Returning 1-(q>0)')
+        return 1 - np.zeros(q.size)
+        # return np.zeros(q.size)
+    
     maxiter = int(maxiter)
     if 0:#'use_cvxopt':
         import cvxopt
@@ -442,7 +443,7 @@ def compute_laplacian(
     Lu = L[unknown,:][:,unknown]
     B  = L[unknown,:][:,border]
     
-    import pdb; pdb.set_trace()
+    # import ipdb; ipdb.set_trace()
     
     return Lu,border,B
     

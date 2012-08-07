@@ -247,7 +247,7 @@ class StructSVM(object):
     def mvc(self,w,x,z):
         return DataContainer(self.user_mvc(w,x.data,z.data))
             
-    def train(self, verb=0):
+    def train(self):
         ''' optimize with algorithm:
         "Cutting-plane training of structural SVMs"
         Machine Learning 2009
@@ -260,9 +260,8 @@ class StructSVM(object):
         W = [] 
         
         ## initialize w
-        self.logger.info("compute initial solution")
+        self.logger.info("compute length of psi")
         self.wsize = len(self.psi(*self.S[0]))
-        w = 0
         
         niter = 1
         while 1:
@@ -301,7 +300,7 @@ class StructSVM(object):
         
         for msg in info: self.logger.info("{}={}".format(msg,info[msg]))
             
-        import pdb; pdb.set_trace()
+        import ipdb; ipdb.set_trace()
             
         return w, xi, info
 

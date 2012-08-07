@@ -5,7 +5,13 @@
         These do not matter since a constant does not change the solution.
         
         - Change the smv training set to the non-registered image set.
-
+        
+        - idea: make one big call containing psi, loss and mvc 
+        so that we can cache Laplacians (used in both psi and mvc)?
+        (e.g. We could call that class UserFunctionsSVM)
+        
+        - the loss function (1-zy) is ambiguous: what is worse 0 or 1-z ?
+        maybe (1-2z)y  is better ?
 '''
 
 
@@ -91,7 +97,14 @@ def main():
             file_im  = dir_reg + test + train + 'reggray.hdr'
             im  = ioanalyze.load(file_im)
             seg = ioanalyze.load(file_seg)
+            
+            ## make bin vector z from segmentation
+            seg.flat[~np.in1d(seg.ravel(),labelset)] = labelset[0]
             bin = (np.c_[seg.ravel()]==labelset).ravel('F')
+            
+            ## normalize image by variance
+            im = im/np.std(im)
+            
             training_set.append((im, bin))
             
             if prior is None:
@@ -229,7 +242,7 @@ def main():
         np.savetxt(outdir + 'w',w)
         np.savetxt(outdir + 'xi',[xi])
         
-        import pdb; pdb.set_trace()
+        import ipdb; ipdb.set_trace()
         ## segment test image with trained w
         
         
