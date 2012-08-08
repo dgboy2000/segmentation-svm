@@ -44,7 +44,8 @@ def main():
     ## paths
     dir_reg     = config.dir_reg
     
-    retrain = False
+    ## re-train svm?
+    retrain = True
     
     ## params
     # slices = [slice(20,40),slice(None),slice(None)]
@@ -72,7 +73,7 @@ def main():
         # 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
         # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
         # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
-        'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
+        # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
         # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
         }
         
@@ -161,7 +162,7 @@ def main():
         ##
         w,xi,info = svm.train()
        
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         
         return w,xi,info
         
@@ -206,12 +207,15 @@ def main():
             **rwparams
             )
         
+        np.save(outdir + 'y.npy',y)
+        
         sol = labelset[
             np.argmax(y.reshape((-1,len(labelset)),order='F'),axis=1)]\
             .reshape(im.shape)
         
         
         ioanalyze.save(outdir + 'sol.hdr',sol)
+        
         
         ## Dice coef(sol, seg)
         

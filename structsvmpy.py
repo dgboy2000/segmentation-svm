@@ -95,9 +95,11 @@ class StructSVM(object):
         # task.set_Stream (mosek.streamtype.log, streamprinter)
         
         # Set up and input bounds and linear coefficients
-        bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
+        # bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
+        bkx = [mosek.boundkey.lo for i in range(self.wsize)] + \
               [mosek.boundkey.lo]
-        blx = [ -inf for i in range(self.wsize)] + [0.0]
+        # blx = [ -inf for i in range(self.wsize)] + [0.0]
+        blx = [ 0 for i in range(self.wsize)] + [0.0]
         bux = [ +inf for i in range(self.wsize)] + [+inf]
         
         c = [0 for i in range(self.wsize)] + [self.C]
@@ -301,7 +303,7 @@ class StructSVM(object):
         
         for msg in info: self.logger.info("{}={}".format(msg,info[msg]))
             
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
             
         return w, xi, info
 
