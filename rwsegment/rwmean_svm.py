@@ -133,6 +133,7 @@ def segment_mean_prior(
     lmbda   = kwargs.pop('lmbda', 1.) * np.ones(nlabel)
     # verb    = kwargs.pop('verb', 0)
 
+    
     ## compute laplacian
     if laplacian is None:
         logger.info('compute laplacian')
@@ -195,10 +196,6 @@ def segment_mean_prior(
             Cmap = sparse.spdiags(cmap.flat[unknown], 0, nvar, nvar)
         x = np.zeros((nvar, nlabel))
         
-        energy = 0
-        energy_im = 0
-        
-        
         if add_linear_term is not None:
             linterm = add_linear_term.reshape((-1,nlabel), order='F')
             linterm = np.asmatrix(linterm[unknown,:])
@@ -217,6 +214,7 @@ def segment_mean_prior(
             
             P = L + D
             q = B*xm - D*x0 + Y
+            # import ipdb; ipdb.set_trace()
             if P.nnz==0:
                 logger.warning(
                     'label #{}. In QP, P=0. Returning (1-q>0)/nlabel'.format(il)
@@ -245,10 +243,12 @@ def segment_mean_prior(
     else: return tuple(rargs)
     
 ##------------------------------------------------------------------------------
-def solve_qp(P,q, maxiter=1e2, tol=1e-3):
+def solve_qp(P,q, maxiter=1e2, rtol=1e-3):
     '''
         solve: min(X): Xt*P*X + 2Xt*q + cst
     '''
+    tol = np.max(P.data)*rtol
+    
     if P.nnz==0:
         logger.error('P has no non-zeros entries')
         return np.zeros(q.size)
@@ -278,10 +278,11 @@ def solve_qp(P,q, maxiter=1e2, tol=1e-3):
         ## use standard conjugate gradient
         x,info = splinalg.cg(
             P,-q,
-            maxiter=100,
-            tol=1e-3,
+            maxiter=maxiter,
+            tol=tol,
             )
-
+        if info!=0:
+            logger.error('QP did not converge. info={}'.format(info))
     return x
 
 ##------------------------------------------------------------------------------

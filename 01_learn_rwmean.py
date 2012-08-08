@@ -45,7 +45,7 @@ def main():
     dir_reg     = config.dir_reg
     
     ## re-train svm?
-    retrain = True
+    retrain = False
     
     ## params
     # slices = [slice(20,40),slice(None),slice(None)]
@@ -56,7 +56,7 @@ def main():
     ## rw params
     rwparams = {
         'labelset':labelset,
-        'tol': 1e-3,
+        'rtol': 1e-3,
         'maxiter': 1e2,
         }
         
@@ -199,6 +199,7 @@ def main():
         ## make seeds from mask
         seeds = (-1)*mask.astype(int)
     
+        # import ipdb; ipdb.set_trace()
         y = rwmean_svm.segment_mean_prior(
             im, 
             prior, 
@@ -236,7 +237,7 @@ def main():
             np.savetxt(outdir + 'xi',[xi])            
         else:
             w = np.loadtxt(outdir + 'w')
-            
+        
         run_svm_inference(test,w,prior,mask)
 
         ## end process

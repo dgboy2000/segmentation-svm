@@ -96,12 +96,13 @@ class StructSVM(object):
         # task.set_Stream (mosek.streamtype.log, streamprinter)
         
         # Set up and input bounds and linear coefficients
-        bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
-              [mosek.boundkey.lo]
-        blx = [ -inf for i in range(self.wsize)] + [0.0]
-        # bkx = [mosek.boundkey.lo for i in range(self.wsize)] + \
+        # bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
               # [mosek.boundkey.lo]
-        # blx = [ 0.0 for i in range(selfr.wsize)] + [0.0]
+        # blx = [ -inf for i in range(self.wsize)] + [0.0]
+        bkx = [mosek.boundkey.lo for i in range(self.wsize)] + \
+              [mosek.boundkey.lo]
+        blx = [ 0.0 for i in range(self.wsize)] + [0.0]
+        
         bux = [ +inf for i in range(self.wsize)] + [+inf]
         
         c = [0 for i in range(self.wsize)] + [self.C]
@@ -112,7 +113,7 @@ class StructSVM(object):
         
         NUMVAR = len(bkx) 
         NUMCON = len(W)
-        NUMANZ = 3
+        NUMANZ = NUMCON*NUMVAR
         
         task.putmaxnumvar(NUMVAR) 
         task.putmaxnumcon(NUMCON) 

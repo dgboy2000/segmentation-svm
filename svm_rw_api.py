@@ -8,6 +8,9 @@ class Loss(object):
         self.nlabel = nlabel
     def __call__(self,z,y_):
         ''' 1 - (z.y_)/nnode '''
+        if np.sum(y_<-1e-8) > 0:
+            logger.error('negative values in y_')
+    
         nnode = z.size/float(self.nlabel)
         return 1.0 - 1.0/nnode * np.dot(z,y_)
 
@@ -91,3 +94,22 @@ class Most_violated_constraint(object):
             )
             
         return y_
+        
+        
+        
+import logging
+logger = logging.getLogger('svm user functions logger')
+loglevel = logging.INFO
+logger.setLevel(loglevel)
+# create console handler with a higher log level
+if len(logger.handlers)==0:
+    ch = logging.StreamHandler()
+    ch.setLevel(loglevel)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
+else:
+    logger.handlers[0].setLevel(loglevel)
