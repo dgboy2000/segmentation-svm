@@ -44,11 +44,13 @@ def main():
     ## paths
     dir_reg     = config.dir_reg
     
+    retrain = False
+    
     ## params
     # slices = [slice(20,40),slice(None),slice(None)]
     slices = [slice(None),slice(None),slice(None)]
     
-    labelset = [0,13,14,15,16]
+    labelset = np.asarray([0,13,14,15,16])
     
     ## rw params
     rwparams = {
@@ -74,24 +76,45 @@ def main():
         # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
         }
         
-        
-    def process(test):
-        ## learn rwmean parameters
-        
+    def load_or_compute_prior_and_mask(test):
         outdir = test
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
         
         ## load mask and prior
         prior = None
         file_mask  = outdir + 'mask.hdr'
         file_prior = outdir + 'prior.npz'
         if os.path.exists(file_prior):
+            logger.info('load prior')
             mask  = ioanalyze.load(file_mask)
             prior = np.load(file_prior)
         else:
+            logger.info('compute prior')
             generator = rwmean_svm.PriorGenerator(labelset)
+            for train in config.vols:
+                if test==train: continue
+                file_seg = dir_reg + test + train + 'regseg.hdr'
+                seg = ioanalyze.load(file_seg)
+                generator.add_training_data(seg)
             
+            from scipy import ndimage
+            mask    = generator.get_mask()
+            struct  = np.ones((7,)*mask.ndim)
+            mask    = ndimage.binary_dilation(
+                    mask.astype(bool),
+                    structure=struct,
+                    )
+            prior = generator.get_prior(mask=mask)
+            np.savez(file_prior,**prior)
+            ioanalyze.save(file_mask, mask.astype(np.int32))
+            
+        
+                
+                
+        return prior, mask
+        
+    def train_svm(test, prior, mask):
+        outdir = test
+
         ## training images and segmentations
         training_set = []
         for train in config.vols:
@@ -110,23 +133,7 @@ def main():
             im = im/np.std(im)
             
             training_set.append((im, bin))
-            
-            if prior is None:
-                generator.add_training_data(seg)
                 
-        ## generate prior
-        if prior is None:
-            from scipy import ndimage
-            mask    = generator.get_mask()
-            struct  = np.ones((7,)*mask.ndim)
-            mask    = ndimage.binary_dilation(
-                    mask.astype(bool),
-                    structure=struct,
-                    )
-            ioanalyze.save(file_mask, mask.astype(np.int32))
-            prior = generator.get_prior(mask=mask)
-            np.savez(file_prior,**prior)
-        
         ## make seeds from mask
         seeds = (-1)*mask.astype(int)
 
@@ -153,11 +160,16 @@ def main():
             
         ##
         w,xi,info = svm.train()
-        np.savetxt(outdir + 'w',w)
-        np.savetxt(outdir + 'xi',[xi])
-        
+       
         import ipdb; ipdb.set_trace()
         
+        return w,xi,info
+        
+        
+    def run_svm_inference(test,w,prior, mask):
+    
+        outdir = test
+    
         ## segment test image with trained w
         def wwf(im,_w):    
             ''' meta weight function'''
@@ -176,8 +188,14 @@ def main():
         seg.flat[~np.in1d(seg.ravel(),labelset)] = labelset[0]
         # bin = (np.c_[seg.ravel()]==labelset).ravel('F')
         
+        ## save image
+        ioanalyze.save(outdir + 'im.hdr',im.astype(int))
+        
         ## normalize image by variance
         im = im/np.std(im)
+    
+        ## make seeds from mask
+        seeds = (-1)*mask.astype(int)
     
         y = rwmean_svm.segment_mean_prior(
             im, 
@@ -192,17 +210,54 @@ def main():
             np.argmax(y.reshape((-1,len(labelset)),order='F'),axis=1)]\
             .reshape(im.shape)
         
+        
         ioanalyze.save(outdir + 'sol.hdr',sol)
         
         ## Dice coef(sol, seg)
         
+        
+    def process(test, retrain=True):
+        ## learn rwmean parameters
+        
+        outdir = test
+        if not os.path.isdir(outdir):
+            os.makedirs(outdir)
+        
+        prior, mask = load_or_compute_prior_and_mask(test)
+        
+        if retrain:
+            w,xi,info = train_svm(test,prior,mask)
+            np.savetxt(outdir + 'w',w)
+            np.savetxt(outdir + 'xi',[xi])            
+        else:
+            w = np.loadtxt(outdir + 'w')
+            
+        run_svm_inference(test,w,prior,mask)
+
         ## end process
         
     for test in ['01/']:
     # for test in config.vols:
-        process(test)
+        process(test,retrain)
     
+##------------------------------------------------------------------------------
     
+import logging
+logger = logging.getLogger('svm-segmentation logger')
+loglevel = logging.INFO
+logger.setLevel(loglevel)
+# create console handler with a higher log level
+if len(logger.handlers)==0:
+    ch = logging.StreamHandler()
+    ch.setLevel(loglevel)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(ch)
+else:
+    logger.handlers[0].setLevel(loglevel)
 
     
     
