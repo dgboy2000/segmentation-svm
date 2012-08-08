@@ -265,6 +265,8 @@ class StructSVM(object):
         
         niter = 1
         while 1:
+            self.logger.info("iteration #{}".format(niter))
+            
             ## compute current solution (qp + constraints)
             self.logger.info("compute current solution")
             w,xi = self._current_solution(W)
@@ -289,8 +291,7 @@ class StructSVM(object):
                 self.logger.info("max number of iterations reached")
                 break
             else: niter+= 1
-            
-            self.logger.info("iteration #{}".format(niter))
+
         
         ## return values
         info = {

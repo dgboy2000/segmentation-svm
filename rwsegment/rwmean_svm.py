@@ -178,10 +178,15 @@ def segment_mean_prior(
                 # )
             
         ## solve
-        logger.info('solve')
+        logger.info('solve rw')
         P = LL + D
         q = BB*xm - D*x0 + Y
-        x = solve_qp(P, q, **kwargs)
+        if P.nnz==0:
+            logger.warning('in QP, P=0. Returning 1-(q>0)') 
+            ## assumes binary q. If not binary, set to q>epsilon ?
+            x = (1 - (q>0))/(nlabel - 1)
+        else:
+            x = solve_qp(P, q, **kwargs)
         
     else:
         ## compute separately for each label (best)
@@ -212,8 +217,15 @@ def segment_mean_prior(
             
             P = L + D
             q = B*xm - D*x0 + Y
-            _x = solve_qp(P, q, **kwargs)
-            x[:,il] = _x
+            if P.nnz==0:
+                logger.warning(
+                    'label #{}. In QP, P=0. Returning (1-q>0)/nlabel'.format(il)
+                    ) 
+                ## assumes binary q. If not binary, set to q>epsilon ?
+                _x = (1 - (q>0))/(nlabel - 1)
+            else:
+                _x = solve_qp(P, q, **kwargs)
+            x[:,il] = _x.ravel()
 
         
     ## reshape solution
@@ -238,9 +250,8 @@ def solve_qp(P,q, maxiter=1e2, tol=1e-3):
         solve: min(X): Xt*P*X + 2Xt*q + cst
     '''
     if P.nnz==0:
-        logger.warning('in QP, P=0. Returning 1-(q>0)')
-        return 1 - np.zeros(q.size)
-        # return np.zeros(q.size)
+        logger.error('P has no non-zeros entries')
+        return np.zeros(q.size)
     
     maxiter = int(maxiter)
     if 0:#'use_cvxopt':
