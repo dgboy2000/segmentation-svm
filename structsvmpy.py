@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 
 class DataContainer(object):
     def __init__(self, data):
@@ -95,11 +96,12 @@ class StructSVM(object):
         # task.set_Stream (mosek.streamtype.log, streamprinter)
         
         # Set up and input bounds and linear coefficients
-        # bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
-        bkx = [mosek.boundkey.lo for i in range(self.wsize)] + \
+        bkx = [mosek.boundkey.fr for i in range(self.wsize)] + \
               [mosek.boundkey.lo]
-        # blx = [ -inf for i in range(self.wsize)] + [0.0]
-        blx = [ 0 for i in range(self.wsize)] + [0.0]
+        blx = [ -inf for i in range(self.wsize)] + [0.0]
+        # bkx = [mosek.boundkey.lo for i in range(self.wsize)] + \
+              # [mosek.boundkey.lo]
+        # blx = [ 0.0 for i in range(selfr.wsize)] + [0.0]
         bux = [ +inf for i in range(self.wsize)] + [+inf]
         
         c = [0 for i in range(self.wsize)] + [self.C]
@@ -122,16 +124,16 @@ class StructSVM(object):
         
         ## psi(x,z)
         Ssize = len(self.S)
-        avg_phi_gt = [0 for i in range(self.wsize)]
+        avg_psi_gt = [0 for i in range(self.wsize)]
         for s in self.S:
             for i_p,p in enumerate(self.psi(*s)): 
-                avg_phi_gt[i_p] += 1.0/ float(Ssize) * p
+                avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
         
         ## set the constraints
         for j in range(NUMCON): 
          
             ## psi(x,y_)
-            avg_phi = [0 for i in range(self.wsize)]
+            avg_psi = [0 for i in range(self.wsize)]
 
             avg_loss = 0
             for i_y,y_ in enumerate(W[j]):
@@ -142,11 +144,11 @@ class StructSVM(object):
                 
                 # average psi
                 for i_p,p in enumerate(self.psi(self.S[i_y][0],y_)): 
-                    avg_phi[i_p] += p / float(Ssize)
+                    avg_psi[i_p] += p / float(Ssize)
             
             ## psi(x,y_) - psi(x,z)
             aval = \
-                [avg_phi[i] - avg_phi_gt[i] for i in range(self.wsize)] + \
+                [avg_psi[i] - avg_psi_gt[i] for i in range(self.wsize)] + \
                 [1.0]
          
             ## Input row j of A 
@@ -271,8 +273,12 @@ class StructSVM(object):
             
             ## compute current solution (qp + constraints)
             self.logger.info("compute current solution")
+            # import ipdb; ipdb.set_trace()
             w,xi = self._current_solution(W)
+            
             self.logger.debug("w={}, xi={:.2}".format(w,xi))
+            objective = 0.5*np.dot(w,w) + self.C*xi
+            self.logger.debug("objective={}".format(objective))
         
             ## find most violated constraint
             self.logger.info("find most violated constraint")
@@ -280,7 +286,7 @@ class StructSVM(object):
             for s in self.S:
                 y_ = self.mvc(w, *s)
                 ys.append(y_)
-            self.logger.debug("ys={}".format(ys))
+            # self.logger.debug("ys={}".format(ys))
             
             ## add to test set
             W.append(ys)

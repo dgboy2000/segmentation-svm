@@ -64,7 +64,8 @@ def main():
     svmparams = {
         'C': 100,
         'nitermax':100,
-        'loglevel':logging.INFO,
+        # 'loglevel':logging.INFO,
+        'loglevel':logging.DEBUG,
         }
         
     ## weight functions

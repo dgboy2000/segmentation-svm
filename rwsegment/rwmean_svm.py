@@ -382,7 +382,6 @@ def energy_RW(
     en = 0.0
     for il in range(nlabel):
         en += x[:,il].T * L * x[:,il]
-    
     return float(en)
     
 ##------------------------------------------------------------------------------

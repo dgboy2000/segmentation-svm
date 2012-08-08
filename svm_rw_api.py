@@ -45,7 +45,7 @@ class Psi(object):
             ))
             
         ## psi[a] = minus energy[a]
-        return np.asmatrix(-np.c_[v])
+        return v
 
 
 ## most violated constraint
