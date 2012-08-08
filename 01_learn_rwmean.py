@@ -45,7 +45,8 @@ def main():
     dir_reg     = config.dir_reg
     
     ## re-train svm?
-    retrain = False
+    # retrain = False
+    retrain = True
     
     ## params
     # slices = [slice(20,40),slice(None),slice(None)]
@@ -54,6 +55,8 @@ def main():
     labelset = np.asarray([0,13,14,15,16])
     
     ## rw params
+    rwmean_svm.logger.setLevel(logging.DEBUG)
+    rwmean_svm.logger.handlers[0].setLevel(logging.DEBUG)
     rwparams = {
         'labelset':labelset,
         'rtol': 1e-3,

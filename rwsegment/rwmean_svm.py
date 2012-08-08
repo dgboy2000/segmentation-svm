@@ -153,7 +153,7 @@ def segment_mean_prior(
         shape=(image.size,nlabel),
         ).tocsr()
         
-    if 0:
+    if 1:
         ## compute all in one pass
         
         ## intermediary matrices
@@ -187,7 +187,8 @@ def segment_mean_prior(
             ## assumes binary q. If not binary, set to q>epsilon ?
             x = (1 - (q>0))/(nlabel - 1)
         else:
-            x = solve_qp(P, q, **kwargs)
+            x = solve_qp_mosek(P,q,nlabel)
+            # x = solve_qp(P, q, **kwargs)
         
     else:
         ## compute separately for each label (best)
@@ -284,6 +285,120 @@ def solve_qp(P,q, maxiter=1e2, rtol=1e-3):
         if info!=0:
             logger.error('QP did not converge. info={}'.format(info))
     return x
+
+##------------------------------------------------------------------------------
+def solve_qp_mosek(P,q,nlabel):
+    import mosek
+    import sys
+    
+    mosek.iparam.log = 0
+    
+    def streamprinter(text): 
+        sys.stdout.write(text) 
+        sys.stdout.flush()
+    
+    inf = 0
+    
+    # Open MOSEK and create an environment and task 
+    # Make a MOSEK environment 
+    env = mosek.Env () 
+    
+    # Attach a printer to the environment 
+    # env.set_Stream (mosek.streamtype.log, streamprinter) 
+    
+    # Create a task 
+    task = env.Task() 
+    # task.set_Stream (mosek.streamtype.log, streamprinter)
+    
+    NUMVAR = q.size
+    NUMCON = NUMVAR/nlabel
+    NUMANZ = NUMVAR
+    
+    task.putmaxnumvar(NUMVAR) 
+    task.putmaxnumcon(NUMCON) 
+    task.putmaxnumanz(NUMANZ)
+    
+    task.append(mosek.accmode.con,NUMCON)
+    task.append(mosek.accmode.var,NUMVAR)
+    task.putcfix(0.0)
+    
+    # Set up and input bounds and linear coefficients
+    logger.debug('set bounds on variables')
+    bkx = [mosek.boundkey.ra for i in range(NUMVAR)]
+    blx = [ 0.0 for i in range(NUMVAR)]
+    bux = [ 1.0 for i in range(NUMVAR)]
+    
+    c = q.tolist()
+    
+    logger.debug('setup objective matrix')
+    (rows,cols) = P.nonzero()
+    qsubi = rows.tolist()
+    qsubj = cols.tolist()
+    qval = P.data.tolist()
+    
+    
+    ## set the constraints
+    logger.debug('setup the probability constraints')
+    
+    A = sparse.bmat([
+        [sparse.eye(NUMCON,NUMCON)] for i in range(nlabel)
+        ])
+    
+    for i in range(NUMCON): 
+        
+        Ainds = np.arange(i,NUMVAR,NUMCON).tolist()
+        Avals = [1.0 for j in Ainds]
+     
+        ## Input row j of A 
+        task.putavec(
+            mosek.accmode.con, # Input rows of A. 
+            i,          # Constraint (row) index. 
+            Ainds,      # Column index of non-zeros in column j. 
+            Avals,      # Non-zero Values of row j. 
+            )
+    
+        ## set bounds on constraints
+        task.putbound(
+            mosek.accmode.con,
+            i,
+            mosek.boundkey.fx,
+            1,1, # upper and lower bounds
+            )
+    
+    # Set the bounds on variable j 
+    logger.debug('add constraints into Mosek')
+    # blx[j] <= x_j <= bux[j] 
+    task.putboundlist(mosek.accmode.var,range(NUMVAR),bkx,blx,bux)
+    
+    # Set the linear term c_j in the objective. 
+    task.putclist(range(NUMVAR),c)
+    
+    # Set up and input quadratic objective
+    task.putqobj(qsubi,qsubj,qval)
+    
+    # Input the objective sense (minimize/maximize) 
+    task.putobjsense(mosek.objsense.minimize)
+    
+    # import pdb; pdb.set_trace()
+    
+    # Optimize 
+    logger.info('start optimizing')
+    task.optimize() 
+    logger.info('done optimizing')
+    
+    # Print a summary containing information 
+    # about the solution for debugging purposes 
+    #task.solutionsummary(mosek.streamtype.msg)
+    
+    prosta = [] 
+    solsta = [] 
+    [prosta,solsta] = task.getsolutionstatus(mosek.soltype.itr)
+    
+    # Output a solution 
+    xx = [0 for i in range(NUMVAR)] 
+    task.getsolutionslice(mosek.soltype.itr, mosek.solitem.xx, 0,NUMVAR, xx)
+    
+    return np.array(xx)
 
 ##------------------------------------------------------------------------------
 def energy_mean_prior(
