@@ -131,7 +131,10 @@ def segment_mean_prior(
     ## parameters
     beta    = kwargs.pop('beta', 1.)
     lmbda   = kwargs.pop('lmbda', 1.) * np.ones(nlabel)
-    # verb    = kwargs.pop('verb', 0)
+    per_label = kwargs.pop('per_label',True)
+    
+    ## can be scipy or mosek
+    optim_solver = kwargs.pop('optim_solver','scipy')
 
     
     ## compute laplacian
@@ -153,7 +156,7 @@ def segment_mean_prior(
         shape=(image.size,nlabel),
         ).tocsr()
         
-    if 1:
+    if not per_label:
         ## compute all in one pass
         
         ## intermediary matrices
@@ -165,18 +168,16 @@ def segment_mean_prior(
                 sparse.eye(nlabel, nlabel),
                 sparse.spdiags(cmap.flat[unknown], 0, nvar, nvar),
                 )
-        # x0 = pmat[unknown, :].T.reshape((LL.shape[0],1))
+
         x0 = sparse.bmat([[pmat[unknown, il]] for il in range(nlabel)])
         xm = (np.c_[seeds.flat[border]]==labelset).T\
             .reshape((BB.shape[1],1))
             
         ## additional linear term
         Y = 0
-        # if add_linear_term is not None:
-            # Y = add_linear_term
-            # Y = sparse.bmat(
-                # [[add_linear_term[unknown, il]] for il in range(nlabel)]
-                # )
+        if add_linear_term is not None:
+            linterm = add_linear_term.reshape((-1,nlabel), order='F')
+            Y = linterm[unknown,:].reshape((-1,1),order='F')
             
         ## solve
         logger.info('solve rw')
@@ -187,8 +188,10 @@ def segment_mean_prior(
             ## assumes binary q. If not binary, set to q>epsilon ?
             x = (1 - (q>0))/(nlabel - 1)
         else:
-            x = solve_qp_mosek(P,q,nlabel)
-            # x = solve_qp(P, q, **kwargs)
+            if optim_solver=='mosek':
+                x = solve_qp_mosek(P,q,nlabel)
+            else:
+                x = solve_qp(P, q, **kwargs)
         
     else:
         ## compute separately for each label (best)
@@ -228,7 +231,8 @@ def segment_mean_prior(
 
         
     ## reshape solution
-    sol = np.zeros((image.size,nlabel))
+    # sol = np.zeros((image.size,nlabel))
+    sol = (np.c_[seeds.ravel()]==labelset).astype(float)
     sol[unknown,:] = x
     sol = sol.ravel('F')
     # import ipdb; ipdb.set_trace()
@@ -287,11 +291,21 @@ def solve_qp(P,q, maxiter=1e2, rtol=1e-3):
     return x
 
 ##------------------------------------------------------------------------------
+def test_definiteness(P,numtest=100):
+    n = P.shape[1]
+    for t in range(numtest):
+        vec = np.asmatrix(np.random.random((n,1))-0.5)
+        val = vec.T*P*vec
+        if val<0:
+            import ipdb;ipdb.set_trace()
+    
+    
+##------------------------------------------------------------------------------
 def solve_qp_mosek(P,q,nlabel):
     import mosek
     import sys
     
-    mosek.iparam.log = 0
+
     
     def streamprinter(text): 
         sys.stdout.write(text) 
@@ -304,11 +318,16 @@ def solve_qp_mosek(P,q,nlabel):
     env = mosek.Env () 
     
     # Attach a printer to the environment 
-    # env.set_Stream (mosek.streamtype.log, streamprinter) 
+    env.set_Stream (mosek.streamtype.log, streamprinter) 
     
     # Create a task 
     task = env.Task() 
-    # task.set_Stream (mosek.streamtype.log, streamprinter)
+    
+    # set convexity check to:
+    # task.putintparam(mosek.iparam.check_convexity , 0) #none
+    task.putintparam(mosek.iparam.check_convexity , 1) # simple
+    
+    task.set_Stream (mosek.streamtype.log, streamprinter)
     
     NUMVAR = q.size
     NUMCON = NUMVAR/nlabel
@@ -328,59 +347,42 @@ def solve_qp_mosek(P,q,nlabel):
     blx = [ 0.0 for i in range(NUMVAR)]
     bux = [ 1.0 for i in range(NUMVAR)]
     
-    c = q.tolist()
+    c = np.asarray(q).ravel()
     
+    # test_definiteness(P,numtest=100)
     logger.debug('setup objective matrix')
-    (rows,cols) = P.nonzero()
-    qsubi = rows.tolist()
-    qsubj = cols.tolist()
-    qval = P.data.tolist()
+    (qsubi,qsubj) = sparse.tril(P).nonzero()
+    qval = sparse.tril(P).data
     
     
     ## set the constraints
     logger.debug('setup the probability constraints')
     
-    A = sparse.bmat([
-        [sparse.eye(NUMCON,NUMCON)] for i in range(nlabel)
-        ])
-    
-    for i in range(NUMCON): 
-        
-        Ainds = np.arange(i,NUMVAR,NUMCON).tolist()
-        Avals = [1.0 for j in Ainds]
-     
-        ## Input row j of A 
-        task.putavec(
-            mosek.accmode.con, # Input rows of A. 
-            i,          # Constraint (row) index. 
-            Ainds,      # Column index of non-zeros in column j. 
-            Avals,      # Non-zero Values of row j. 
-            )
-    
-        ## set bounds on constraints
-        task.putbound(
-            mosek.accmode.con,
-            i,
-            mosek.boundkey.fx,
-            1,1, # upper and lower bounds
-            )
+    A = sparse.bmat([[
+        sparse.eye(NUMCON,NUMCON) for i in range(nlabel)
+        ]])
+    (asubi,asubj) = A.nonzero()
+    aval = A.data
     
     # Set the bounds on variable j 
     logger.debug('add constraints into Mosek')
     # blx[j] <= x_j <= bux[j] 
-    task.putboundlist(mosek.accmode.var,range(NUMVAR),bkx,blx,bux)
+    task.putboundlist(mosek.accmode.var,np.arange(NUMVAR),bkx,blx,bux)
     
     # Set the linear term c_j in the objective. 
-    task.putclist(range(NUMVAR),c)
+    task.putclist(np.arange(NUMVAR),c)
     
     # Set up and input quadratic objective
     task.putqobj(qsubi,qsubj,qval)
     
+    # Set up and input contraint matrix
+    task.putaijlist(asubi,asubj,aval)
+    
     # Input the objective sense (minimize/maximize) 
     task.putobjsense(mosek.objsense.minimize)
     
-    # import pdb; pdb.set_trace()
-    
+
+    # import ipdb; ipdb.set_trace()
     # Optimize 
     logger.info('start optimizing')
     task.optimize() 

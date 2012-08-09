@@ -59,8 +59,10 @@ def main():
     rwmean_svm.logger.handlers[0].setLevel(logging.DEBUG)
     rwparams = {
         'labelset':labelset,
-        'rtol': 1e-3,
-        'maxiter': 1e2,
+        'rtol': 1e-6,
+        'maxiter': 1e3,
+        'per_label':True,
+        'optim_solver':'scipy',
         }
         
     ## svm params
