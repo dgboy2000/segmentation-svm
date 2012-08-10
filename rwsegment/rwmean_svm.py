@@ -59,14 +59,24 @@ class PriorGenerator:
         
         nlabel = len(self.labelset)
         ij     = np.where(np.c_[fmask]*np.ones((1,nlabel)))
+        
+        ## average probability
         mean   = self.x0[fmask,:].ravel() / np.float(self.ntrain)
+        
+        ## variance
         var    = (self.x02 - self.x0**2)
         var    = var[fmask,:].ravel() / np.float(self.ntrain)
+        
+        ## entropy
+        eps = 1e-10
+        entropy = -np.sum(self.x0 * np.log(self.x0+eps),axis=1)
+        entropy = np.tile(entropy[fmask],(1,nlabel))
         
         return {
             'ij'    : ij,
             'mean'  : mean,
             'var'   : var,
+            'entropy': entropy,
             }
         
 ##------------------------------------------------------------------------------
@@ -74,12 +84,12 @@ def segment_mean_prior(
         image,
         prior,
         seeds=[],
-        cmap=None,
+        prior_weights=None,
         add_linear_term=None,
         weight_function=None,
         laplacian=None,
         return_laplacian=False,
-        return_arguments=['solution'],
+        return_arguments=['image'],
         **kwargs
         ):
     ''' segment an image with method from MICCAI'12
@@ -93,10 +103,10 @@ def segment_mean_prior(
                  must have the same shape as image
         labelset = output labels (in the order of prior)
                  seed labels not in labelset are ignored
-        cmap     = confidence map, with shape = image.shape,
+        prior_weights = format: {'ij':ij, 'data':data}
                  such that:
-                    cmap[i]~0 if we should rely more on the image
-                    cmap[i]~1 if we should rely more on the prior model
+                    prior_weights[i]~0 if we should rely more on the image
+                    prior_weights[i]~1 if we should rely more on the prior model
         add_linear_term = additional linear term (for modifying the functional)
         lmbda   = weight for prior
         beta    = contrast parameter if no weight_function is provided
@@ -109,13 +119,14 @@ def segment_mean_prior(
     '''
     
     ## constants
-    # assume prior has shape (nvar, nlabel)
+    # assume prior has shape (nunknown, nlabel)
     nlabel      = np.max(prior['ij'][1]) + 1 
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
-    inds        = np.arange(image.size)
+    nnode       = image.size
+    inds        = np.arange(nnode)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
-    nvar        = unknown.size
+    nunknown        = unknown.size
     
     ## unknown pixels with no prior as set to 1./nlabels
     noprior = np.setdiff1d(prior['ij'][0], inds, assume_unique=True)
@@ -127,10 +138,11 @@ def segment_mean_prior(
         axis=1,
         ).astype(int)
     pr_data = np.append(prior['mean'], [1.0/nlabel]*nnoprior*nlabel)
+      
         
     ## parameters
     beta    = kwargs.pop('beta', 1.)
-    lmbda   = kwargs.pop('lmbda', 1.) * np.ones(nlabel)
+    wprior   = kwargs.pop('wprior', 1.)
     per_label = kwargs.pop('per_label',True)
     
     ## can be scipy or mosek
@@ -153,25 +165,30 @@ def segment_mean_prior(
     ## prior matrix
     pmat = sparse.coo_matrix(
         (pr_data,pr_ij),
-        shape=(image.size,nlabel),
+        shape=(nnode,nlabel),
         ).tocsr()
-        
+      
+    ## make weight prior matrix
+    if prior_weights is None:
+        omega = wprior*np.ones((nunknown,nlabel))
+    else:
+        omega = \
+            wprior*prior_weights['data'].reshape((nunknown,nlabel),order='F')
+            
+      
     if not per_label:
         ## compute all in one pass
         
         ## intermediary matrices
         LL  = sparse.kron(np.eye(nlabel), L)
         BB  = sparse.kron(np.eye(nlabel), B)
-        D   = sparse.kron(sparse.eye(nvar,nvar), np.diag(lmbda))
-        if cmap is not None:
-            D = D * sparse.kron(
-                sparse.eye(nlabel, nlabel),
-                sparse.spdiags(cmap.flat[unknown], 0, nvar, nvar),
-                )
 
         x0 = sparse.bmat([[pmat[unknown, il]] for il in range(nlabel)])
         xm = (np.c_[seeds.flat[border]]==labelset).T\
             .reshape((BB.shape[1],1))
+            
+        Omega_label = sparse.spdiags(
+            omega.ravel('F'),0,nunknown*nlabel,nunknown*nlabel)
             
         ## additional linear term
         Y = 0
@@ -181,8 +198,8 @@ def segment_mean_prior(
             
         ## solve
         logger.info('solve rw')
-        P = LL + D
-        q = BB*xm - D*x0 + Y
+        P = LL + Omega
+        q = BB*xm - Omega*x0 + Y
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
             ## assumes binary q. If not binary, set to q>epsilon ?
@@ -195,19 +212,15 @@ def segment_mean_prior(
         
     else:
         ## compute separately for each label (best)
-        
-        if cmap is not None:
-            Cmap = sparse.spdiags(cmap.flat[unknown], 0, nvar, nvar)
-        x = np.zeros((nvar, nlabel))
+        x = np.zeros((nunknown, nlabel))
         
         if add_linear_term is not None:
             linterm = add_linear_term.reshape((-1,nlabel), order='F')
             linterm = np.asmatrix(linterm[unknown,:])
         
         for il in range(nlabel):
-            D = lmbda[il]*sparse.eye(nvar,nvar)
-            if cmap is not None:
-                D = D * Cmap
+            Omega_label = sparse.spdiags(omega[:,il],0,nunknown,nunknown)
+        
             x0 = pmat[unknown, il]
             xm = np.c_[seeds.flat[border]==il]
             
@@ -216,8 +229,8 @@ def segment_mean_prior(
             if add_linear_term is not None:
                 Y = linterm[:,il]
             
-            P = L + D
-            q = B*xm - D*x0 + Y
+            P = L + Omega_label
+            q = B*xm - Omega_label*x0 + Y
             # import ipdb; ipdb.set_trace()
             if P.nnz==0:
                 logger.warning(
@@ -231,16 +244,16 @@ def segment_mean_prior(
 
         
     ## reshape solution
-    # sol = np.zeros((image.size,nlabel))
-    sol = (np.c_[seeds.ravel()]==labelset).astype(float)
-    sol[unknown,:] = x
-    sol = sol.ravel('F')
-    # import ipdb; ipdb.set_trace()
-
+    y = (np.c_[seeds.ravel()]==labelset).astype(float)
+    y[unknown,:] = x
+    sol = labelset[np.argmax(y,axis=1)].reshape(image.shape)
+    y   = y.ravel('F')
+    
     ## output arguments
     rargs = []
     for arg in return_arguments:
-        if   arg=='solution':  rargs.append(sol)
+        if   arg=='image':  rargs.append(sol)
+        elif arg=='y':      rargs.append(y)
         elif arg=='laplacian': rargs.append((L,border,B))
         else: pass
     
@@ -248,7 +261,7 @@ def segment_mean_prior(
     else: return tuple(rargs)
     
 ##------------------------------------------------------------------------------
-def solve_qp(P,q, maxiter=1e2, rtol=1e-3):
+def solve_qp(P,q, maxiter=1e2, rtol=1e-3, **kwargs):
     '''
         solve: min(X): Xt*P*X + 2Xt*q + cst
     '''
@@ -414,13 +427,13 @@ def energy_mean_prior(
         ):
     
     ## constants
-    # assume prior has shape (nvar, nlabel)
+    # assume prior has shape (nunknown, nlabel)
     nlabel      = np.max(prior['ij'][1]) + 1 
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     inds        = np.arange(prob_segmentation.size/nlabel)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
-    nvar        = unknown.size
+    nunknown        = unknown.size
     
     ## unknown pixels with no prior as set to 1./nlabels
     noprior = np.setdiff1d(prior['ij'][0], inds, assume_unique=True)
@@ -474,7 +487,7 @@ def energy_RW(
     inds        = np.arange(image.size)
     marked      = np.where(np.in1d(seeds,lbset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
-    nvar        = unknown.size
+    nunknown        = unknown.size
     beta    = kwargs.pop('beta', 1.)
     
     ## generate segmentation vector

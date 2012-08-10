@@ -249,8 +249,8 @@ class StructSVM(object):
     def loss(self,z,y):
         return self.user_loss(z.data,y.data)
         
-    def mvc(self,w,x,z):
-        return DataContainer(self.user_mvc(w,x.data,z.data))
+    def mvc(self,w,x,z, **kwargs):
+        return DataContainer(self.user_mvc(w,x.data,z.data,**kwargs))
             
     def train(self):
         ''' optimize with algorithm:
@@ -285,7 +285,7 @@ class StructSVM(object):
             self.logger.info("find most violated constraint")
             ys = []
             for s in self.S:
-                y_ = self.mvc(w, *s)
+                y_ = self.mvc(w, *s, exact=False)
                 ys.append(y_)
             # self.logger.debug("ys={}".format(ys))
             
@@ -310,7 +310,7 @@ class StructSVM(object):
         
         for msg in info: self.logger.info("{}={}".format(msg,info[msg]))
             
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
             
         return w, xi, info
 
