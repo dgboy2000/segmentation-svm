@@ -61,16 +61,17 @@ class PriorGenerator:
         ij     = np.where(np.c_[fmask]*np.ones((1,nlabel)))
         
         ## average probability
-        mean   = self.x0[fmask,:].ravel() / np.float(self.ntrain)
+        self.x0   = self.x0 / np.float(self.ntrain)
+        mean = self.x0[fmask,:].ravel() 
         
         ## variance
-        var    = (self.x02 - self.x0**2)
-        var    = var[fmask,:].ravel() / np.float(self.ntrain)
+        var    = (self.x02 - self.x0**2) / np.float(self.ntrain)
+        var    = var[fmask,:].ravel() 
         
         ## entropy
         eps = 1e-10
         entropy = -np.sum(self.x0 * np.log(self.x0+eps),axis=1)
-        entropy = np.tile(entropy[fmask],(1,nlabel))
+        entropy = np.tile(np.c_[entropy[fmask]],(1,nlabel)).ravel()
         
         return {
             'ij'    : ij,
@@ -173,7 +174,7 @@ def segment_mean_prior(
         omega = wprior*np.ones((nunknown,nlabel))
     else:
         omega = \
-            wprior*prior_weights['data'].reshape((nunknown,nlabel),order='F')
+            wprior*prior_weights['data'].reshape((nunknown,nlabel),order='C')
             
       
     if not per_label:

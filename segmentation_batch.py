@@ -9,6 +9,7 @@ reload(rwmean_svm)
 import segmentation_utils 
 reload(segmentation_utils)
 from segmentation_utils import load_or_compute_prior_and_mask
+from segmentation_utils import compute_dice_coef
     
 import config
 reload(config)
@@ -45,7 +46,8 @@ class SegmentationBatch(object):
         return {'ij': prior['ij'], 'data':prior_data}
     
     def process_sample(self,test):
-        outdir = 'segmentation/' + test
+        outdir = config.workdir + \
+            'segmentation/{}/{}'.format(self.model_type,test)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
@@ -55,7 +57,6 @@ class SegmentationBatch(object):
         ## segment image
         file_name = config.dir_reg + test + 'gray.hdr'        
         print 'segmenting data: {}'.format(file_name)
-        
         im      = ioanalyze.load(file_name)
         seeds   = (-1)*mask
            
@@ -74,7 +75,13 @@ class SegmentationBatch(object):
             )
             
         ioanalyze.save(outdir + 'sol.hdr', sol.astype(np.int32))    
-        return sol
+        
+        ## compute Dice coefficient
+        file_gt = config.dir_reg + test + 'seg.hdr'
+        seg     = ioanalyze.load(file_gt)
+        dice = compute_dice_coef(sol, seg,labelset=self.labelset)
+        np.savetxt(
+            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %f')
         
     def process_all_samples(self,sample_list):
         for test in sample_list:
@@ -82,7 +89,11 @@ class SegmentationBatch(object):
             
 if __name__=='__main__':
     ''' start script '''
-    segmenter = SegmentationBatch()
+    # segmenter = SegmentationBatch(model_type='constant')
+    segmenter = SegmentationBatch(model_type='entropy')
+    
     sample_list = ['01/']
     # sample_list = config.vols
     segmenter.process_all_samples(sample_list)
+    
+    

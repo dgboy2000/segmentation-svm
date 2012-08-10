@@ -39,4 +39,4 @@ seg = 'seg.hdr'
 water = 'water.hdr'
 
 dir_reg     = '..\\rwtrain\\01_register\\'
-# dir_prior   = '..\\rwtrain\\02_train_mean\\'
+dir_work    = './'
