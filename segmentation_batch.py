@@ -39,6 +39,9 @@ class SegmentationBatch(object):
             prior_data = (np.log(nlabel) - entropy) / np.log(nlabel)
         elif self.model_type=='constant':
             prior_data = np.ones(prior['ij'][0].size)
+        elif self.model_type=='variance':
+            var = prior['var']
+            prior_data = 1/(1.0 + var)
         else:
             raise Exception(
                 'Unrecognized model type: {}'.format(self.model_type))
@@ -46,7 +49,7 @@ class SegmentationBatch(object):
         return {'ij': prior['ij'], 'data':prior_data}
     
     def process_sample(self,test):
-        outdir = config.workdir + \
+        outdir = config.dir_work + \
             'segmentation/{}/{}'.format(self.model_type,test)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
@@ -89,8 +92,9 @@ class SegmentationBatch(object):
             
 if __name__=='__main__':
     ''' start script '''
-    # segmenter = SegmentationBatch(model_type='constant')
-    segmenter = SegmentationBatch(model_type='entropy')
+    segmenter = SegmentationBatch(model_type='constant')
+    # segmenter = SegmentationBatch(model_type='entropy')
+    # segmenter = SegmentationBatch(model_type='variance')
     
     sample_list = ['01/']
     # sample_list = config.vols
