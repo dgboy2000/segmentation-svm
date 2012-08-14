@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import sparse
+from scipy.sparse import linalg as splinalg
 
 class ObjectiveAPI(object):
     def __init__(self,P,q,**kwargs):
@@ -27,42 +28,55 @@ class ModifiedGradientDescent(object):
         
         ## line search parameters
         self.a = kwargs.pop('a', 0.4)
-        self.b = kwargs.pop('b', 0.9)
+        self.b = kwargs.pop('b', 0.8)
         
         self.epsilon = kwargs.pop('epsilon', 1e-6)
         self.maxiter = kwargs.pop('maxiter', 100)
         
-    def solve(self, x0):
+        self.use_diagonal_hessian = kwargs.pop('use_diagonal_hessian',False)
+        
+    def solve(self, u0):
         epsilon = self.epsilon
-        x = x0
-        nvar = len(x0)
+        u = u0
+        nvar = len(u0)
         
         for iter in range(self.maxiter):
             
             ## compute gradient and Hessian
-            gradx = self.gradient(x)
-            # invH = sparse.spdiags(1.0/self.hessian_diag(x), 0, nvar, nvar)
-            invH = sparse.spdiags(
-                1.0 / self.extract_diag(self.hessian(x)),0,nvar,nvar)
+            gradu = self.gradient(u)
+            Hu = self.hessian(u)
             
             ## Newton's step and increment
-            x_nt  = -invH * gradx
-            lmbda2 = - np.dot(gradx.T, x_nt)
-
+            u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
+            u_nt = np.asmatrix(u_nt).T
+            
+            ## Modified Gradient Descent
+            # invH = sparse.spdiags(
+                # 1.0 / self.extract_diag(Hu),0,nvar,nvar)
+            # u_nt  = -invH * gradu
+            
+            lmbda2 = - np.dot(gradu.T, u_nt)
+            
             ## stopping conditions
             if 0.5*lmbda2 <= epsilon:
-                return x
-
+                logger.debug(
+                    'MGD: return, lambda2={:.02}'.format(float(lmbda2)))
+                return u
+            
+            #if iter==0:
+            #    logger.debug('iter=0, normgradu={}, normHu={}'\
+            #        .format(np.dot(gradu.T,gradu), np.sum(invH.data**2)))
+            
             ## line search 
-            step = self.line_search(x,x_nt,gradx)
+            step = self.line_search(u,u_nt,gradu)
             
             logger.debug(
-                'MGD: iteration={}, step size={}, lambda2={}'\
-                .format(iter, step, lmbda2),
+                'MGD: iteration={}, step size={:.02}, lambda2={:.02},obj={:2}'\
+                .format(iter, float(step), float(lmbda2),self.objective(u)),
                 )
             
             ## update
-            x = x + step*x_nt
+            u = u + step*u_nt
             
         else:
             raise Exception('Did not converge in {} iterations'\
@@ -77,10 +91,10 @@ class ModifiedGradientDescent(object):
         return diagH
         
         
-    def line_search(self,x,dx,gradx):
-        t = 1
+    def line_search(self,u,du,gradu):
+        t = 1.0
         objective = self.objective
-        while objective(x + t*dx) > objective(x) + self.a * t * gradx.T * dx:
+        while objective(u + t*du) > objective(u) + self.a * t * gradu.T * du:
             t = self.b * t
         return t
         
@@ -96,8 +110,8 @@ class ConstrainedSolver(object):
     
         F = self.F
         objective = self.objective
-        objective_t = lambda u: \
-            t * objective(F*u + y) - np.sum(np.log(F*u + y))
+        objective_t = lambda u: self._objective_t(u,y,t)
+            # t * objective(F*u + y) - np.sum(np.log(F*u + y))
     
         gradient = self.objective.gradient
         gradient_t = lambda u: \
@@ -109,14 +123,23 @@ class ConstrainedSolver(object):
             F.T * (t * hessian(F*u + y) + \
                         self.barrier_hessian(F*u + y)) * self.F
         
-        logger.debug('calling MGD solver')
+        epsilon = np.maximum(1e-3,t*1e-6)
+        logger.debug('calling MGD solver with tol={:.3}'.format(epsilon))
         solver = ModifiedGradientDescent(
-            objective_t, gradient_t, hessian_t, epsilon=self.epsilon)
+            objective_t, gradient_t, hessian_t, epsilon=epsilon)
             
         nvar = F.shape[1]
         u0 = np.matrix(np.zeros((nvar,1)))
         
         return F*solver.solve(u0) + y
+        
+    def _objective_t(self,u,y,t):
+        F = self.F
+        if np.min(F*u + y)<= 0:
+            ## in case of negative values, return infinity
+            return np.infty
+            # import ipdb; ipdb.set_trace()
+        return t * self.objective(F*u + y) - np.sum(np.log(F*u + y))
         
     def barrier_hessian(self,x):
         n = x.size
@@ -144,7 +167,7 @@ class LogBarrierSolver(object):
         t = t0
 
         while 1:
-            ## solve with currant t
+            ## solve with current t
             logger.debug(
                 'calling constrained solver with t={}'.format(t))
             y = self.solver.solve(y,t)
