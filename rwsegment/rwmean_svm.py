@@ -89,7 +89,7 @@ def segment_mean_prior(
         add_linear_term=None,
         weight_function=None,
         laplacian=None,
-        return_laplacian=False,
+        # return_laplacian=False,
         return_arguments=['image'],
         **kwargs
         ):
@@ -170,6 +170,7 @@ def segment_mean_prior(
         ).tocsr()
       
     ## make weight prior matrix
+    ## TODO: change prior_weights to sparse matrix (like "prior")
     if prior_weights is None:
         omega = wprior*np.ones((nunknown,nlabel))
     else:
@@ -184,11 +185,12 @@ def segment_mean_prior(
         LL  = sparse.kron(np.eye(nlabel), L)
         BB  = sparse.kron(np.eye(nlabel), B)
 
-        x0 = sparse.bmat([[pmat[unknown, il]] for il in range(nlabel)])
+        x0 = sparse.bmat([[pmat[unknown, il]] for il in range(nlabel)])\
+            .todense()
         xm = (np.c_[seeds.flat[border]]==labelset).T\
             .reshape((BB.shape[1],1))
             
-        Omega_label = sparse.spdiags(
+        Omega = sparse.spdiags(
             omega.ravel('F'),0,nunknown*nlabel,nunknown*nlabel)
             
         ## additional linear term
@@ -198,7 +200,8 @@ def segment_mean_prior(
             Y = linterm[unknown,:].reshape((-1,1),order='F')
             
         ## solve
-        logger.info('solve rw')
+        logger.debug(
+            'solve RW with solver="{}"'.format(optim_solver))
         P = LL + Omega
         q = BB*xm - Omega*x0 + Y
         if P.nnz==0:
@@ -208,6 +211,8 @@ def segment_mean_prior(
         else:
             if optim_solver=='mosek':
                 x = solve_qp_mosek(P,q,nlabel)
+            elif optim_solver=='logbarrier':
+                x = solve_qp_logbarrier(P,q,nlabel,Omega*x0)
             else:
                 x = solve_qp(P, q, **kwargs)
         
@@ -260,6 +265,46 @@ def segment_mean_prior(
     
     if len(rargs)==1: return rargs[0]
     else: return tuple(rargs)
+    
+##------------------------------------------------------------------------------
+def solve_qp_logbarrier(P,q,nlabel,x0,**kwargs):
+    import constrained_optim as optim
+    reload(optim)
+    
+    ## quadratic objective
+    objective = optim.ObjectiveAPI(P,q,**kwargs)
+    
+    ## constrained solver
+    nvar = q.size
+    npixel = nvar/nlabel
+    F = sparse.bmat([
+        [sparse.bmat([[-sparse.eye(npixel,npixel) for i in range(nlabel-1)]])],
+        [sparse.eye(npixel*(nlabel-1),npixel*(nlabel-1))],
+        ])
+    csolver = optim.ConstrainedSolver(
+        objective,
+        F,
+        epsilon=1e-1,
+        )
+        
+    ## log barrier solver
+    t0 = 1
+    mu = 20
+    logbepsilon = 1e-3 / float(nvar)
+    logbsolver = optim.LogBarrierSolver(
+        csolver,
+        t0,
+        mu,
+        logbepsilon,
+        )
+    
+    ## remove zero entries in initial guess
+    xinit = x0.reshape((-1,nlabel),order='F')
+    xinit[xinit<1e-10] = 1e-3
+    xinit = (xinit/np.c_[np.sum(xinit, axis=1)]).reshape((-1,1),order='F')
+    x = logbsolver.solve(xinit)
+    
+    return x
     
 ##------------------------------------------------------------------------------
 def solve_qp(P,q, maxiter=1e2, rtol=1e-3, **kwargs):
@@ -620,7 +665,10 @@ def weight_std(image, beta=1.0):
     return ij, data
     
 ##------------------------------------------------------------------------------
-    
+import rwlogging
+logger = rwlogging.get_logger('rwlogger',rwlogging.WARNING)
+
+'''
 import logging
 logger = logging.getLogger('rw logger')
 loglevel = logging.WARNING
@@ -637,7 +685,7 @@ if len(logger.handlers)==0:
     logger.addHandler(ch)
 else:
     logger.handlers[0].setLevel(loglevel)
-
+'''
     
     
 if __name__=='__main__':

@@ -146,7 +146,7 @@ class SVMRWMeanAPI(object):
     # def __call__(self,w,x,z,exact=True):
     def compute_mvc(self,w,x,z,exact=True):
         if exact:
-            return self.full_LAI(w,x,z)
+            return self.full_lai(w,x,z)
         else:
             y_loss = self.worst_loss_inference(x,z)
             y_seg  = self.best_segmentation_inference(w,x)

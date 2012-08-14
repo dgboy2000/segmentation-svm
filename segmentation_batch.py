@@ -28,8 +28,11 @@ class SegmentationBatch(object):
         self.params  = {
             'wprior'    : 1e-2, # prior weight
             'beta'      : 50, # contrast parameter
+            
             'rtol'      : 1e-6, # optimization parameter
             'maxiter'   : 1e3,
+            'optim_solver':'logbarrier',
+            'return_arguments':['image'],
             }
     
     def compute_prior_weights(self, prior):

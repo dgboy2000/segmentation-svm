@@ -285,7 +285,7 @@ class StructSVM(object):
             self.logger.info("find most violated constraint")
             ys = []
             for s in self.S:
-                y_ = self.mvc(w, *s, exact=False)
+                y_ = self.mvc(w, *s, exact=True)
                 ys.append(y_)
             # self.logger.debug("ys={}".format(ys))
             
