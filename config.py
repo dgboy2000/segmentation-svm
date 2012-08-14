@@ -1,3 +1,9 @@
+import os
+import subprocess
+import sys
+
+#### MACHINE-INDEPENDENT CONFIGURATION
+
 # bounds : included min and max
 vols = {
     '01/': {'AB':39},
@@ -38,5 +44,54 @@ gray = 'gray.hdr'
 seg = 'seg.hdr'
 water = 'water.hdr'
 
-dir_reg     = '..\\rwtrain\\01_register\\'
-dir_work    = './'
+
+def is_danny_laptop():
+  return "HOME" in os.environ  and os.environ["HOME"] == '/Users/dannygoodman':
+
+def is_py_machine():
+  return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES':
+  
+def is_danny_igloo():
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand':
+
+def is_py_igloo():
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy':
+
+
+#### MACHINE-DEPENDENT CONFIGURATION
+
+if is_danny_laptop():
+  raise Exception("Not configured to run on Danny's laptop yet")
+elif is_py_igloo():
+  dir_reg     = '/workdir/baudinpy/01_register'
+  dir_work    = '/workdir/baudinpy/segmentation_out'
+elif is_danny_igloo():
+  dir_reg     = '/workdir/baudinpy/01_register'
+  dir_work    = '/workdir/goodmand/segmentation_out'
+elif is_py_machine():
+  dir_reg     = '..\\rwtrain\\01_register\\'
+  dir_work    = './'
+else:
+  raise Exception("Did not recognize the machine I'm running on")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
