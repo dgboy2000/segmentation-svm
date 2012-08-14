@@ -47,22 +47,23 @@ class ModifiedGradientDescent(object):
             Hu = self.hessian(u)
             
             ## Newton's step and increment
-            # import gc
-            # u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
+            import gc
+            u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
             # u_nt,info = splinalg.bicg(Hu,-gradu, tol=1e-3, maxiter=1000)
             # u_nt,info = splinalg.gmres(Hu,-gradu, tol=1e-3, maxiter=1000)
-            # u_nt,info = splinalg.lgmres(Hu,-gradu, tol=1e-3, maxiter=1000)
+            # u_nt,info = splinalg.lgmres(Hu,-gradu, tol=1e-3, maxiter=1000)#!
             # u_nt,info = splinalg.cgs(Hu,-gradu, tol=1e-3, maxiter=1000)
             # u_nt,info = splinalg.minres(Hu,-gradu, tol=1e-3, maxiter=1000)
             # u_nt,info = splinalg.qmr(Hu,-gradu, tol=1e-3, maxiter=1000)
             # u_nt,info = splinalg.spsolve(Hu,-gradu)
-            # u_nt = np.asmatrix(u_nt).T
-            # gc.collect()
+            
+            u_nt = np.asmatrix(u_nt).T
+            gc.collect()
             
             ## Modified Gradient Descent
-            invH = sparse.spdiags(
-                1.0 / self.extract_diag(Hu),0,nvar,nvar)
-            u_nt  = -invH * gradu
+            # invH = sparse.spdiags(
+                # 1.0 / self.extract_diag(Hu),0,nvar,nvar)
+            # u_nt  = -invH * gradu
             
             lmbda2 = - np.dot(gradu.T, u_nt)
             
