@@ -216,6 +216,8 @@ def segment_mean_prior(
             else:
                 x = solve_qp(P, q, **kwargs)
         
+        x = x.reshape((nunknown,nlabel),order='F')
+        
     else:
         ## compute separately for each label (best)
         x = np.zeros((nunknown, nlabel))
@@ -297,12 +299,18 @@ def solve_qp_logbarrier(P,q,nlabel,x0,**kwargs):
         mu,
         logbepsilon,
         )
-    
+        
+            
     ## remove zero entries in initial guess
     xinit = x0.reshape((-1,nlabel),order='F')
     xinit[xinit<1e-10] = 1e-3
     xinit = (xinit/np.c_[np.sum(xinit, axis=1)]).reshape((-1,1),order='F')
-    x = logbsolver.solve(xinit)
+    
+    if not os.path.exists('logb.txt'):
+        x = logbsolver.solve(xinit)
+        np.savetxt('logb.txt',x)
+    else:
+        x = np.loadtxt('logb.txt')
     
     return x
     
