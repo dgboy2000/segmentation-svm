@@ -306,11 +306,7 @@ def solve_qp_logbarrier(P,q,nlabel,x0,**kwargs):
     xinit[xinit<1e-10] = 1e-3
     xinit = (xinit/np.c_[np.sum(xinit, axis=1)]).reshape((-1,1),order='F')
     
-    if not os.path.exists('logb.txt'):
-        x = logbsolver.solve(xinit)
-        np.savetxt('logb.txt',x)
-    else:
-        x = np.loadtxt('logb.txt')
+    x = logbsolver.solve(xinit)
     
     return x
     
