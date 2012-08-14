@@ -46,16 +46,16 @@ water = 'water.hdr'
 
 
 def is_danny_laptop():
-  return "HOME" in os.environ  and os.environ["HOME"] == '/Users/dannygoodman':
+  return "HOME" in os.environ  and os.environ["HOME"] == '/Users/dannygoodman'
 
 def is_py_machine():
-  return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES':
+  return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES'
   
 def is_danny_igloo():
-  return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand':
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand'
 
 def is_py_igloo():
-  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy':
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'
 
 
 #### MACHINE-DEPENDENT CONFIGURATION
