@@ -4,10 +4,10 @@
 #PBS -S /bin/bash
 
 # name of the job
-#PBS -N segtest
+#PBS -N learnbatch
 
 # output
-#PBS -o segmentation-test.txt
+#PBS -o log_learn_svm_batch.txt
 
 # standard error output
 #PBS -j oe
@@ -16,14 +16,12 @@
 #PBS -l walltime=02:00:00
 
 # ressources blocs to allocate
-#PBS -l select=1:ncpus=1:mem=2gb
+#PBS -l select=1:ncpus=1:mem=12gb
 
 # queueName
 #PBS -q iceq
 
-cd /home/baudinpy/segmentation-svm/
+cd $HOME/segmentation-svm/
 
-echo `which python`
-echo `/home/goodmand/epd-7.3-2-rh5-x86_64/bin/python --version`
-/home/goodmand/epd-7.3-2-rh5-x86_64/bin/python -i ./segmentation_batch.py
+python learn_svm_batch.py
 
