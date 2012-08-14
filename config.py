@@ -63,11 +63,11 @@ def is_py_igloo():
 if is_danny_laptop():
   raise Exception("Not configured to run on Danny's laptop yet")
 elif is_py_igloo():
-  dir_reg     = '/workdir/baudinpy/01_register'
-  dir_work    = '/workdir/baudinpy/segmentation_out'
+  dir_reg     = '/workdir/baudinpy/01_register/'
+  dir_work    = '/workdir/baudinpy/segmentation_out/'
 elif is_danny_igloo():
-  dir_reg     = '/workdir/baudinpy/01_register'
-  dir_work    = '/workdir/goodmand/segmentation_out'
+  dir_reg     = '/workdir/baudinpy/01_register/'
+  dir_work    = '/workdir/goodmand/segmentation_out/'
 elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
