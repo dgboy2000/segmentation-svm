@@ -62,13 +62,22 @@ class SVMSegmenter(object):
         self.labelset = np.asarray([0,13,14,15,16])
         
         ## rw params        
-        self.rwparams = {
+        self.rwparams_svm = {
             'labelset':self.labelset,
             'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':False,
             'optim_solver':'logbarrier',
             'return_arguments':['y'],
+            }
+            
+        self.rwparams_inf = {
+            'labelset':self.labelset,
+            'rtol': 1e-6,
+            'maxiter': 1e3,
+            'per_label':True,
+            'optim_solver':'scipy',
+            'return_arguments':['image','y'],
             }
             
         ## svm params
@@ -120,7 +129,7 @@ class SVMSegmenter(object):
             prior, 
             self.weight_functions, 
             self.labelset, 
-            self.rwparams,
+            self.rwparams_svm,
             seeds=seeds,
             )
         
@@ -142,7 +151,7 @@ class SVMSegmenter(object):
         
         
     def run_svm_inference(self,test,w,prior, mask):
-    
+        logger.info('running inference on: {}'.format(test))
         outdir = test
     
         ## segment test image with trained w
@@ -163,7 +172,7 @@ class SVMSegmenter(object):
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
         ## save image
-        ioanalyze.save(outdir + 'im.hdr',im.astype(int))
+        ioanalyze.save(outdir + 'im.hdr',im.astype(np.int32))
         
         ## normalize image by variance
         im = im/np.std(im)
@@ -172,24 +181,17 @@ class SVMSegmenter(object):
         seeds = (-1)*mask.astype(int)
     
         # import ipdb; ipdb.set_trace()
-        y = rwmean_svm.segment_mean_prior(
+        sol,y = rwmean_svm.segment_mean_prior(
             im, 
             prior, 
             seeds=seeds,
             weight_function=lambda im: wwf(im, w),
             lmbda=w[-1],
-            **self.rwparams
+            **self.rwparams_inf
             )
         
-        np.save(outdir + 'y.npy',y)
-        
-        nlabel = len(self.labelset)
-        sol = self.labelset[
-            np.argmax(y.reshape((-1,nlabel),order='F'),axis=1)]\
-            .reshape(im.shape)
-        
-        ioanalyze.save(outdir + 'sol.hdr',sol)
-        
+        np.save(outdir + 'y.npy',y)        
+        ioanalyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
         
         ## Dice coef(sol, seg)
         
@@ -221,23 +223,9 @@ class SVMSegmenter(object):
             self.process_sample(test)
     
 ##------------------------------------------------------------------------------
-    
-import logging
-logger = logging.getLogger('svm-segmentation logger')
-loglevel = logging.INFO
-logger.setLevel(loglevel)
-# create console handler with a higher log level
-if len(logger.handlers)==0:
-    ch = logging.StreamHandler()
-    ch.setLevel(loglevel)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(ch)
-else:
-    logger.handlers[0].setLevel(loglevel)
+
+from rwsegment import rwlogging
+logger = rwlogging.get_logger('learn_svm_batch',rwlogging.DEBUG)
 
     
     

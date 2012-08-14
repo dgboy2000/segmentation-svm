@@ -81,7 +81,7 @@ class ModifiedGradientDescent(object):
             step = self.line_search(u,u_nt,gradu)
             
             logger.debug(
-                'MGD: iteration={}, step size={:.02}, lambda2={:.02},obj={:2}'\
+                'MGD: iteration={}, step size={:.02}, lambda2={:.02},obj={:.02}'\
                 .format(iter, float(step), float(lmbda2),float(self.objective(u))),
                 )
             
