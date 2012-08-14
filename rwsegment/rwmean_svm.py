@@ -154,14 +154,14 @@ def segment_mean_prior(
     if laplacian is None:
         logger.info('compute laplacian')
             
-        L, border, B = compute_laplacian(
+        L, border, B, D = compute_laplacian(
             image,
             marked=marked,
             beta=beta, 
             weight_function=weight_function,
             )
     else:
-        L,border,B = laplacian
+        L,border,B,D = laplacian
 
     ## prior matrix
     pmat = sparse.coo_matrix(
@@ -177,6 +177,9 @@ def segment_mean_prior(
         omega = \
             wprior*prior_weights['data'].reshape((nunknown,nlabel),order='C')
             
+    ## remove dependency on D for the prior weights !
+    omega = D*np.asmatrix(omega)
+            
       
     if not per_label:
         ## compute all in one pass
@@ -189,10 +192,10 @@ def segment_mean_prior(
             .todense()
         xm = (np.c_[seeds.flat[border]]==labelset).T\
             .reshape((BB.shape[1],1))
-            
+        
         Omega = sparse.spdiags(
             omega.ravel('F'),0,nunknown*nlabel,nunknown*nlabel)
-            
+
         ## additional linear term
         Y = 0
         if add_linear_term is not None:
@@ -550,14 +553,14 @@ def energy_RW(
     ## compute laplacian
     if laplacian is None:
         logger.info('compute laplacian')
-        L, border, B = compute_laplacian(
+        L, border, B,D = compute_laplacian(
             image,
             marked=marked,
             beta=beta, 
             weight_function=weight_function,
             )
     else:
-        L,border,B = laplacian
+        L,border,B,D = laplacian
         
     ## compute energy
     en = 0.0
@@ -613,11 +616,12 @@ def compute_laplacian(
     A = A + A.T
     
     ## laplacian matrix
-    L = (sparse.spdiags(A.sum(axis=0),0,N,N) - A).tocsr()
+    D = sparse.spdiags(A.sum(axis=0),0,N,N).tocsr()
+    L = (D - A).tocsr()
     
     ## return laplacian
     if marked is None:
-        return L
+        return L,D
         
     ## if marked is not None,
     ## keep only unknown pixels, and marked pixels touching unknown
@@ -631,12 +635,13 @@ def compute_laplacian(
     mask.flat[ij[1][ijborder]] *= 2
     border = np.where(mask.ravel()>=2)[0]
 
+    D  = D[unknown,:][:,unknown]
     Lu = L[unknown,:][:,unknown]
     B  = L[unknown,:][:,border]
     
     # import ipdb; ipdb.set_trace()
     
-    return Lu,border,B
+    return Lu,border,B,D
     
     
 ##------------------------------------------------------------------------------

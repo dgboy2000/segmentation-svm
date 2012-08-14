@@ -110,6 +110,7 @@ class SVMRWMeanAPI(object):
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
             add_linear_term=linloss,
+            # prior_weights=prior_weights,
             lmbda=w[-1],
             **self.rwparams
             )

@@ -106,7 +106,7 @@ class SVMSegmenter(object):
         self.training_set = []
         for train in config.vols:
             if test==train: continue
-            print '  load training data: {}'.format(train)
+            logger.info('loading training data: {}'.format(train))
             file_seg = self.dir_reg + test + train + 'regseg.hdr'
             file_im  = self.dir_reg + test + train + 'reggray.hdr'
             im  = ioanalyze.load(file_im)
@@ -134,7 +134,7 @@ class SVMSegmenter(object):
             )
         
         ## learn struct svm
-        print 'start learning'
+        logger.debug('start learning')
         self.svm = structsvmpy.StructSVM(
             self.training_set,
             self.svm_rwmean_api.compute_loss,
@@ -152,7 +152,9 @@ class SVMSegmenter(object):
         
     def run_svm_inference(self,test,w,prior, mask):
         logger.info('running inference on: {}'.format(test))
-        outdir = test
+        outdir = config.dir_work + 'learning/inference' + test
+        if not os.path.isdir(outdir):
+            os.makedirs(outdir)
     
         ## segment test image with trained w
         def wwf(im,_w):    
