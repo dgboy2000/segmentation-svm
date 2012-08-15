@@ -68,6 +68,7 @@ class SVMSegmenter(object):
             'maxiter': 1e3,
             'per_label':False,
             'optim_solver':'logbarrier',
+            # 'optim_solver':'scipy',
             'return_arguments':['y'],
             }
             
@@ -91,8 +92,8 @@ class SVMSegmenter(object):
         ## weight functions
         self.weight_functions = {
             'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
-            'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+            # 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
+            # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
             # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
             # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
             # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
@@ -142,7 +143,7 @@ class SVMSegmenter(object):
             self.svm_rwmean_api.compute_mvc,
             **self.svmparams
             )
-            
+
         w,xi,info = self.svm.train()
        
         # import ipdb; ipdb.set_trace()

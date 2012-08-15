@@ -277,7 +277,8 @@ class StructSVM(object):
             # import ipdb; ipdb.set_trace()
             w,xi = self._current_solution(W)
             
-            self.logger.debug("w={}, xi={:.2}".format(w,xi))
+            wstr = ' '.join('{:.2}'.format(wval) for wval in w)
+            self.logger.debug("w={}, xi={:.2}".format(wstr,xi))
             objective = 0.5*np.dot(w,w) + self.C*xi
             self.logger.debug("objective={}".format(objective))
         

@@ -177,9 +177,8 @@ def segment_mean_prior(
         omega = \
             wprior*prior_weights['data'].reshape((nunknown,nlabel),order='C')
             
-    ## remove dependency on D for the prior weights !
-    omega = D*np.asmatrix(omega)
-            
+    ## remove dependency on D for the prior weights
+    omega = D*np.asmatrix(omega) 
       
     if not per_label:
         ## compute all in one pass
@@ -230,7 +229,8 @@ def segment_mean_prior(
             linterm = np.asmatrix(linterm[unknown,:])
         
         for il in range(nlabel):
-            Omega_label = sparse.spdiags(omega[:,il],0,nunknown,nunknown)
+            Omega_label = sparse.spdiags(
+                np.asarray(omega[:,il]).ravel(),0,nunknown,nunknown)
         
             x0 = pmat[unknown, il]
             xm = np.c_[seeds.flat[border]==il]
@@ -517,6 +517,7 @@ def energy_mean_prior(
     if cmap is not None:
         Cmap = cmap.flat[unknown]
     
+    print 'TEMP: prior should be multiplied by D'
     en = 0
     for il in range(nlabel):
         x0 = np.asarray(pmat[unknown, il].todense()).ravel()
@@ -675,26 +676,7 @@ def weight_std(image, beta=1.0):
     
 ##------------------------------------------------------------------------------
 import rwlogging
-logger = rwlogging.get_logger('rwlogger',rwlogging.WARNING)
-
-'''
-import logging
-logger = logging.getLogger('rw logger')
-loglevel = logging.WARNING
-logger.setLevel(loglevel)
-# create console handler with a higher log level
-if len(logger.handlers)==0:
-    ch = logging.StreamHandler()
-    ch.setLevel(loglevel)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(ch)
-else:
-    logger.handlers[0].setLevel(loglevel)
-'''
+logger = rwlogging.get_logger('rwlogger',rwlogging.DEBUG)
     
     
 if __name__=='__main__':

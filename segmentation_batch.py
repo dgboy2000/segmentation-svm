@@ -26,12 +26,13 @@ class SegmentationBatch(object):
         self.model_type = model_type
         
         self.params  = {
-            'wprior'    : 1e-2, # prior weight
+            'wprior'    : 0.5, # prior weight
             'beta'      : 50, # contrast parameter
             
+            'per_label' : False,
             'rtol'      : 1e-6, # optimization parameter
             'maxiter'   : 1e3,
-            'optim_solver':'logbarrier',
+            'optim_solver':'scipy',
             'return_arguments':['image'],
             }
     

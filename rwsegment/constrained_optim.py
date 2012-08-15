@@ -85,6 +85,8 @@ class ModifiedGradientDescent(object):
                 .format(iter, float(step), float(lmbda2),float(self.objective(u))),
                 )
             
+            # import ipdb; ipdb.set_trace()
+            
             ## update
             u = u + step*u_nt
             

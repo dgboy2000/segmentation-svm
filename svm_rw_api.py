@@ -45,7 +45,8 @@ class SVMRWMeanAPI(object):
     # def __call__(self, x,y):
     def compute_psi(self, x,y):
         ''' - sum(a){Ea(x,y)} '''
-        nnode = len(x)/10.0
+        ## normalizing by the approximate mask size
+        nnode = x.size/10.0
         
         ## energy value for each weighting function
         v = []
