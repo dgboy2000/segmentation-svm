@@ -273,7 +273,7 @@ def save(filename, volume):
     
     TODO:
     - orientation
-    - origin
+    - origins
     
     tip: you can use class Volume in rmn.io
     
@@ -292,7 +292,7 @@ def save(filename, volume):
     if len(dirname)==0:
         dirname = './'
     else:
-        dirnama += '/'
+        dirname += '/'
     
     if not os.path.isdir(dirname):
         print 'could not find output directory:', dirname
