@@ -13,7 +13,7 @@
 #PBS -j oe
 
 # max execution time
-#PBS -l walltime=02:00:00
+#PBS -l walltime=20:00:00
 
 # ressources blocs to allocate
 #PBS -l select=1:ncpus=1:mem=12gb
