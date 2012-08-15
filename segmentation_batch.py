@@ -36,7 +36,7 @@ class SegmentationBatch(object):
             'return_arguments':['image'],
             
             # optimization parameter
-            'per_label': True,
+            'per_label': False,
             'optim_solver':'unconstrained',
             'rtol'      : 5e-7, 
             'maxiter'   : 2e3,
