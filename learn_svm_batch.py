@@ -17,42 +17,43 @@
 
 import sys
 import os
-import logging
 
 import numpy as np
 
-##temp: load rwsegment lib
-sys.path += [os.path.abspath('../')]
-
-from rwsegment import ioanalyze
+from rwsegment import io_analyze
 from rwsegment import weight_functions as wflib
-from rwsegment import rwmean_svm
+from rwsegment import rwsegment
+from rwsegment import rwsegment_prior_models
+from rwsegment import struct_svm
+reload(rwsegment),
+reload(wflib)
+reload(rwsegment_prior_models)
+reload(struct_svm)
+
 from segmentation_utils import load_or_compute_prior_and_mask
-reload(rwmean_svm), reload(wflib)
+from segmentation_utils import compute_dice_coef
+
 
 import svm_rw_api
 reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
 
-import structsvmpy 
-reload(structsvmpy)
-
 ## load volume names 
 import config
 reload(config)
 
-rwmean_svm.logger.setLevel(logging.DEBUG)
-rwmean_svm.logger.handlers[0].setLevel(logging.DEBUG)
+
 
 class SVMSegmenter(object):
 
     def __init__(self):
     
         ## paths
-        self.dir_reg     = config.dir_reg
+        self.dir_reg = config.dir_reg
+        self.dir_inf = config.dir_work + 'learning/inference/'
+        self.dir_svm = config.dir_work + 'learning/svm/'
         
         ## re-train svm?
-        # retrain = False
         self.retrain = True
         
         ## params
@@ -61,32 +62,34 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
-        ## rw params        
+        ## parameters for rw learning
         self.rwparams_svm = {
             'labelset':self.labelset,
+            
+            # optimization
             'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':False,
-            'optim_solver':'logbarrier',
-            # 'optim_solver':'scipy',
-            'return_arguments':['y'],
+            # 'optim_solver':'unconstrained', #debug
+            'optim_solver':'constrained',
             }
             
+        ## parameters for rw inference
         self.rwparams_inf = {
             'labelset':self.labelset,
+            'return_arguments':['image','y'],
+            
+            # optimization
             'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':True,
-            'optim_solver':'scipy',
-            'return_arguments':['image','y'],
+            'optim_solver':'unconstrained',
             }
             
         ## svm params
         self.svmparams = {
             'C': 1,
             'nitermax':100,
-            # 'loglevel':logging.INFO,
-            'loglevel':logging.DEBUG,
             }
             
         ## weight functions
@@ -100,7 +103,7 @@ class SVMSegmenter(object):
             }
         
         
-    def train_svm(self,test, prior, mask):
+    def train_svm(self,test):
         outdir = test
 
         ## training images and segmentations
@@ -110,33 +113,28 @@ class SVMSegmenter(object):
             logger.info('loading training data: {}'.format(train))
             file_seg = self.dir_reg + test + train + 'regseg.hdr'
             file_im  = self.dir_reg + test + train + 'reggray.hdr'
-            im  = ioanalyze.load(file_im)
-            seg = ioanalyze.load(file_seg)
             
-            ## make bin vector z from segmentation
+            im  = io_analyze.load(file_im)
+            im = im/np.std(im) # normalize image by std
+            
+            seg = io_analyze.load(file_seg)
             seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
-            bin = (np.c_[seg.ravel()]==self.labelset).ravel('F')
+            z = (seg.ravel()==np.c_[self.labelset])# make bin vector z
             
-            ## normalize image by variance
-            im = im/np.std(im)
-            
-            self.training_set.append((im, bin))
-                
-        ## make seeds from mask
-        seeds = (-1)*mask.astype(int)
+            self.training_set.append((im, z))
 
         ## instanciate functors
         self.svm_rwmean_api = SVMRWMeanAPI(
-            prior, 
+            self.prior, 
             self.weight_functions, 
             self.labelset, 
             self.rwparams_svm,
-            seeds=seeds,
+            seeds=self.seeds,
             )
         
         ## learn struct svm
         logger.debug('start learning')
-        self.svm = structsvmpy.StructSVM(
+        self.svm = struct_svm.StructSVM(
             self.training_set,
             self.svm_rwmean_api.compute_loss,
             self.svm_rwmean_api.compute_psi,
@@ -145,15 +143,14 @@ class SVMSegmenter(object):
             )
 
         w,xi,info = self.svm.train()
-       
-        # import ipdb; ipdb.set_trace()
         
         return w,xi,info
         
         
-    def run_svm_inference(self,test,w,prior, mask):
+    def run_svm_inference(self,test,w):
         logger.info('running inference on: {}'.format(test))
-        outdir = config.dir_work + 'learning/inference' + test
+        
+        outdir = self.dir_inf + test
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
     
@@ -166,50 +163,48 @@ class SVMSegmenter(object):
                 data += _w[iwf]*_data
             return ij, data
         
+        ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
         file_im  = self.dir_reg + test + 'gray.hdr'
-        im  = ioanalyze.load(file_im)
-        seg = ioanalyze.load(file_seg)
-        
-        ## make bin vector z from segmentation
+        im  = io_analyze.load(file_im)
+        seg = io_analyze.load(file_seg)
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
         ## save image
-        ioanalyze.save(outdir + 'im.hdr',im.astype(np.int32))
-        
-        ## normalize image by variance
-        im = im/np.std(im)
+        io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
+        im = im/np.std(im) # normalize image by variance
     
-        ## make seeds from mask
-        seeds = (-1)*mask.astype(int)
-    
-        # import ipdb; ipdb.set_trace()
-        sol,y = rwmean_svm.segment_mean_prior(
+        sol,y = rwsegment.segment(
             im, 
-            prior, 
-            seeds=seeds,
+            self.prior, 
+            seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
             lmbda=w[-1],
             **self.rwparams_inf
             )
         
         np.save(outdir + 'y.npy',y)        
-        ioanalyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
+        io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
         
-        ## Dice coef(sol, seg)
+        ## compute Dice coefficient
+        dice = compute_dice_coef(sol, seg,labelset=self.labelset)
+        np.savetxt(
+            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %f')
         
         
     def process_sample(self, test):
-        ## learn rwmean parameters
-        
-        outdir = test
+        outdir = self.dir_svm + test
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
         prior, mask = load_or_compute_prior_and_mask(test)
         
+        self.prior = prior
+        self.seeds = (-1)*mask.astype(int)
+        
+        ## training
         if self.retrain:
-            w,xi,info = self.train_svm(test,prior,mask)
+            w,xi,info = self.train_svm(test)
             np.savetxt(outdir + 'w',w)
             np.savetxt(outdir + 'xi',[xi])            
         else:
@@ -218,8 +213,10 @@ class SVMSegmenter(object):
         self.w = w
         self.xi = xi
         
-        self.run_svm_inference(test,w,prior,mask)
-        ## end process
+        ## inference
+        self.run_svm_inference(test,w)
+        
+        
     
     def process_all_samples(self,sample_list):
         for test in sample_list:
@@ -227,8 +224,8 @@ class SVMSegmenter(object):
     
 ##------------------------------------------------------------------------------
 
-from rwsegment import rwlogging
-logger = rwlogging.get_logger('learn_svm_batch',rwlogging.DEBUG)
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
 
     
     

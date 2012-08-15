@@ -1,6 +1,9 @@
 import logging
 import numpy as np
 
+import utils_logging
+logger = utils_logging.get_logger('struct_svm',utils_logging.DEBUG)
+
 class DataContainer(object):
     def __init__(self, data):
         self.data = data
@@ -43,24 +46,6 @@ class StructSVM(object):
         
         self.classifier = None
         
-        # create logger with 'spam_application'
-        logger = logging.getLogger('svm logger')
-        loglevel = kwargs.pop('loglevel',logging.WARNING)
-        logger.setLevel(loglevel)
-        # create console handler with a higher log level
-        if len(logger.handlers)==0:
-            ch = logging.StreamHandler()
-            ch.setLevel(loglevel)
-            # create formatter and add it to the handlers
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            ch.setFormatter(formatter)
-            # add the handlers to the logger
-            logger.addHandler(ch)
-        else:
-            logger.handlers[0].setLevel(loglevel)
-    
-        self.logger = logger
     
     def _current_solution(self, W):
         ''' quadratic programming 
@@ -265,40 +250,40 @@ class StructSVM(object):
         W = [] 
         
         ## initialize w
-        self.logger.info("compute length of psi")
+        logger.info("compute length of psi")
         self.wsize = len(self.psi(*self.S[0]))
         
         niter = 1
         while 1:
-            self.logger.info("iteration #{}".format(niter))
+            logger.info("iteration #{}".format(niter))
             
             ## compute current solution (qp + constraints)
-            self.logger.info("compute current solution")
+            logger.info("compute current solution")
             # import ipdb; ipdb.set_trace()
             w,xi = self._current_solution(W)
             
             wstr = ' '.join('{:.2}'.format(wval) for wval in w)
-            self.logger.debug("w={}, xi={:.2}".format(wstr,xi))
+            logger.debug("w={}, xi={:.2}".format(wstr,xi))
             objective = 0.5*np.dot(w,w) + self.C*xi
-            self.logger.debug("objective={}".format(objective))
+            logger.debug("objective={}".format(objective))
         
             ## find most violated constraint
-            self.logger.info("find most violated constraint")
+            logger.info("find most violated constraint")
             ys = []
             for s in self.S:
                 y_ = self.mvc(w, *s, exact=True)
                 ys.append(y_)
-            # self.logger.debug("ys={}".format(ys))
+            # logger.debug("ys={}".format(ys))
             
             ## add to test set
             W.append(ys)
             
             ## stop condition
             if self._stop_condition(w,xi,ys): 
-                self.logger.info("stop condition reached")
+                logger.info("stop condition reached")
                 break
             elif niter >= self.nitermax:
-                self.logger.info("max number of iterations reached")
+                logger.info("max number of iterations reached")
                 break
             else: niter+= 1
 
@@ -309,7 +294,7 @@ class StructSVM(object):
             'number of contraints': len(W),
             }
         
-        for msg in info: self.logger.info("{}={}".format(msg,info[msg]))
+        for msg in info: logger.info("{}={}".format(msg,info[msg]))
             
         # import ipdb; ipdb.set_trace()
             

@@ -2,8 +2,9 @@ import os
 import numpy as np
 from scipy import ndimage
 
-from rwsegment import ioanalyze
-from rwsegment import rwmean_svm
+from rwsegment import io_analyze
+from rwsegment import rwsegment_prior
+reload(rwsegment_prior)
 
 import config
 reload(config)
@@ -23,18 +24,18 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
     
-    if (not force_recompute) and os.path.exists(file_prior):
-        # logger.info('load prior')
-        mask  = ioanalyze.load(file_mask)
+    if (not force_recompute) and os.path.exists(file_prior):        # logger.info('load prior')
+        mask  = io_analyze.load(file_mask)
         prior = np.load(file_prior)
     else:
-        # logger.info('compute prior')
-        generator = rwmean_svm.PriorGenerator(labelset)
+        generator = rwsegment_prior.PriorGenerator(labelset)
         
         for train in config.vols:
             if test==train: continue
+            logger.debug('load training img: {}'.format(train))
+            
             file_seg = config.dir_reg + test + train + 'regseg.hdr'
-            seg = ioanalyze.load(file_seg)
+            seg = io_analyze.load(file_seg)
             generator.add_training_data(seg)
         
         from scipy import ndimage
@@ -44,23 +45,23 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
                 mask.astype(bool),
                 structure=struct,
                 )
-        prior = generator.get_prior(mask=mask)
+        prior = generator.get_prior(mask)
         
         nlabel = len(labelset)
-        segprior = np.zeros(seg.shape)
-        segprior[mask] = labelset[
-            np.argmax(prior['mean'].reshape((-1,nlabel),order='C'),axis=1)]
+        segprior = np.zeros(mask.shape)
+        segprior[mask] = labelset[np.argmax(prior['mean'],axis=0)]
             
-        entropymap = np.zeros(seg.shape)
-        entropymap[mask] = \
-            prior['entropy'].reshape((-1,nlabel),order='C')[:,0]
+        entropymap = np.zeros(mask.shape)
+        entropymap[mask] = np.sum(
+            np.log(prior['mean'] + 1e-10)*prior['mean'],
+            axis=0)
         entropymap = entropymap / np.log(nlabel) * 2**15
             
-        
         np.savez(file_prior,**prior)
-        ioanalyze.save(file_mask, mask.astype(np.int32))
-        ioanalyze.save(file_segprior, segprior.astype(np.int32))
-        ioanalyze.save(file_entropymap, entropymap.astype(np.int32))
+        
+        io_analyze.save(file_mask, mask.astype(np.int32))
+        io_analyze.save(file_segprior, segprior.astype(np.int32))
+        io_analyze.save(file_entropymap, entropymap.astype(np.int32))
         
     return prior, mask
     
@@ -81,3 +82,6 @@ def compute_dice_coef(seg1, seg2, labelset=None):
         d = 2*np.sum(l1&l2)/(1e-9 + np.sum(l1) + np.sum(l2))
         dicecoef[label] = d
     return dicecoef
+    
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('logger_utils',utils_logging.DEBUG)

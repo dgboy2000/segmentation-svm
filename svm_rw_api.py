@@ -1,6 +1,6 @@
 import numpy as np
-from rwsegment import rwmean_svm
-reload(rwmean_svm)
+from rwsegment import rwsegment
+reload(rwsegment)
         
 
 class SVMRWMeanAPI(object):
@@ -8,85 +8,62 @@ class SVMRWMeanAPI(object):
             self, 
             prior, 
             weight_functions, 
-            labelset, 
-            rwparams, 
+            labelset,
+            rwparams,
+            seeds=[],
             **kwargs):
     
         self.prior = prior
         self.labelset = labelset
         self.nlabel = len(labelset)
         self.weight_functions = weight_functions
-        self.seeds = kwargs.pop('seeds', [])
+        self.seeds = seeds
         self.rwparams = rwparams
     
-## loss function
-# class Loss(object):
-    # def __init__(self, nlabel):
-        # self.nlabel = nlabel
-    # def __call__(self,z,y_):
+
     def compute_loss(self,z,y_):
         ''' 1 - (z.y_)/nnode '''
         if np.sum(y_<-1e-8) > 0:
             logger.error('negative values in y_')
     
         nnode = z.size/float(self.nlabel)
-        return 1.0 - 1.0/nnode * np.dot(z,y_)
+        return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
 
 ## psi
-# class Psi(object):
-    # def __init__(self, 
-            # prior, labelset, weight_functions, rwparams, **kwargs):
-        # self.prior = prior
-        # self.labelset = labelset
-        # self.weight_functions = weight_functions
-        # self.seeds = kwargs.pop('seeds', [])
-        # self.rwparams = rwparams
-        
-    # def __call__(self, x,y):
+
     def compute_psi(self, x,y):
         ''' - sum(a){Ea(x,y)} '''
+        nnode = x.size
+        
         ## normalizing by the approximate mask size
-        nnode = x.size/10.0
+        normalize = float(nnode)/10.0
         
         ## energy value for each weighting function
         v = []
         for wf in self.weight_functions.values():
             
             v.append( 
-                rwmean_svm.energy_RW(
-                    x,self.labelset,y,
-                    weight_function=wf, 
+                rwsegment.energy_rw(
+                    x,y,
                     seeds=self.seeds,
+                    weight_function=wf,
                     **self.rwparams
-                )/float(nnode))
+                )/normalize)
                 
         ## last coef is prior
         v.append(
-            rwmean_svm.energy_mean_prior(
-                self.prior,y,
+            rwsegment.energy_prior(
+                x,y,self.prior,
                 seeds=self.seeds,
+                weight_function=wf,
                 **self.rwparams
-            )/float(nnode))
+            )/normalize)
             
-        ## psi[a] = minus energy[a]
+        ## psi[a] = -energy[a]
         return v
 
 
-## most violated constraint
-# class Most_violated_constraint(object):
-    # def __init__(
-            # self, prior, 
-            # weight_functions, 
-            # labelset, 
-            # rwparams,
-            # **kwargs):
-        # self.prior = prior
-        # self.weight_functions = weight_functions
-        # self.labelset = labelset
-        # self.rwparams = rwparams
-        # self.seeds = kwargs.pop('seeds', [])
-        
-        
+
     def full_lai(self, w,x,z):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
@@ -105,14 +82,14 @@ class SVMRWMeanAPI(object):
         linloss = 1./nnode*z
         
         ## best y_ most different from y
-        y_ = rwmean_svm.segment_mean_prior(
+        y_ = rwsegment.segment(
             x, 
-            self.prior, 
+            self.prior,
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            add_linear_term=linloss,
-            # prior_weights=prior_weights,
-            lmbda=w[-1],
+            loss=linloss,
+            rwprior=w[-1],
+            return_arguments=['y'],
             **self.rwparams
             )
             
@@ -135,17 +112,17 @@ class SVMRWMeanAPI(object):
             return ij, data
             
         ## best y_ most different from y
-        y_ = rwmean_svm.segment_mean_prior(
+        y_ = rwsegment.segment(
             x, 
-            self.prior, 
+            self.prior,
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            lmbda=w[-1],
+            rwprior=w[-1],
+            return_arguments=['y'],
             **self.rwparams
             )
         return y_
     
-    # def __call__(self,w,x,z,exact=True):
     def compute_mvc(self,w,x,z,exact=True):
         if exact:
             return self.full_lai(w,x,z)
@@ -165,20 +142,7 @@ class SVMRWMeanAPI(object):
                 return y_loss
             else:
                 return y_seg
-        
-import logging
-logger = logging.getLogger('svm user functions logger')
-loglevel = logging.INFO
-logger.setLevel(loglevel)
-# create console handler with a higher log level
-if len(logger.handlers)==0:
-    ch = logging.StreamHandler()
-    ch.setLevel(loglevel)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(ch)
-else:
-    logger.handlers[0].setLevel(loglevel)
+
+#-------------------------------------------------------------------------------
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('logger_learn_svm_batch',utils_logging.DEBUG)

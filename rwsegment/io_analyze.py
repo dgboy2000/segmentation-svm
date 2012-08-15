@@ -288,11 +288,7 @@ def save(filename, volume):
     header_file= base + '.hdr'
     data_file= base + '.img'
     
-    dirname = os.path.dirname(filename)
-    if len(dirname)==0:
-        dirname = './'
-    else:
-        dirname += '/'
+    dirname = './%s/' %os.path.dirname(filename)
     
     if not os.path.isdir(dirname):
         print 'could not find output directory:', dirname
