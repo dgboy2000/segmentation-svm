@@ -102,12 +102,13 @@ def segment(
             Delta[prior['imask']] = prior_weights[l]
         list_Delta.append(wprior * Delta[unknown])
       
-    ## solve RW system
+    ## solve RW system 
     if not per_label:
-        x = solve_at_once(L,B,list_xm,list_Delta,list_x0,list_z, **kwargs)
+        x = solve_at_once(
+            L,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
     else:
-        x = solve_per_label(L,B,list_xm,list_Delta,list_x0,list_z, **kwargs)
-    import ipdb;ipdb.set_trace()
+        x = solve_per_label(
+            L,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)
@@ -151,7 +152,7 @@ def solve_at_once(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
         
     P = LL + Delta
     q = BB*xm - Delta*x0 + z
-    
+
     if P.nnz==0:
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
         x = (1 - (q>0))/(nlabel - 1)
@@ -162,7 +163,6 @@ def solve_at_once(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
             x = solve_qp(P, q, **kwargs)
         else:
             raise Exception('Did not recognize solver: {}'.format(optim_solver))
-   
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
@@ -179,6 +179,10 @@ def solve_per_label(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     logger.debug(
         'solve RW per label with solver="{}"'.format(optim_solver))
+    
+    ## compute tolerance depending on the Laplacian
+    rtol = kwargs.pop('rtol', 1e-6)
+    tol = np.maximum(np.max(Lu.data),np.max(list_Delta))*rtol
     
     for s in range(nlabel - 1):## don't need to solve the last one !
         x0 = np.asmatrix(np.c_[list_x0[s]])
@@ -203,24 +207,21 @@ def solve_per_label(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
                 raise Exception(
                     'Constrained solver not implemented for per-label method')
             elif optim_solver=='unconstrained':
-                _x = solve_qp(P, q, **kwargs)
+                _x = solve_qp(P, q, tol=tol,**kwargs)
             else:
                 raise Exception(
                     'Did not recognize solver: {}'.format(optim_solver))
         x[s] = _x.ravel()
-        
+    
     ## last label
     x[-1] = 1 - np.sum(x,axis=0)
-    
     return x
         
 ##------------------------------------------------------------------------------
 def solve_qp(P,q,**kwargs):
     import solver_qp as solver
     reload(solver)
-    rtol = kwargs.pop('rtol', 1e-6)
-    tol = np.max(P.data)*rtol
-    return solver.solve_qp(P,q,tol=tol,**kwargs)
+    return solver.solve_qp(P,q,**kwargs)
     
     
 ##------------------------------------------------------------------------------

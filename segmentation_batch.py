@@ -38,8 +38,8 @@ class SegmentationBatch(object):
             # optimization parameter
             'per_label': True,
             'optim_solver':'unconstrained',
-            'rtol'      : 1e-6, 
-            'maxiter'   : 1e3,
+            'rtol'      : 5e-7, 
+            'maxiter'   : 2e3,
             }
             
         if self.model_type=='constant': 
