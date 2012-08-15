@@ -68,7 +68,7 @@ def segment(
     ## compute laplacian
     logger.debug('compute laplacian')
         
-    L, border, B,D = compute_laplacian(
+    Lu, border, B,D = compute_laplacian(
         image,
         marked=marked,
         beta=beta, 
@@ -105,10 +105,10 @@ def segment(
     ## solve RW system 
     if not per_label:
         x = solve_at_once(
-            L,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
     else:
         x = solve_per_label(
-            L,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)

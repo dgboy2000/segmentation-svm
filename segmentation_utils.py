@@ -9,6 +9,8 @@ reload(rwsegment_prior)
 import config
 reload(config)
 
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 
 def load_or_compute_prior_and_mask(test, force_recompute=False):
 
@@ -83,5 +85,3 @@ def compute_dice_coef(seg1, seg2, labelset=None):
         dicecoef[label] = d
     return dicecoef
     
-from rwsegment import utils_logging
-logger = utils_logging.get_logger('logger_utils',utils_logging.DEBUG)
