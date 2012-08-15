@@ -291,7 +291,8 @@ def save(filename, volume):
     dirname = os.path.dirname(filename)
     if len(dirname)==0:
         dirname = './'
-        
+    else:
+        dirnama += '/'
     
     if not os.path.isdir(dirname):
         print 'could not find output directory:', dirname
