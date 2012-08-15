@@ -107,6 +107,7 @@ def segment(
         x = solve_at_once(L,B,list_xm,list_Delta,list_x0,list_z, **kwargs)
     else:
         x = solve_per_label(L,B,list_xm,list_Delta,list_x0,list_z, **kwargs)
+    import ipdb;ipdb.set_trace()
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)

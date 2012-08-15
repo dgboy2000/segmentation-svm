@@ -62,6 +62,9 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
+        self.training_vols = ['02/'] ## debug
+        # self.training_vols = config.vols
+        
         ## parameters for rw learning
         self.rwparams_svm = {
             'labelset':self.labelset,
@@ -108,7 +111,7 @@ class SVMSegmenter(object):
 
         ## training images and segmentations
         self.training_set = []
-        for train in config.vols:
+        for train in self.training_vols:
             if test==train: continue
             logger.info('loading training data: {}'.format(train))
             file_seg = self.dir_reg + test + train + 'regseg.hdr'
