@@ -28,4 +28,7 @@ pip-log.txt
 
 
 rwsegment/lfunctions/build*
+segmentation/*
+learning/*
+prior/*
 
