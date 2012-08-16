@@ -12,7 +12,9 @@ class LossAnchorAPI(BaseAnchorAPI):
             loss_weight=1.0,
             prior_weight=1.0,
             ):
-        super(prior)
+        BaseAnchorAPI.__init__(self, prior)
+        self.prior = prior
+        
         self.loss = loss
         self.loss_weight = loss_weight
         self.prior_weight = prior_weight
@@ -29,7 +31,7 @@ class LossAnchorAPI(BaseAnchorAPI):
         anchor_weights = prior_weights + self.loss_weight
         
         prior_data = self.prior['data']
-        loss_data = self.loss['data']
+        loss_data = self.loss['data'][:,self.imask]
         
         anchor = {
             'imask':self.prior['imask'],
@@ -37,7 +39,6 @@ class LossAnchorAPI(BaseAnchorAPI):
                   anchor_weights,
             }
         
-        import ipdb; ipdb.set_trace() # make sure that the types are correct
         return anchor, anchor_weights
         
         
@@ -88,10 +89,15 @@ class SVMRWMeanAPI(object):
                     **self.rwparams
                 )/normalize)
                 
+        anchor_api = BaseAnchorAPI(
+            self.prior, 
+            anchor_weight=1.0,
+            )
+                
         ## last coef is prior
         v.append(
-            rwsegment.energy_prior(
-                x,y,self.prior,
+            rwsegment.energy_anchor(
+                x,y,anchor_api,
                 seeds=self.seeds,
                 weight_function=wf,
                 **self.rwparams
@@ -113,7 +119,6 @@ class SVMRWMeanAPI(object):
         anchor_api = LossAnchorAPI(
             loss, 
             self.prior, 
-            # self.prior_function,
             prior_weight=w[-1],
             loss_weight=loss_weight,
             )
@@ -149,7 +154,7 @@ class SVMRWMeanAPI(object):
     
         anchor_api = BaseAnchorAPI(
             self.prior, 
-            prior_weight=w[-1],
+            anchor_weight=w[-1],
             )
     
         ## combine all weight functions

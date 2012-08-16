@@ -44,7 +44,6 @@ from test import config
 reload(config)
 
 
-
 class SVMSegmenter(object):
 
     def __init__(self):
@@ -74,9 +73,8 @@ class SVMSegmenter(object):
             # optimization
             'rtol': 1e-6,
             'maxiter': 1e3,
-            'per_label':False,
-            # 'optim_solver':'unconstrained', #debug
-            'optim_solver':'constrained',
+            'per_label':True,
+            'optim_solver':'unconstrained',
             }
             
         ## parameters for rw inference

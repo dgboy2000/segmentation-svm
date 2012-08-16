@@ -32,16 +32,13 @@ class BaseAnchorAPI(object):
             weights = self.anchor_weight * np.ones(D.size) * D
         else:
             weights = self.anchor_weight * self.anchor_function(D)
-            
         return self.anchor, weights
         
 ##------------------------------------------------------------------------------
 def segment(
         image,
         anchor_api,
-        # anchor_function=None,
         seeds=[],
-        # loss=None, # TODO: remove (can be passed as part of anchor)
         weight_function=None,
         return_arguments=['image'],
         **kwargs
