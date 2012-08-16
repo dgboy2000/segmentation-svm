@@ -58,13 +58,15 @@ class Variance_no_D(PriorModel):
     
 class Intensity(PriorModel):
     def __init__(self, *args,**kwargs):
-        image = kwargs.pop('image')
+        self.image = kwargs.pop('image')
         super(PriorModel,self).__init__(*args, **kwargs)
-
+        self.init_model()
+        
+    def init_model(self):
         ## classify image
         nlabel = len(self.labelset)
         avg,var = self.anchor['intensity']
-        diff = image.flat[self.imask] - np.c_[avg]
+        diff = self.image.flat[self.imask] - np.c_[avg]
         norm = 1./np.sqrt(2*np.pi*var)
         a = np.c_[norm] * np.exp( - diff**2 * np.c_[1./var] )
         A = np.sum(a, axis=0)
@@ -73,11 +75,36 @@ class Intensity(PriorModel):
             'data': (1./A)*a,
             }
         self.weights = np.tile(A, (nlabel,1))
-        import ipdb; ipdb.set_trace() #check the shape and values of a and A
         
     def get_anchor_and_weights(self, D):
         return self.prior, self.anchor_weight * self.weights
-    
+
+        
+class CombinedConstantIntensity(Intensity):
+    def init_model(self):
+        super(CombinedConstantIntensity,self).init_model()
+        nlabel, nnode = len(self.anchor['data']), len(self.anchor['data'][0])
+        
+        # constant prior
+        cprior = self.anchor['data']
+        cweights = np.ones((nlabel,nnode))
+        
+        # intensity prior
+        iprior = self.prior['data']
+        iweights = self.weights / np.mean(self.weights)
+        
+        # combined weights
+        weights = cweights + iweights
+        prior = (cweights*cprior + iweights*iprior) / weights
+        
+        self.prior = {
+            'imask': self.anchor['imask'],
+            'data': prior,
+            }
+        self.weigths = weights
+        
+        
+        
 class Confidence_map(PriorModel):
     def __init__(self,image, *args, **kwargs):
         self.image = kwargs.pop('image')
@@ -97,5 +124,3 @@ class Confidence_map_no_D(Confidence_map):
     def get_anchor_and_weights(self, D):
         weights = self.anchor_weight * self.weights
         return self.anchor, weights
-    
-    

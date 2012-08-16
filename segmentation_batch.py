@@ -62,6 +62,8 @@ class SegmentationBatch(object):
             self.Model = prior_models.Confidence_map_no_D
         elif self.model_type=='intensity': 
             self.Model = prior_models.Intensity
+        elif self.model_type=='combined': 
+            self.Model = prior_models.CombinedConstantIntensity
         else:
             raise Exception('Did not recognize prior model type: {}'\
                 .format(self.model_type))
@@ -124,10 +126,10 @@ if __name__=='__main__':
     ''' start script '''
     # segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
     # segmenter = SegmentationBatch(anchor_weight=1e-1,    model_type='uniform')
-    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
     # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
     # segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
-    # segmenter = SegmentationBatch(model_type='variance')
+    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='combined')
     
     sample_list = ['01/']
     # sample_list = config.vols
