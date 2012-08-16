@@ -54,7 +54,7 @@ class SVMSegmenter(object):
         self.dir_svm = config.dir_work + 'learning/svm/'
         
         ## re-train svm?
-        self.retrain = False
+        self.retrain = True
         self.force_recompute_prior = False
         
         ## params
