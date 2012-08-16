@@ -54,7 +54,8 @@ class SVMSegmenter(object):
         self.dir_svm = config.dir_work + 'learning/svm/'
         
         ## re-train svm?
-        self.retrain = True
+        self.retrain = False
+        self.force_recompute_prior = False
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -174,7 +175,7 @@ class SVMSegmenter(object):
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
         ## save image
-        io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
+        # io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
         im = im/np.std(im) # normalize image by variance
     
         sol,y = rwsegment.segment(
@@ -192,23 +193,29 @@ class SVMSegmenter(object):
         ## compute Dice coefficient
         dice = compute_dice_coef(sol, seg,labelset=self.labelset)
         np.savetxt(
-            outdir + 'dice.test.txt', np.c_[dice.keys(),dice.values()],fmt='%d %f')
+            outdir + 'dice.test.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
             
         ## inference compare with gold standard
         dice_gold = np.loadtxt(outdir + 'dice.gold.txt')
         y_gold    = np.load(outdir + 'y.gold.npy')        
         sol_gold  = io_analyze.load(outdir + 'sol.gold.hdr')
         
-        np.testing.assert_allclose(dice, dice_gold, err_msg='Dice coef mismatch')
-        np.testing.assert_allclose(y, y_gold,       err_msg='y mismatch')
-        np.testing.assert_equal(sol, sol_gold,      err_msg='sol mismatch')
+        np.testing.assert_allclose(
+            dice.values(), 
+            dict(dice_gold).values(), 
+            err_msg='FAIL: dice coef mismatch',
+            atol=1e-8)
+        np.testing.assert_allclose(y, y_gold,  err_msg='FAIL: y mismatch')
+        np.testing.assert_equal(sol, sol_gold, err_msg='FAIL: sol mismatch')
+        
+        print 'PASS: inference tests'
         
     def process_sample(self, test):
         outdir = self.dir_svm + test
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
-        prior, mask = load_or_compute_prior_and_mask(test)
+        prior, mask = load_or_compute_prior_and_mask(test, force_recompute=self.force_recompute_prior)
         
         self.prior = prior
         self.seeds = (-1)*mask.astype(int)
@@ -219,7 +226,7 @@ class SVMSegmenter(object):
             np.savetxt(outdir + 'w.test.txt',w)
             np.savetxt(outdir + 'xi.test.txt',[xi])
             
-            try :
+            try:
                 w_gold  = np.loadtxt(outdir + 'w.gold.txt')        
                 xi_gold = np.loadtxt(outdir + 'xi.gold.txt')        
                 
@@ -227,11 +234,13 @@ class SVMSegmenter(object):
                 np.testing.assert_allclose(xi, xi_gold, err_msg='xi mismatch')
             except Exception as e:
                 print str(type(e)) + ', ' + e.message
+            else:
+                print 'PASS: learning tests'
+            
         else:
             w = np.loadtxt(outdir + 'w.test.txt')
         
         self.w = w
-        self.xi = xi
         
         ## inference
         self.run_svm_inference(test,w)

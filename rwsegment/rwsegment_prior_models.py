@@ -43,7 +43,7 @@ class entropy_no_D(entropy):
     
 class variance(entropy):
     def __call__(self, D,**kwargs):
-        var = np.asarray(self.prior['var'])
+        var = np.asarray(self.prior['variance'])
         weights = D * 1/(1.0 + var)
         return weights
     

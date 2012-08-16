@@ -43,21 +43,21 @@ class SegmentationBatch(object):
             }
             
         if self.model_type=='constant': 
-            self.prior_function = prior_models.constant
+            self.anchor_function = prior_models.constant
         elif self.model_type=='uniform': 
-            self.prior_function = prior_models.uniform
+            self.anchor_function = prior_models.uniform
         elif self.model_type=='entropy': 
-            self.prior_function = prior_models.entropy
+            self.anchor_function = prior_models.entropy
         elif self.model_type=='entropy_no_D': 
-            self.prior_function = prior_models.entropy_no_D
+            self.anchor_function = prior_models.entropy_no_D
         elif self.model_type=='variance': 
-            self.prior_function = prior_models.variance
+            self.anchor_function = prior_models.variance
         elif self.model_type=='variance_no_D': 
-            self.prior_function = prior_models.variance_no_D
+            self.anchor_function = prior_models.variance_no_D
         elif self.model_type=='confidence_map': 
-            self.prior_function = prior_models.confidence_map
+            self.anchor_function = prior_models.confidence_map
         elif self.model_type=='confidence_map_no_D': 
-            self.prior_function = prior_models.confidence_map_no_D
+            self.anchor_function = prior_models.confidence_map_no_D
         else:
             raise Exception('Did not recognize prior model type: {}'\
                 .format(self.model_type))
@@ -83,7 +83,7 @@ class SegmentationBatch(object):
         ## normalize image
         im = im/np.std(im)
             
-        prior_function = self.prior_function(
+        anchor_function = self.anchor_function(
             prior=prior,
             image=im,
             )
@@ -93,7 +93,7 @@ class SegmentationBatch(object):
             im, 
             prior, 
             # prior_weights=prior_weights,
-            prior_function=prior_function,
+            anchor_function=anchor_function,
             seeds=seeds, 
             labelset=self.labelset, 
             **self.params

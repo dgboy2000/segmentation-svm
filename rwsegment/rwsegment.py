@@ -19,10 +19,10 @@ logger = utils_logging.get_logger('rwsegment',utils_logging.DEBUG)
 ##------------------------------------------------------------------------------
 def segment(
         image,
-        prior,
+        anchor,
+        anchor_function=None,
         seeds=[],
-        prior_function=None,
-        loss=None,
+        loss=None, # TODO: remove (can be passed as part of anchor)
         weight_function=None,
         return_arguments=['image'],
         **kwargs
@@ -31,15 +31,15 @@ def segment(
     
     arguments:
         image   = image to segment
-        prior   = a list of vectors of size npixel
+        anchor   = a list of vectors of size npixel
                 
     keyword arguments:
         seeds    = label map, with -1 for unmarked pixels
                  must have the same shape as image
-        labelset = output labels (in the order of prior)
+        labelset = output labels (in the order of anchor)
                  seed labels not in labelset are ignored
                  
-        prior_weights = a list of vectors of size npixel
+        anchor_weights = a list of vectors of size npixel
         loss = a list of vectors of size npixel
         
         beta    = contrast parameter if no weight_function is provided
@@ -51,8 +51,8 @@ def segment(
     '''
     
     ## constants
-    # assume prior has shape (nunknown, nlabel)
-    nlabel      = len(prior['mean']) 
+    # assume anchor has shape (nunknown, nlabel)
+    nlabel      = len(anchor['data']) 
     npixel      = image.size
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     inds        = np.arange(npixel)
@@ -62,7 +62,7 @@ def segment(
         
     ## parameters
     beta    = kwargs.pop('beta', 1.)
-    wprior   = kwargs.pop('wprior', 1.)
+    wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function
     per_label = kwargs.pop('per_label',True)
 
     ## compute laplacian
@@ -76,16 +76,16 @@ def segment(
         return_D=True,
         )
 
-    ## prior function:
-    prior_weights = None
-    if prior_function is not None:
-        prior_weights = prior_function(D)
+    ## anchor function:
+    anchor_weights = None
+    if anchor_function is not None:
+        anchor_weights = anchor_function(D)
         
     ## per label lists of vectors
-    list_x0, list_Delta, list_xm, list_z = [],[],[],[]
+    list_x0, list_Omega, list_xm, list_z = [],[],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
-        x0[prior['imask']] = prior['mean'][l]
+        x0[anchor['imask']] = anchor['data'][l]
         list_x0.append(x0[unknown])
         if seeds!=[]:
             list_xm.append(seeds.ravel()[border]==l)
@@ -97,18 +97,18 @@ def segment(
             z = np.zeros(npixel)
         list_z.append(z[unknown])
         
-        Delta = np.ones(npixel)
-        if prior_weights is not None:
-            Delta[prior['imask']] = prior_weights[l]
-        list_Delta.append(wprior * Delta[unknown])
+        Omega = np.ones(npixel)
+        if anchor_weights is not None:
+            Omega[anchor['imask']] = anchor_weights[l]
+        list_Omega.append(wanchor * Omega[unknown])
       
     ## solve RW system 
     if not per_label:
         x = solve_at_once(
-            Lu,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,list_z,**kwargs)
     else:
         x = solve_per_label(
-            Lu,B,list_xm,list_Delta,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,list_z,**kwargs)
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)
@@ -127,8 +127,8 @@ def segment(
     else: return tuple(rargs)
     
     
-def solve_at_once(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
-    ''' xm,Delta,x0 and z are lists of length nlabel'''
+def solve_at_once(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
+    ''' xm,Omega,x0 and z are lists of length nlabel'''
     
     nlabel = len(list_xm)
     
@@ -143,15 +143,15 @@ def solve_at_once(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
     else:
         z = 0
         
-    Delta = sparse.spdiags(np.c_[list_Delta].ravel(), 0, *LL.shape)
+    Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
                 
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     logger.debug(
         'solve RW at once with solver="{}"'.format(optim_solver))
         
-    P = LL + Delta
-    q = BB*xm - Delta*x0 + z
+    P = LL + Omega
+    q = BB*xm - Omega*x0 + z
 
     if P.nnz==0:
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -166,8 +166,8 @@ def solve_at_once(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
-def solve_per_label(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
-    ''' xm,Delta,x0 and z are lists of length nlabel'''
+def solve_per_label(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
+    ''' xm,Omega,x0 and z are lists of length nlabel'''
     
     nlabel = len(list_xm)
 
@@ -182,7 +182,7 @@ def solve_per_label(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
     
     ## compute tolerance depending on the Laplacian
     rtol = kwargs.pop('rtol', 1e-6)
-    tol = np.maximum(np.max(Lu.data),np.max(list_Delta))*rtol
+    tol = np.maximum(np.max(Lu.data),np.max(list_Omega))*rtol
     
     for s in range(nlabel - 1):## don't need to solve the last one !
         x0 = np.asmatrix(np.c_[list_x0[s]])
@@ -193,11 +193,11 @@ def solve_per_label(Lu,B,list_xm,list_Delta,list_x0,list_z, **kwargs):
         else:
             z = 0
             
-        Delta = sparse.spdiags(np.c_[list_Delta[s]].ravel(), 0, *Lu.shape)
+        Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
                 
         ## solve
-        P = Lu + Delta
-        q = B*xm - Delta*x0 + z
+        P = Lu + Omega
+        q = B*xm - Omega*x0 + z
 
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -261,19 +261,19 @@ def solve_qp_constrained(P,q,nlabel,x0,**kwargs):
     
 
 ##------------------------------------------------------------------------------
-def energy_prior(
+def energy_anchor(
         image,
         x,
-        prior,
+        anchor,
         seeds=[],
-        prior_function=None,
+        anchor_function=None,
         weight_function=None,
         **kwargs
         ):
     
     ## constants
-    # assume prior has shape (nunknown, nlabel)
-    nlabel      = len(prior['mean']) 
+    # assume anchor has shape (nunknown, nlabel)
+    nlabel      = len(anchor['data']) 
     npixel      = x[0].size
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     inds        = np.arange(npixel)
@@ -283,33 +283,33 @@ def energy_prior(
     
     beta    = kwargs.pop('beta', 1.)
     
-    ## prior function:
-    prior_weights = None
-    if prior_function is not None:
+    ## anchor function:
+    anchor_weights = None
+    if anchor_function is not None:
         D = compute_D(  
             image, 
             marked=marked, 
             weight_function=weight_function,
             beta=beta)
-        prior_weights = prior_function(D)
+        anchor_weights = anchor_function(D)
     
     ## per label lists of vectors
-    list_x0, list_Delta, list_xm, list_z = [],[],[],[]
+    list_x0, list_Omega, list_xm, list_z = [],[],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
-        x0[prior['imask']] = prior['mean'][l]
+        x0[anchor['imask']] = anchor['data'][l]
         list_x0.append(x0[unknown])
         
-        Delta = np.ones(npixel)
-        if prior_weights is not None:
-            Delta[prior['imask']] = prior_weights[l]
-        list_Delta.append(Delta[unknown])
+        Omega = np.ones(npixel)
+        if anchor_weights is not None:
+            Omega[anchor['imask']] = anchor_weights[l]
+        list_Omega.append(Omega[unknown])
     
     
     en = 0
     for label in range(nlabel):
         xu = x[label][unknown]
-        en += np.sum(list_Delta[label] * (xu - list_x0[label])**2)
+        en += np.sum(list_Omega[label] * (xu - list_x0[label])**2)
         
     return float(en)
     
@@ -323,7 +323,6 @@ def energy_rw(
         ):
         
     ## constants
-    # assume prior has shape (nunknown, nlabel)
     nlabel      = len(x)
     npixel      = image.size
     inds        = np.arange(npixel)

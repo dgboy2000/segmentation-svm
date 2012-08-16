@@ -57,11 +57,11 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
         
         nlabel = len(labelset)
         segprior = np.zeros(mask.shape)
-        segprior[mask] = labelset[np.argmax(prior['mean'],axis=0)]
+        segprior[mask] = labelset[np.argmax(prior['data'],axis=0)]
             
         entropymap = np.zeros(mask.shape)
         entropymap[mask] = np.sum(
-            np.log(prior['mean'] + 1e-10)*prior['mean'],
+            np.log(prior['data'] + 1e-10)*prior['data'],
             axis=0)
         entropymap = entropymap / np.log(nlabel) * 2**15
             

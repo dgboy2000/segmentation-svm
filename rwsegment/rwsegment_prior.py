@@ -73,9 +73,9 @@ class PriorGenerator:
         ## prior dict
         prior = {
             'labelset': self.labelset,
-            'imask':imask, 
-            'mean':mean, 
-            'var':var,
+            'imask': imask, 
+            'data': mean, 
+            'variance': var,
             }
         
         ## if intensity prior
