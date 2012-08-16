@@ -36,9 +36,15 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
             if test==train: continue
             logger.debug('load training img: {}'.format(train))
             
+            ## segmentation
             file_seg = config.dir_reg + test + train + 'regseg.hdr'
             seg = io_analyze.load(file_seg)
-            generator.add_training_data(seg)
+            
+            ## image (for intensity prior)
+            file_im = config.dir_reg + test + train + 'reggray.hdr'
+            im = io_analyze.load(file_im)
+            
+            generator.add_training_data(seg,image=im)
         
         from scipy import ndimage
         mask    = generator.get_mask()
