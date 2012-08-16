@@ -34,5 +34,6 @@ learning/*
 prior/*
 
 test/segmentation/*
-test/learning/*
+test/learning/inference/01/*.test.*
+test/learning/svm/01/*.test.*
 test/prior/*
