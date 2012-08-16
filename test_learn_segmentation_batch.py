@@ -29,6 +29,7 @@ reload(rwsegment),
 reload(wflib)
 reload(rwsegment_prior_models)
 reload(struct_svm)
+from rwsegment.rwsegment import BaseAnchorAPI
 
 from segmentation_utils import load_or_compute_prior_and_mask
 from segmentation_utils import compute_dice_coef
@@ -175,15 +176,19 @@ class SVMSegmenter(object):
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
         ## save image
-        # io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
         im = im/np.std(im) # normalize image by variance
+    
+        ## prior
+        anchor_api = BaseAnchorAPI(
+            self.prior, 
+            anchor_weight=w[-1],
+            )
     
         sol,y = rwsegment.segment(
             im, 
-            self.prior, 
+            anchor_api, 
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            lmbda=w[-1],
             **self.rwparams_inf
             )
         

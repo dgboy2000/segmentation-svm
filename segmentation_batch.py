@@ -5,6 +5,7 @@ from scipy import ndimage
 from rwsegment import io_analyze
 from rwsegment import rwsegment
 from rwsegment import rwsegment_prior_models as prior_models
+from rwsegment.rwsegment import  BaseAnchorAPI
 reload(rwsegment)
 reload(prior_models)
 
@@ -21,7 +22,7 @@ reload(config)
 
 class SegmentationBatch(object):
     
-    def __init__(self,wprior=1.,model_type='constant'):
+    def __init__(self, anchor_weight=1., model_type='constant'):
         ''' 
             model_type in 'constant', 'entropy', 'variance', 'cmap'
         '''
@@ -31,9 +32,8 @@ class SegmentationBatch(object):
         self.force_recompute_prior = False
         
         self.params  = {
-            'wprior'    : wprior, # prior weight
-            'beta'      : 50,     # contrast parameter
-            'return_arguments':['image'],
+            'beta'             : 50,     # contrast parameter
+            'return_arguments' :['image'],
             
             # optimization parameter
             'per_label': False,
@@ -41,7 +41,9 @@ class SegmentationBatch(object):
             'rtol'      : 1e-6, 
             'maxiter'   : 2e3,
             }
-            
+        
+        self.anchor_weight = anchor_weight
+        
         if self.model_type=='constant': 
             self.anchor_function = prior_models.constant
         elif self.model_type=='uniform': 
@@ -62,7 +64,7 @@ class SegmentationBatch(object):
             raise Exception('Did not recognize prior model type: {}'\
                 .format(self.model_type))
         logger.info('using prior model: {}, with weight={}'\
-            .format(self.model_type, wprior))
+            .format(self.model_type, anchor_weight))
     
     def process_sample(self,test):
         outdir = config.dir_work + \
@@ -83,17 +85,16 @@ class SegmentationBatch(object):
         ## normalize image
         im = im/np.std(im)
             
-        anchor_function = self.anchor_function(
-            prior=prior,
-            image=im,
+        anchor_api = BaseAnchorAPI(
+            prior, 
+            anchor_function=self.anchor_function,
+            anchor_weight=self.anchor_weight,
             )
             
         ## start segmenting
         sol = rwsegment.segment(
             im, 
-            prior, 
-            # prior_weights=prior_weights,
-            anchor_function=anchor_function,
+            anchor_api,
             seeds=seeds, 
             labelset=self.labelset, 
             **self.params
@@ -104,9 +105,9 @@ class SegmentationBatch(object):
         ## compute Dice coefficient
         file_gt = config.dir_reg + test + 'seg.hdr'
         seg     = io_analyze.load(file_gt)
-        dice = compute_dice_coef(sol, seg,labelset=self.labelset)
+        dice    = compute_dice_coef(sol, seg,labelset=self.labelset)
         np.savetxt(
-            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %f')
+            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
         
     def process_all_samples(self,sample_list):
         for test in sample_list:
@@ -118,10 +119,10 @@ logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
             
 if __name__=='__main__':
     ''' start script '''
-    # segmenter = SegmentationBatch(wprior=1e-2,model_type='constant')
-    segmenter = SegmentationBatch(wprior=0.5,model_type='uniform')
-    # segmenter = SegmentationBatch(wprior=0.5, model_type='entropy')
-    # segmenter = SegmentationBatch(wprior=1e-2, model_type='entropy_no_D')
+    # segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
+    segmenter = SegmentationBatch(anchor_weight=0.5,    model_type='uniform')
+    # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
+    # segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
     # segmenter = SegmentationBatch(model_type='variance')
     
     sample_list = ['01/']

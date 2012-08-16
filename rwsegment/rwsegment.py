@@ -16,13 +16,32 @@ from scipy import sparse
 import utils_logging
 logger = utils_logging.get_logger('rwsegment',utils_logging.DEBUG)
         
+class BaseAnchorAPI(object):
+    def __init__(self,anchor,anchor_function=None, anchor_weight=1.0):
+        self.anchor = anchor
+        self.labelset = anchor['labelset']
+        self.imask = anchor['imask']
+        self.anchor_weight = anchor_weight
+        self.anchor_function = anchor_function
+        
+    def get_labelset(self):
+        return self.labelset
+    
+    def get_anchor_and_weights(self,D):
+        if self.anchor_function is None:
+            weights = self.anchor_weight * np.ones(D.size) * D
+        else:
+            weights = self.anchor_weight * self.anchor_function(D)
+            
+        return self.anchor, weights
+        
 ##------------------------------------------------------------------------------
 def segment(
         image,
-        anchor,
-        anchor_function=None,
+        anchor_api,
+        # anchor_function=None,
         seeds=[],
-        loss=None, # TODO: remove (can be passed as part of anchor)
+        # loss=None, # TODO: remove (can be passed as part of anchor)
         weight_function=None,
         return_arguments=['image'],
         **kwargs
@@ -31,16 +50,18 @@ def segment(
     
     arguments:
         image   = image to segment
-        anchor   = a list of vectors of size npixel
-                
+        anchor_api:
+            labelse = api.get_labelset()
+            anchor, weights = api.get_anchor_and_weights(D)
+            anchor is a dict
+        
     keyword arguments:
+        
+    
         seeds    = label map, with -1 for unmarked pixels
                  must have the same shape as image
-        labelset = output labels (in the order of anchor)
-                 seed labels not in labelset are ignored
                  
         anchor_weights = a list of vectors of size npixel
-        loss = a list of vectors of size npixel
         
         beta    = contrast parameter if no weight_function is provided
         weight_function = user provided function:
@@ -51,10 +72,9 @@ def segment(
     '''
     
     ## constants
-    # assume anchor has shape (nunknown, nlabel)
-    nlabel      = len(anchor['data']) 
+    labelset    = anchor_api.get_labelset()
+    nlabel      = len(labelset) 
     npixel      = image.size
-    labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     inds        = np.arange(npixel)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
@@ -77,12 +97,10 @@ def segment(
         )
 
     ## anchor function:
-    anchor_weights = None
-    if anchor_function is not None:
-        anchor_weights = anchor_function(D)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
         
     ## per label lists of vectors
-    list_x0, list_Omega, list_xm, list_z = [],[],[],[]
+    list_x0, list_Omega, list_xm = [],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
         x0[anchor['imask']] = anchor['data'][l]
@@ -91,11 +109,6 @@ def segment(
             list_xm.append(seeds.ravel()[border]==l)
         else:
             list_xm.append(0)
-        if loss is not None:
-            z = np.asarray(loss[l])
-        else:
-            z = np.zeros(npixel)
-        list_z.append(z[unknown])
         
         Omega = np.ones(npixel)
         if anchor_weights is not None:
@@ -105,10 +118,10 @@ def segment(
     ## solve RW system 
     if not per_label:
         x = solve_at_once(
-            Lu,B,list_xm,list_Omega,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
     else:
         x = solve_per_label(
-            Lu,B,list_xm,list_Omega,list_x0,list_z,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)
@@ -127,8 +140,8 @@ def segment(
     else: return tuple(rargs)
     
     
-def solve_at_once(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
-    ''' xm,Omega,x0 and z are lists of length nlabel'''
+def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
+    ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
     
@@ -138,11 +151,6 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
-    if list_z is not None:
-        z = np.asmatrix(np.c_[list_z].ravel()).T
-    else:
-        z = 0
-        
     Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
                 
     ## solve
@@ -151,7 +159,7 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
         'solve RW at once with solver="{}"'.format(optim_solver))
         
     P = LL + Omega
-    q = BB*xm - Omega*x0 + z
+    q = BB*xm - Omega*x0
 
     if P.nnz==0:
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -166,8 +174,8 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
-def solve_per_label(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
-    ''' xm,Omega,x0 and z are lists of length nlabel'''
+def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
+    ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
 
@@ -187,17 +195,12 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0,list_z, **kwargs):
     for s in range(nlabel - 1):## don't need to solve the last one !
         x0 = np.asmatrix(np.c_[list_x0[s]])
         xm = np.asmatrix(np.c_[list_xm[s]])
-        
-        if list_z is not None:
-            z = np.asmatrix(np.c_[list_z[s]])
-        else:
-            z = 0
-            
+
         Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
                 
         ## solve
         P = Lu + Omega
-        q = B*xm - Omega*x0 + z
+        q = B*xm - Omega*x0
 
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -264,18 +267,17 @@ def solve_qp_constrained(P,q,nlabel,x0,**kwargs):
 def energy_anchor(
         image,
         x,
-        anchor,
+        anchor_api,
         seeds=[],
-        anchor_function=None,
+        # anchor_function=None,
         weight_function=None,
         **kwargs
         ):
     
     ## constants
-    # assume anchor has shape (nunknown, nlabel)
-    nlabel      = len(anchor['data']) 
+    labelset    = anchor_api.get_labelset()
+    nlabel      = len(labelset)
     npixel      = x[0].size
-    labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     inds        = np.arange(npixel)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
@@ -284,17 +286,15 @@ def energy_anchor(
     beta    = kwargs.pop('beta', 1.)
     
     ## anchor function:
-    anchor_weights = None
-    if anchor_function is not None:
-        D = compute_D(  
+    D = compute_D(  
             image, 
             marked=marked, 
             weight_function=weight_function,
             beta=beta)
-        anchor_weights = anchor_function(D)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
     
     ## per label lists of vectors
-    list_x0, list_Omega, list_xm, list_z = [],[],[],[]
+    list_x0, list_Omega, list_xm = [],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
         x0[anchor['imask']] = anchor['data'][l]

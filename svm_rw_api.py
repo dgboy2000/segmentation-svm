@@ -1,13 +1,51 @@
 import numpy as np
 from rwsegment import rwsegment
+from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment)
-        
 
+class LossAnchorAPI(BaseAnchorAPI):    
+    def __init__(
+            self, 
+            loss, 
+            prior, 
+            # prior_function, 
+            loss_weight=1.0,
+            prior_weight=1.0,
+            ):
+        super(prior)
+        self.loss = loss
+        self.loss_weight = loss_weight
+        self.prior_weight = prior_weight
+        
+        # computes the Omega term as a function of D
+        # self.prior_function = prior_function 
+        
+    def get_anchor_and_weights(self,D):
+        # prior_weights = self.prior_function(D)
+        
+        # constant prior for now
+        prior_weights = self.prior_weight * np.ones(D.size) * D
+        
+        anchor_weights = prior_weights + self.loss_weight
+        
+        prior_data = self.prior['data']
+        loss_data = self.loss['data']
+        
+        anchor = {
+            'imask':self.prior['imask'],
+            'data':(prior_weights*prior_data + self.loss_weight*loss_data)/ \
+                  anchor_weights,
+            }
+        
+        import ipdb; ipdb.set_trace() # make sure that the types are correct
+        return anchor, anchor_weights
+        
+        
 class SVMRWMeanAPI(object):
     def __init__(
             self, 
             prior, 
-            weight_functions, 
+            weight_functions,  #TODO:: priors and prior_functions
             labelset,
             rwparams,
             seeds=[],
@@ -68,6 +106,18 @@ class SVMRWMeanAPI(object):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
         
+        ztilde = (1-z) / (self.nlabel - 1.0)
+        loss = {'data': ztilde}
+        loss_weight = (self.nlabel - 1.0) / float(z.size)
+        
+        anchor_api = LossAnchorAPI(
+            loss, 
+            self.prior, 
+            # self.prior_function,
+            prior_weight=w[-1],
+            loss_weight=loss_weight,
+            )
+        
         ## combine all weight functions
         def wwf(im,_w):    
             ''' meta weight function'''
@@ -77,18 +127,13 @@ class SVMRWMeanAPI(object):
                 data += _w[iwf]*_data
             return ij, data
         
-        ## loss as a linear term in the function
-        nnode = x.size
-        linloss = 1./nnode*z
         
         ## best y_ most different from y
         y_ = rwsegment.segment(
             x, 
-            self.prior,
+            anchor_api,
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            loss=linloss,
-            rwprior=w[-1],
             return_arguments=['y'],
             **self.rwparams
             )
@@ -102,6 +147,11 @@ class SVMRWMeanAPI(object):
         
     def best_segmentation_inference(self, w,x):
     
+        anchor_api = BaseAnchorAPI(
+            self.prior, 
+            prior_weight=w[-1],
+            )
+    
         ## combine all weight functions
         def wwf(im,_w):    
             ''' meta weight function'''
@@ -114,10 +164,9 @@ class SVMRWMeanAPI(object):
         ## best y_ most different from y
         y_ = rwsegment.segment(
             x, 
-            self.prior,
+            anchor_api,
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            rwprior=w[-1],
             return_arguments=['y'],
             **self.rwparams
             )

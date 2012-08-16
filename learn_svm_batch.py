@@ -25,6 +25,7 @@ from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment
 from rwsegment import rwsegment_prior_models
 from rwsegment import struct_svm
+from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment),
 reload(wflib)
 reload(rwsegment_prior_models)
@@ -177,12 +178,17 @@ class SVMSegmenter(object):
         io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
         im = im/np.std(im) # normalize image by variance
     
+        ## prior
+        anchor_api = BaseAnchorAPI(
+            self.prior, 
+            prior_weight=w[-1],
+            )
+    
         sol,y = rwsegment.segment(
             im, 
-            self.prior, 
+            anchor_api, 
             seeds=self.seeds,
             weight_function=lambda im: wwf(im, w),
-            lmbda=w[-1],
             **self.rwparams_inf
             )
         
