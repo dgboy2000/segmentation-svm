@@ -12,7 +12,7 @@ def solve_qp(P,q,**kwargs):
         return np.zeros(q.size)
     
     maxiter = int(kwargs.pop('maxiter',1000))
-    tol = kwargs.pop('tol',1e-6)
+    tol = kwargs.pop('tol',1e-3)
     
     ## use standard conjugate gradient
     x,info = splinalg.cg(
