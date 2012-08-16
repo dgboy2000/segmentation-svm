@@ -57,6 +57,7 @@ class Variance_no_D(PriorModel):
         return self.anchor, weights
     
 class Intensity(PriorModel):
+    ## TODO: spatially parameterized intensity prior
     def __init__(self, *args,**kwargs):
         self.image = kwargs.pop('image')
         super(PriorModel,self).__init__(*args, **kwargs)
