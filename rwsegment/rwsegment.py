@@ -17,21 +17,18 @@ import utils_logging
 logger = utils_logging.get_logger('rwsegment',utils_logging.DEBUG)
         
 class BaseAnchorAPI(object):
-    def __init__(self,anchor,anchor_function=None, anchor_weight=1.0):
+    def __init__(self,anchor, anchor_weight=1.0):
         self.anchor = anchor
         self.labelset = anchor['labelset']
         self.imask = anchor['imask']
         self.anchor_weight = anchor_weight
-        self.anchor_function = anchor_function
         
     def get_labelset(self):
         return self.labelset
     
     def get_anchor_and_weights(self,D):
-        if self.anchor_function is None:
-            weights = self.anchor_weight * np.ones(D.size) * D
-        else:
-            weights = self.anchor_weight * self.anchor_function(D)
+        nlabel = len(self.labelset)
+        weights = self.anchor_weight * np.ones((nlabel,D.size)) * D
         return self.anchor, weights
         
 ##------------------------------------------------------------------------------

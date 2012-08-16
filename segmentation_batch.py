@@ -36,30 +36,32 @@ class SegmentationBatch(object):
             'return_arguments' :['image'],
             
             # optimization parameter
-            'per_label': False,
+            'per_label': True,
             'optim_solver':'unconstrained',
-            'rtol'      : 1e-6, 
+            'rtol'      : 1e-6,
             'maxiter'   : 2e3,
             }
         
         self.anchor_weight = anchor_weight
         
         if self.model_type=='constant': 
-            self.anchor_function = prior_models.constant
+            self.Model = prior_models.Constant
         elif self.model_type=='uniform': 
-            self.anchor_function = prior_models.uniform
+            self.Model = prior_models.Uniform
         elif self.model_type=='entropy': 
-            self.anchor_function = prior_models.entropy
+            self.Model = prior_models.Entropy
         elif self.model_type=='entropy_no_D': 
-            self.anchor_function = prior_models.entropy_no_D
+            self.Model = prior_models.Entropy_no_D
         elif self.model_type=='variance': 
-            self.anchor_function = prior_models.variance
+            self.Model = prior_models.Variance
         elif self.model_type=='variance_no_D': 
-            self.anchor_function = prior_models.variance_no_D
+            self.Model = prior_models.Variance_no_D
         elif self.model_type=='confidence_map': 
-            self.anchor_function = prior_models.confidence_map
+            self.Model = prior_models.Confidence_map
         elif self.model_type=='confidence_map_no_D': 
-            self.anchor_function = prior_models.confidence_map_no_D
+            self.Model = prior_models.Confidence_map_no_D
+        elif self.model_type=='intensity': 
+            self.Model = prior_models.Intensity
         else:
             raise Exception('Did not recognize prior model type: {}'\
                 .format(self.model_type))
@@ -83,17 +85,18 @@ class SegmentationBatch(object):
         seeds   = (-1)*mask
            
         ## normalize image
-        im = im/np.std(im)
+        nim = im/np.std(im)
             
-        anchor_api = BaseAnchorAPI(
-            prior, 
-            anchor_function=self.anchor_function,
+        ## init anchor_api
+        anchor_api = self.Model(
+            prior,
             anchor_weight=self.anchor_weight,
+            image=im,
             )
             
         ## start segmenting
         sol = rwsegment.segment(
-            im, 
+            nim, 
             anchor_api,
             seeds=seeds, 
             labelset=self.labelset, 
@@ -120,7 +123,8 @@ logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
 if __name__=='__main__':
     ''' start script '''
     # segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
-    segmenter = SegmentationBatch(anchor_weight=0.5,    model_type='uniform')
+    # segmenter = SegmentationBatch(anchor_weight=1e-1,    model_type='uniform')
+    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
     # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
     # segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
     # segmenter = SegmentationBatch(model_type='variance')

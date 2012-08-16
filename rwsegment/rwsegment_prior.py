@@ -44,16 +44,17 @@ class PriorGenerator:
         self.ntrain += 1
         
         ## if im is provided, compute average and std of intensity
-        # if image is not None:
-            # inds = np.where(bin)
-            # if self.im_ntrain is None:
-                # self.im_avg    = np.sum(image.flat[bin],    axis=1)
-                # self.im_avg2   = np.sum(image.flat[bin]**2, axis=1)
-                # self.im_ntrain = np.sum(bin,                axis=1)
-            # else:
-                # self.im_avg    += np.sum(image.flat[bin],    axis=1)
-                # self.im_avg2   += np.sum(image.flat[bin]**2, axis=1)
-                # self.im_ntrain += np.sum(bin,                axis=1)
+        if image is not None:
+            if self.im_ntrain is None:
+                self.im_avg    = np.zeros(len(self.labelset))
+                self.im_avg2   = np.zeros(len(self.labelset))
+                self.im_ntrain = np.zeros(len(self.labelset), dtype=int)
+                
+            for label in range(len(self.labelset)):
+                inds = np.where(bin[label])[0]
+                self.im_avg[label]    += np.sum(image.flat[inds])
+                self.im_avg2[label]   += np.sum(image.flat[inds]**2)
+                self.im_ntrain[label] += len(inds)
                 
         
     def get_mask(self):
@@ -80,8 +81,8 @@ class PriorGenerator:
         
         ## if intensity prior
         if self.im_ntrain is not None:
-            im_avg = self.im_avg / self.im_train.astype(float)
-            im_var = self.im_avg2 / self.im_train.astype(float) - im_avg**2
+            im_avg = self.im_avg / self.im_ntrain.astype(float)
+            im_var = self.im_avg2 / self.im_ntrain.astype(float) - im_avg**2
             
             ## add to prior dict
             prior['intensity']= (im_avg, im_var)
