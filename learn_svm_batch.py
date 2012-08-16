@@ -126,7 +126,7 @@ class SVMSegmenter(object):
             
             self.training_set.append((im, z))
 
-        ## instanciate functors
+        ## instantiate functors
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
             self.weight_functions, 
