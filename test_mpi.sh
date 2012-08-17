@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 # shell
 #PBS -S /bin/bash
@@ -21,6 +21,7 @@
 # queueName
 #PBS -q iceq
 
+cd ~/segmentation-svm/
 python test_mpi.py
 
 ## command to run
