@@ -27,6 +27,8 @@ class StructSVM(object):
                 psi     : (vector) = psi(x,y)
                 most_violated_constraint : y_ = most_violated_constraint(w,x,y)
         '''
+        self.use_parallel = kwargs.pop('use_parallel',False)
+        
         S = []
         for x,z in training_set:
             S.append((DataContainer(x), DataContainer(z)))
@@ -46,6 +48,13 @@ class StructSVM(object):
         
         self.classifier = None
         
+        
+    def parallel_mvc(self,w):
+        import MPI
+        ##...
+        return ys
+    
+    
     
     def _current_solution(self, W):
         ''' quadratic programming 
@@ -270,9 +279,13 @@ class StructSVM(object):
             ## find most violated constraint
             logger.info("find most violated constraint")
             ys = []
-            for s in self.S:
-                y_ = self.mvc(w, *s, exact=True)
-                ys.append(y_)
+            
+            if self.use_parallel:
+                ys = self.parallel_mvc(w)
+            else:
+                for s in self.S:
+                    y_ = self.mvc(w, *s, exact=True)
+                    ys.append(y_)
             # logger.debug("ys={}".format(ys))
             
             ## add to test set
