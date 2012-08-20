@@ -11,7 +11,7 @@ class SVMWorker(object):
     def work(self,):
         while True:
             w,S = self.comm.bcast(None,root=0)
-            # w,x,z = self.comm.scatter(None,root=0)
+            # w,S = self.comm.scatter(None,root=0)
             if len(w)==0:
                 print 'Process #{}: received kill signal. Stopping.'\
                     .format(self.rank)
