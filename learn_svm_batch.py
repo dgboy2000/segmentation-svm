@@ -77,8 +77,8 @@ class SVMSegmenter(object):
             'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':False,
-            # 'optim_solver':'unconstrained', #debug
             'optim_solver':'unconstrained',
+            'use_parallel': True,
             }
             
         ## parameters for rw inference

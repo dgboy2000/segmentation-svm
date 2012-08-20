@@ -27,7 +27,6 @@ class StructSVM(object):
                 psi     : (vector) = psi(x,y)
                 most_violated_constraint : y_ = most_violated_constraint(w,x,y)
         '''
-        self.use_parallel = kwargs.pop('use_parallel',False)
         
         S = []
         for x,z in training_set:
@@ -46,7 +45,7 @@ class StructSVM(object):
         self.loss_cache = {}
         self.mvc_cache  = {}
         
-        self.classifier = None
+        self.use_parallel = kwargs.pop('use_parallel', True)
         
         
     def parallel_mvc(self,w):
