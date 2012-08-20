@@ -61,8 +61,14 @@ class StructSVM(object):
         ys = []
         ntrain = len(self.S)
         for i in range(ntrain):
-            source_id = np.mod(i,comm.Get_size()-1) + 1
-            ys.append(comm.recv(source=source_id,tag=i))
+            try:
+                source_id = np.mod(i,comm.Get_size()-1) + 1
+                ys.append(comm.recv(source=source_id,tag=i))
+            except Exception as e:
+                print e.message
+                print 'source=',source_id
+                print 'i=',i, 'size=',comm.Get_size()
+                raise e
         return ys
     
     
