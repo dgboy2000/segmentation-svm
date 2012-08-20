@@ -52,11 +52,18 @@ class StructSVM(object):
     def parallel_mvc(self,w):
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
-        data = ['root node does nothing'] +\
-               [(w,s[0].data, s[1].data) for s in self.S]
-        data = comm.scatter(data,root=0)
+        # data = ['root node does nothing'] +\
+               # [(w,s[0].data, s[1].data) for s in self.S]
+        # data = comm.scatter(data,root=0)
+        data = (w, self.S)
+        comm.bcast(data,root=0)
         
-        ys = comm.gather(None, root=0)[1:]
+        # ys = comm.gather(None, root=0)[1:]
+        ys = []
+        ntrain = len(self.S)
+        for i in range(ntrain):
+            source_id = mod(i,comm.Get_size()-1) + 1
+            ys.append(comm.recv(source=source_id,tag=i))
         return ys
     
     

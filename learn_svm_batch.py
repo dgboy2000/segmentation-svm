@@ -138,8 +138,8 @@ class SVMSegmenter(object):
             seeds=self.seeds,
             )
         
-
-        if MPI.COMM_WORLD.Get_rank()==0:
+        comm = MPI.COMM_WORLD
+        if comm.Get_rank()==0:
             ## learn struct svm
             logger.debug('started root learning')
             self.svm = struct_svm.StructSVM(
@@ -150,9 +150,12 @@ class SVMSegmenter(object):
                 **self.svmparams
                 )
             w,xi,info = self.svm.train()
+            
+            ## kill signal
+            comm.scatter([([],None,None) for i in range(comm.Get_size())])
         else:
             ## parallel loss augmented inference
-            rank = MPI.COMM_WORLD.Get_rank()
+            rank = comm.Get_rank()
             logger.debug('started worker #{}'.format(rank))
             import svm_worker
             worker = svm_worker.SVMWorker(self.svm_rwmean_api)
