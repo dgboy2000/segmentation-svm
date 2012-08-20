@@ -2,7 +2,7 @@ import numpy as np
 
 from mpi4py import MPI
 import utils_logging
-logger = utils_logging.get_logger('worker_logger',utils_logging.DEBUG)
+logger = utils_logging.get_logger('svm_worker',utils_logging.DEBUG)
 
 class SVMWorker(object):
     def __init__(self,svm_rw_api):

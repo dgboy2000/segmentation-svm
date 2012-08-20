@@ -45,6 +45,8 @@ class StructSVM(object):
         self.loss_cache = {}
         self.mvc_cache  = {}
         
+        self.psi_scale = kwargs.pop('psi_scale', 1.0)
+        
         self.use_parallel = kwargs.pop('use_parallel', True)
         
         
@@ -116,7 +118,8 @@ class StructSVM(object):
         
         qsubi = range(self.wsize)
         qsubj = qsubi
-        qval = [1.0]*self.wsize
+        # qval = [1.0]*self.wsize
+        qval = (self.psi_scale * np.ones(self.wsize)).tolist()
         
         NUMVAR = len(bkx) 
         NUMCON = len(W)
@@ -284,10 +287,17 @@ class StructSVM(object):
             # import ipdb; ipdb.set_trace()
             w,xi = self._current_solution(W)
             
+            ## logging
             wstr = ' '.join('{:.2}'.format(wval) for wval in w)
-            logger.debug("w={}, xi={:.2}".format(wstr,xi))
+            logger.debug("w=[{}], xi={:.2}".format(wstr,xi))
+            
+            wscaled = np.asarray(w)*self.psi_scale
+            wsstr = ' '.join('{:.2}'.format(wval) for wval in wscaled)
+            logger.debug("scaled w=[{}]".format(wsstr))
+            
             objective = 0.5*np.dot(w,w) + self.C*xi
             logger.debug("objective={}".format(objective))
+        
         
             ## find most violated constraint
             logger.info("find most violated constraint")

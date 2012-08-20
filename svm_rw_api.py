@@ -3,6 +3,9 @@ from rwsegment import rwsegment
 from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment)
 
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+
 class LossAnchorAPI(BaseAnchorAPI):    
     def __init__(
             self, 
@@ -75,7 +78,8 @@ class SVMRWMeanAPI(object):
         nnode = x.size
         
         ## normalizing by the approximate mask size
-        normalize = float(nnode)/10.0
+        # normalize = float(nnode)/100.0
+        normalize = 1.0
         
         ## energy value for each weighting function
         v = []
@@ -103,7 +107,10 @@ class SVMRWMeanAPI(object):
                 **self.rwparams
             )/normalize)
             
-        ## psi[a] = -energy[a]
+        strpsi = ' '.join('{:.3}'.format(val) for val in v)
+        logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
+        
+        # import ipdb; ipdb.set_trace()
         return v
 
 
@@ -198,5 +205,3 @@ class SVMRWMeanAPI(object):
                 return y_seg
 
 #-------------------------------------------------------------------------------
-from rwsegment import utils_logging
-logger = utils_logging.get_logger('logger_learn_svm_batch',utils_logging.DEBUG)

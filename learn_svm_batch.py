@@ -115,6 +115,12 @@ class SVMSegmenter(object):
             # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
             }
         
+        ## self.anchor_functions = { ...
+        
+        ## compute the scale of psi
+        psi_scale = [1e4] * len(self.weight_functions) + [1e5]
+        self.svmparams['psi_scale'] = psi_scale
+        
         
     def train_svm(self,test):
         outdir = test
