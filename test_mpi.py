@@ -23,7 +23,7 @@ res = process(data)
 res = comm.gather(res,root=0)
 
 if rank==0:
-    print 'data=',res
+    print 'res=',res
 else:
-    assert data is None
+    assert res is None
 

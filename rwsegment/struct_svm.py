@@ -50,8 +50,13 @@ class StructSVM(object):
         
         
     def parallel_mvc(self,w):
-        import MPI
-        ##...
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        data = ['root node does nothing'] +\
+               [(w,s[0].data, s[1].data) for s in self.S]
+        data = comm.scatter(data,root=0)
+        
+        ys = comm.gather(None, root=0)[1:]
         return ys
     
     

@@ -20,6 +20,8 @@ import os
 
 import numpy as np
 
+from mpi4py import MPI
+
 from rwsegment import io_analyze
 from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment
@@ -136,17 +138,25 @@ class SVMSegmenter(object):
             seeds=self.seeds,
             )
         
-        ## learn struct svm
-        logger.debug('start learning')
-        self.svm = struct_svm.StructSVM(
-            self.training_set,
-            self.svm_rwmean_api.compute_loss,
-            self.svm_rwmean_api.compute_psi,
-            self.svm_rwmean_api.compute_mvc,
-            **self.svmparams
-            )
 
-        w,xi,info = self.svm.train()
+        if MPI.COMM_WORLD.Get_rank()==0:
+            ## learn struct svm
+            logger.debug('started root learning')
+            self.svm = struct_svm.StructSVM(
+                self.training_set,
+                self.svm_rwmean_api.compute_loss,
+                self.svm_rwmean_api.compute_psi,
+                self.svm_rwmean_api.compute_mvc,
+                **self.svmparams
+                )
+            w,xi,info = self.svm.train()
+        else:
+            ## parallel loss augmented inference
+            rank = MPI.COMM_WORLD.Get_rank()
+            logger.debug('started worker #{}'.format(rank))
+            import svm_worker
+            worker = svm_worker.SVMWorker(self.svm_rwmean_api)
+            worker.work()
         
         return w,xi,info
         
@@ -242,5 +252,7 @@ if __name__=='__main__':
     ''' start script '''
     svm_segmenter = SVMSegmenter()
     sample_list = ['01/']
-    # sample_list = config.vols
+    
     svm_segmenter.process_all_samples(sample_list)
+
+    
