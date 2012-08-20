@@ -58,6 +58,7 @@ class SVMSegmenter(object):
         
         ## re-train svm?
         self.retrain = True
+        self.force_recompute_prior = False
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -220,7 +221,16 @@ class SVMSegmenter(object):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
-        prior, mask = load_or_compute_prior_and_mask(test)
+        comm = MPI.COMM_WORLD
+        if comm.Get_rank()==0:
+            prior, mask = load_or_compute_prior_and_mask(
+                test,force_recompute=self.force_recompute_prior)
+                
+            # have only the root process compute the prior 
+            # and pass it to the other processes
+            comm.bcast((prior,mask),root=0)    
+        else:
+            prior,mask = comm.bcast(None,root=0)
         
         self.prior = prior
         self.seeds = (-1)*mask.astype(int)
