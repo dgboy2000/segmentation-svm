@@ -228,7 +228,7 @@ class SVMSegmenter(object):
                 
             # have only the root process compute the prior 
             # and pass it to the other processes
-            comm.bcast((prior,mask),root=0)    
+            comm.bcast((dict(prior.items()),mask),root=0)    
         else:
             prior,mask = comm.bcast(None,root=0)
         
