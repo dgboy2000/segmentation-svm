@@ -33,6 +33,9 @@ reload(wflib)
 reload(rwsegment_prior_models)
 reload(struct_svm)
 
+from rwsegment import svm_worker
+reload(svm_worker)
+
 from segmentation_utils import load_or_compute_prior_and_mask
 from segmentation_utils import compute_dice_coef
 
@@ -66,8 +69,11 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
-        self.training_vols = ['02/'] ## debug
+        # self.training_vols = ['02/'] ## debug
+        self.training_vols = ['02/','03/'] ## debug
         # self.training_vols = config.vols
+        logger.info('Learning with {} training exaples'\
+            .format(len(self.training_vols)))
         
         ## parameters for rw learning
         self.rwparams_svm = {
@@ -155,15 +161,17 @@ class SVMSegmenter(object):
             finally:
                 ## kill signal
                 comm.bcast(([],None),root=0)
+                return w,xi,info
         else:
             ## parallel loss augmented inference
             rank = comm.Get_rank()
             logger.debug('started worker #{}'.format(rank))
-            import svm_worker
+            
             worker = svm_worker.SVMWorker(self.svm_rwmean_api)
             worker.work()
+            sys.exit(0)
         
-        return w,xi,info
+        
         
         
     def run_svm_inference(self,test,w):
@@ -196,7 +204,7 @@ class SVMSegmenter(object):
         ## prior
         anchor_api = BaseAnchorAPI(
             self.prior, 
-            prior_weight=w[-1],
+            anchor_weight=w[-1],
             )
     
         sol,y = rwsegment.segment(

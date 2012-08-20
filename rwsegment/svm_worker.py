@@ -1,3 +1,5 @@
+import numpy as np
+
 from mpi4py import MPI
 import utils_logging
 logger = utils_logging.get_logger('worker_logger',utils_logging.DEBUG)
@@ -10,6 +12,7 @@ class SVMWorker(object):
         
     def work(self,):
         while True:
+            logger.debug('worker #{} about to do broadcast'.format(self.rank))
             w,S = self.comm.bcast(None,root=0)
             # w,S = self.comm.scatter(None,root=0)
             if len(w)==0:
@@ -20,11 +23,11 @@ class SVMWorker(object):
             nproc = self.comm.Get_size()
             ys = []
             for i_s, s in enumerate(S):
-                if (np.mod(i_s + 1, nproc-1) + 1) != self.rank:
+                if (np.mod(i_s, nproc-1) + 1) != self.rank:
                     continue
                 logger.debug('worker #{} about to process sample #{}'\
                     .format(self.rank, i_s))
-                y_ = self.api.compute_mvc(w,x,z,exact=True)
+                y_ = self.api.compute_mvc(w,s[0].data,s[1].data, exact=True)
                 ys.append((i_s,y_))
             
             for i_s, y_ in ys:
