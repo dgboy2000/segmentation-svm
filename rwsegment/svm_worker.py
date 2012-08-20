@@ -20,7 +20,7 @@ class SVMWorker(object):
             nproc = self.comm.Get_size()
             ys = []
             for i_s, s in enumerate(S):
-                if (mod(i_s + 1, nproc-1) + 1) != self.rank:
+                if (np.mod(i_s + 1, nproc-1) + 1) != self.rank:
                     continue
                 logger.debug('worker #{} about to process sample #{}'\
                     .format(self.rank, i_s))
