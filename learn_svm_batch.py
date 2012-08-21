@@ -42,6 +42,7 @@ from segmentation_utils import compute_dice_coef
 import svm_rw_api
 reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
+from svm_rw_api import MetaAnchor
 
 ## load volume names 
 import config
@@ -130,6 +131,13 @@ class SVMSegmenter(object):
         psi_scale = [1e4] * len(self.weight_functions) + [1e5]
         self.svmparams['psi_scale'] = psi_scale
         
+        
+        ## indices of w
+        nlaplacian = len(self.weight_functions)
+        nprior = len(self.prior_models)
+        self.indices_laplacians = np.arange(nlaplacian)
+        self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
+        
         ## parallel ?
         if self.use_parallel:
             ## communicator
@@ -217,14 +225,18 @@ class SVMSegmenter(object):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
     
+        weights_laplacians = np.asarray(w)[self.indices_laplacians]
+        weights_priors = np.asarray(w)[self.indices_priors]
+    
         ## segment test image with trained w
-        def wwf(im,_w):    
+        def meta_weight_functions(im,_w):    
             ''' meta weight function'''
             data = 0
             for iwf,wf in enumerate(self.weight_functions.values()):
                 ij,_data = wf(im)
                 data += _w[iwf]*_data
             return ij, data
+        weight_function = lambda im: meta_weight_functions(im, weights_laplacians)
         
         ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
@@ -235,19 +247,25 @@ class SVMSegmenter(object):
         
         ## save image
         io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
-        im = im/np.std(im) # normalize image by variance
+        im = im/np.std(im) # normalize image by std
     
         ## prior
-        anchor_api = BaseAnchorAPI(
-            self.prior, 
-            anchor_weight=w[-1],
+        # anchor_api = BaseAnchorAPI(
+            # self.prior, 
+            # anchor_weight=w[-1],
+            # )
+        anchor_api = MetaAnchor(
+            self.prior,
+            self.prior_models,
+            weights_priors,
+            image=im,
             )
     
         sol,y = rwsegment.segment(
             im, 
             anchor_api, 
             seeds=self.seeds,
-            weight_function=lambda im: wwf(im, w),
+            weight_function=weight_function,
             **self.rwparams_inf
             )
         
