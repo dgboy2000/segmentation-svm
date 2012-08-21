@@ -4,7 +4,7 @@ from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment)
 
 from rwsegment import utils_logging
-logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+logger = utils_logging.get_logger('svm_rw_api',utils_logging.DEBUG)
 
 ## combine all prior models
 class MetaAnchor():
@@ -175,7 +175,8 @@ class SVMRWMeanAPI(object):
         strpsi = ' '.join('{:.3}'.format(val) for val in v)
         logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
         
-        # import ipdb; ipdb.set_trace()
+        if v[0]==0:
+            import ipdb; ipdb.set_trace()
         return v
 
 
@@ -204,14 +205,7 @@ class SVMRWMeanAPI(object):
             im, 
             np.asarray(w)[self.indices_laplacians],
             )
-        
-        ## temp
-        # old_anchor_api = LossAnchorAPI(
-            # loss, 
-            # self.prior, 
-            # prior_weight=w[-1],
-            # loss_weight=loss_weight,
-            # )
+
                 
         anchor_api = MetaAnchor(
             prior=self.prior,
@@ -221,7 +215,7 @@ class SVMRWMeanAPI(object):
             loss_weight=loss_weight,
             image=x,
             )
-
+        
         
         ## best y_ most different from y
         y_ = rwsegment.segment(

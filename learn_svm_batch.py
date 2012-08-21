@@ -63,7 +63,7 @@ class SVMSegmenter(object):
         self.dir_svm = config.dir_work + 'learning/svm/'
         
         ## params
-        self.retrain = False
+        self.retrain = True
         self.force_recompute_prior = False
         self.use_parallel = True
         
@@ -85,7 +85,7 @@ class SVMSegmenter(object):
             # optimization
             'rtol': 1e-5,
             'maxiter': 1e3,
-            'per_label':False,
+            'per_label':True,
             'optim_solver':'unconstrained',
             }
             
@@ -198,7 +198,7 @@ class SVMSegmenter(object):
                     )
                 w,xi,info = self.svm.train()
             finally:
-                # kill signal
+                ##kill signal
                 self.comm.bcast(([],None),root=0)
                 return w,xi,info
         else:
@@ -218,7 +218,7 @@ class SVMSegmenter(object):
         
         ## normalize w
         # w = w / np.sqrt(np.dot(w,w))
-        strw = ' '.join('{:.3}'.format(val) for val in w*self.psi_scale)
+        strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w)*self.psi_scale)
         logger.debug('scaled w=[{}]'.format(strw))
         
         outdir = self.dir_inf + test

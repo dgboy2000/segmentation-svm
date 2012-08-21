@@ -309,6 +309,8 @@ class StructSVM(object):
                 for s in self.S:
                     y_ = self.mvc(w, *s, exact=True)
                     ys.append(y_)
+                    if np.std(np.sum(y_.data,axis=0)) > 1e-5:
+                        import ipdb; ipdb.set_trace()
             # logger.debug("ys={}".format(ys))
             
             ## add to test set

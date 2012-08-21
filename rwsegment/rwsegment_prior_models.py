@@ -26,6 +26,7 @@ class Constant(PriorModel):
 class Uniform(PriorModel):
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
+        # import ipdb; ipdb.set_trace()
         weights = self.anchor_weight * D * np.ones((nlabel,len(self.imask)))
         return self.anchor, weights
     
