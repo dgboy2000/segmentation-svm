@@ -20,17 +20,16 @@ import os
 
 import numpy as np
 
-from mpi4py import MPI
 
 from rwsegment import io_analyze
 from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment
-from rwsegment import rwsegment_prior_models
+from rwsegment import rwsegment_prior_models as models
 from rwsegment import struct_svm
 from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment),
 reload(wflib)
-reload(rwsegment_prior_models)
+reload(models)
 reload(struct_svm)
 
 from rwsegment import svm_worker
@@ -49,6 +48,9 @@ import config
 reload(config)
 
 
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+
 
 class SVMSegmenter(object):
 
@@ -59,9 +61,10 @@ class SVMSegmenter(object):
         self.dir_inf = config.dir_work + 'learning/inference/'
         self.dir_svm = config.dir_work + 'learning/svm/'
         
-        ## re-train svm?
-        self.retrain = True
+        ## params
+        self.retrain = False
         self.force_recompute_prior = False
+        self.use_parallel = True
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -72,19 +75,17 @@ class SVMSegmenter(object):
         # self.training_vols = ['02/'] ## debug
         self.training_vols = ['02/','03/'] ## debug
         # self.training_vols = config.vols
-        logger.info('Learning with {} training exaples'\
-            .format(len(self.training_vols)))
+
         
         ## parameters for rw learning
         self.rwparams_svm = {
             'labelset':self.labelset,
             
             # optimization
-            'rtol': 1e-6,
+            'rtol': 1e-5,
             'maxiter': 1e3,
             'per_label':False,
             'optim_solver':'unconstrained',
-            'use_parallel': True,
             }
             
         ## parameters for rw inference
@@ -103,6 +104,7 @@ class SVMSegmenter(object):
         self.svmparams = {
             'C': 1,
             'nitermax':100,
+            'use_parallel': self.use_parallel,
             }
             
         ## weight functions
@@ -115,11 +117,29 @@ class SVMSegmenter(object):
             # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
             }
         
-        ## self.anchor_functions = { ...
+        ## priors models
+        self.prior_models = {
+            # 'constant': models.Constant,
+            'uniform': models.Uniform,
+            # 'entropy': models.Entropy,
+            # 'entropy_no_D': models.Entropy_no_D,
+            # 'intensity': models.Intensity,
+            }
         
         ## compute the scale of psi
         psi_scale = [1e4] * len(self.weight_functions) + [1e5]
         self.svmparams['psi_scale'] = psi_scale
+        
+        ## parallel ?
+        if self.use_parallel:
+            ## communicator
+            from mpi4py import MPI
+            self.comm = MPI.COMM_WORLD
+            self.MPI_rank = self.comm.Get_rank()
+            self.MPI_size = self.comm.Get_rank()
+            self.isroot = self.MPI_rank==0
+        else:
+            self.isroot = True
         
         
     def train_svm(self,test):
@@ -127,9 +147,13 @@ class SVMSegmenter(object):
 
         ## training images and segmentations
         self.training_set = []
+        if self.isroot:
+            logger.info('Learning with {} training exaples'\
+            .format(len(self.training_vols)))
         for train in self.training_vols:
             if test==train: continue
-            logger.info('loading training data: {}'.format(train))
+            if self.isroot:  
+                logger.info('loading training data: {}'.format(train))
             file_seg = self.dir_reg + test + train + 'regseg.hdr'
             file_im  = self.dir_reg + test + train + 'reggray.hdr'
             
@@ -146,13 +170,14 @@ class SVMSegmenter(object):
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
             self.weight_functions, 
-            self.labelset, 
+            self.labelset,
             self.rwparams_svm,
+            prior_models=self.prior_models,   
             seeds=self.seeds,
             )
         
-        comm = MPI.COMM_WORLD
-        if comm.Get_rank()==0:
+        
+        if self.isroot:
             try:
                 ## learn struct svm
                 logger.debug('started root learning')
@@ -165,12 +190,12 @@ class SVMSegmenter(object):
                     )
                 w,xi,info = self.svm.train()
             finally:
-                ## kill signal
-                comm.bcast(([],None),root=0)
+                # kill signal
+                self.comm.bcast(([],None),root=0)
                 return w,xi,info
         else:
             ## parallel loss augmented inference
-            rank = comm.Get_rank()
+            rank = self.MPI_rank
             logger.debug('started worker #{}'.format(rank))
             
             worker = svm_worker.SVMWorker(self.svm_rwmean_api)
@@ -182,6 +207,11 @@ class SVMSegmenter(object):
         
     def run_svm_inference(self,test,w):
         logger.info('running inference on: {}'.format(test))
+        
+        ## normalize w
+        w = w / np.sqrt(np.dot(w,w))
+        strw = ' '.join('{:.3}'.format(val) for val in w)
+        logger.debug('normalized w=[{}]'.format(strw))
         
         outdir = self.dir_inf + test
         if not os.path.isdir(outdir):
@@ -235,16 +265,16 @@ class SVMSegmenter(object):
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
-        comm = MPI.COMM_WORLD
-        if comm.Get_rank()==0:
+        if self.isroot:
             prior, mask = load_or_compute_prior_and_mask(
                 test,force_recompute=self.force_recompute_prior)
-                
-            # have only the root process compute the prior 
-            # and pass it to the other processes
-            comm.bcast((dict(prior.items()),mask),root=0)    
+            
+            if self.use_parallel:
+                # have only the root process compute the prior 
+                # and pass it to the other processes
+                self.comm.bcast((dict(prior.items()),mask),root=0)    
         else:
-            prior,mask = comm.bcast(None,root=0)
+            prior,mask = self.comm.bcast(None,root=0)
         
         self.prior = prior
         self.seeds = (-1)*mask.astype(int)
@@ -253,15 +283,17 @@ class SVMSegmenter(object):
         if self.retrain:
             w,xi,info = self.train_svm(test)
             np.savetxt(outdir + 'w',w)
-            np.savetxt(outdir + 'xi',[xi])            
+            np.savetxt(outdir + 'xi',[xi])     
         else:
+            if self.isroot and not self.retrain:    
+                logger.warning('Not retraining svm')
             w = np.loadtxt(outdir + 'w')
         
         self.w = w
-        self.xi = xi
         
         ## inference
-        self.run_svm_inference(test,w)
+        if self.isroot: 
+            self.run_svm_inference(test,w)
         
         
     
@@ -271,8 +303,7 @@ class SVMSegmenter(object):
     
 ##------------------------------------------------------------------------------
 
-from rwsegment import utils_logging
-logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+
 
     
     

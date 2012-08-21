@@ -14,10 +14,11 @@ import numpy as np
 from scipy import sparse
         
 import utils_logging
+# logger = utils_logging.get_logger('rwsegment',utils_logging.INFO)
 logger = utils_logging.get_logger('rwsegment',utils_logging.DEBUG)
         
 class BaseAnchorAPI(object):
-    def __init__(self,anchor, anchor_weight=1.0):
+    def __init__(self,anchor, anchor_weight=1.0, **kwargs):
         self.anchor = anchor
         self.labelset = anchor['labelset']
         self.imask = anchor['imask']
@@ -185,7 +186,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     ## compute tolerance depending on the Laplacian
     rtol = kwargs.pop('rtol', 1e-6)
     tol = np.maximum(np.max(Lu.data),np.max(list_Omega))*rtol
-    
+    logger.debug('absolute CG tolerance = {}'.format(tol))
     for s in range(nlabel - 1):## don't need to solve the last one !
         x0 = np.asmatrix(np.c_[list_x0[s]])
         xm = np.asmatrix(np.c_[list_xm[s]])

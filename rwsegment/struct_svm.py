@@ -332,8 +332,6 @@ class StructSVM(object):
         
         for msg in info: logger.info("{}={}".format(msg,info[msg]))
             
-        # import ipdb; ipdb.set_trace()
-            
         return w, xi, info
 
         
