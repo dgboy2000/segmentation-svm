@@ -40,7 +40,8 @@ class MetaAnchor():
                 anchor_weight=self.prior_weights[imodel],
                 image=self.image,
                 )
-            anchor, weights = api.get_anchor_and_weights(D)
+            # anchor, weights = api.get_anchor_and_weights(D) ##TODO reintroduce D
+            anchor, weights = api.get_anchor_and_weights(1)
             all_anchor  = all_anchor  + weights * anchor['data']
             all_weights = all_weights + weights
            

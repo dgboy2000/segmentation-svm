@@ -15,18 +15,18 @@ class PriorModel(BaseAnchorAPI):
         pass
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        return self.anchor, np.zeros((nlabel,D.size))
+        return self.anchor, np.zeros((nlabel,len(self.imask)))
 
 class Constant(PriorModel):
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        weights = self.anchor_weight * np.ones((nlabel,D.size))
+        weights = self.anchor_weight * np.ones((nlabel,len(self.imask)))
         return self.anchor, weights
     
 class Uniform(PriorModel):
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        weights = self.anchor_weight * D * np.ones((nlabel,D.size))
+        weights = self.anchor_weight * D * np.ones((nlabel,len(self.imask)))
         return self.anchor, weights
     
 class Entropy(PriorModel):

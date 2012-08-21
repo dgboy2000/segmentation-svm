@@ -196,7 +196,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
         ## solve
         P = Lu + Omega
         q = B*xm - Omega*x0
-
+        
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
             x = (1 - (q>0))/(nlabel - 1)

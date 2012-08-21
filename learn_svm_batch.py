@@ -217,7 +217,7 @@ class SVMSegmenter(object):
         logger.info('running inference on: {}'.format(test))
         
         ## normalize w
-        w = w / np.sqrt(np.dot(w,w))
+        # w = w / np.sqrt(np.dot(w,w))
         strw = ' '.join('{:.3}'.format(val) for val in w)
         logger.debug('normalized w=[{}]'.format(strw))
         
