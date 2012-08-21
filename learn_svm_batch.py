@@ -128,8 +128,8 @@ class SVMSegmenter(object):
             }
         
         ## compute the scale of psi
-        psi_scale = [1e4] * len(self.weight_functions) + [1e5]
-        self.svmparams['psi_scale'] = psi_scale
+        self.psi_scale = [1e4] * len(self.weight_functions) + [1e5]
+        self.svmparams['psi_scale'] = self.psi_scale
         
         
         ## indices of w
@@ -218,8 +218,8 @@ class SVMSegmenter(object):
         
         ## normalize w
         # w = w / np.sqrt(np.dot(w,w))
-        strw = ' '.join('{:.3}'.format(val) for val in w)
-        logger.debug('normalized w=[{}]'.format(strw))
+        strw = ' '.join('{:.3}'.format(val) for val in w*self.psi_scale)
+        logger.debug('scaled w=[{}]'.format(strw))
         
         outdir = self.dir_inf + test
         if not os.path.isdir(outdir):
