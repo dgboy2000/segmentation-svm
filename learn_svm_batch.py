@@ -148,7 +148,7 @@ class SVMSegmenter(object):
         ## training images and segmentations
         self.training_set = []
         if self.isroot:
-            logger.info('Learning with {} training exaples'\
+            logger.info('Learning with {} training examples'\
             .format(len(self.training_vols)))
         for train in self.training_vols:
             if test==train: continue
