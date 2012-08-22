@@ -15,24 +15,24 @@ class PriorModel(BaseAnchorAPI):
         pass
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        return self.anchor, np.zeros((nlabel,D.size))
+        return self.anchor, np.zeros((nlabel,len(self.imask)))
 
 class Constant(PriorModel):
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        weights = self.anchor_weight * np.ones((nlabel,D.size))
+        weights = self.anchor_weight * np.ones((nlabel,len(self.imask)))
         return self.anchor, weights
     
 class Uniform(PriorModel):
     def get_anchor_and_weights(self, D):
         nlabel = len(self.labelset)
-        weights = self.anchor_weight * D * np.ones((nlabel,D.size))
+        weights = self.anchor_weight * D * np.ones((nlabel,len(self.imask)))
         return self.anchor, weights
     
 class Entropy(PriorModel):
     def init_model(self):
         nlabel = len(self.anchor['data'])
-        prior = np.asarray(self.prior['data'])
+        prior = np.asarray(self.anchor['data'])
         entropy = -np.sum(np.log(prior + 1e-10)*prior,axis=0)
         entropy[entropy<0] = 0
         self.weights = \
@@ -81,28 +81,28 @@ class Intensity(PriorModel):
         return self.prior, self.anchor_weight * self.weights
 
         
-class CombinedConstantIntensity(Intensity):
-    def init_model(self):
-        super(CombinedConstantIntensity,self).init_model()
-        nlabel, nnode = len(self.anchor['data']), len(self.anchor['data'][0])
+# class CombinedConstantIntensity(Intensity):
+    # def init_model(self):
+        # super(CombinedConstantIntensity,self).init_model()
+        # nlabel, nnode = len(self.anchor['data']), len(self.anchor['data'][0])
         
-        # constant prior
-        cprior = self.anchor['data']
-        cweights = np.ones((nlabel,nnode))
+        ##constant prior
+        # cprior = self.anchor['data']
+        # cweights = np.ones((nlabel,nnode))
         
-        # intensity prior
-        iprior = self.prior['data']
-        iweights = self.weights / np.mean(self.weights)
+        ##intensity prior
+        # iprior = self.prior['data']
+        # iweights = self.weights / np.mean(self.weights)
         
-        # combined weights
-        weights = cweights + iweights
-        prior = (cweights*cprior + iweights*iprior) / weights
+        ##combined weights
+        # weights = cweights + iweights
+        # prior = (cweights*cprior + iweights*iprior) / weights
         
-        self.prior = {
-            'imask': self.anchor['imask'],
-            'data': prior,
-            }
-        self.weigths = weights
+        # self.prior = {
+            # 'imask': self.anchor['imask'],
+            # 'data': prior,
+            # }
+        # self.weigths = weights
         
         
         
@@ -113,8 +113,8 @@ class Confidence_map(PriorModel):
 
         #...
         #cmap = image
-        nlabel = len(self.prior['mean'])
-        indices = np.asarray(self.prior['indices'])
+        nlabel = len(self.anchor['mean'])
+        indices = np.asarray(self.anchor['indices'])
         weights = np.tile(D*cmap.flat[indices],(nlabel,1))
         self.weights = weights
     def get_anchor_and_weights(self, D):

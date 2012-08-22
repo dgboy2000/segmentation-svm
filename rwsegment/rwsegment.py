@@ -79,6 +79,11 @@ def segment(
     beta    = kwargs.pop('beta', 1.)
     wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function
     per_label = kwargs.pop('per_label',True)
+    
+    ## ground truth
+    ground_truth = kwargs.pop('ground_truth',None)
+    if ground_truth is not None:
+        ground_truth[~np.in1d(ground_truth,labelset)] = labelset[0]
 
     ## compute laplacian
     logger.debug('compute laplacian')
@@ -93,15 +98,16 @@ def segment(
 
     ## anchor function:
     anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
+    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
         
     ## per label lists of vectors
-    list_x0, list_Omega, list_xm = [],[],[]
+    list_x0, list_Omega, list_xm, list_GT = [],[],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
         x0[anchor['imask']] = anchor['data'][l]
         list_x0.append(x0[unknown])
         if seeds!=[]:
-            list_xm.append(seeds.ravel()[border]==l)
+            list_xm.append(seeds.ravel()[border]==labelset[l])
         else:
             list_xm.append(0)
         
@@ -109,11 +115,16 @@ def segment(
         if anchor_weights is not None:
             Omega[anchor['imask']] = anchor_weights[l]
         list_Omega.append(wanchor * Omega[unknown])
+        
+        if ground_truth is not None:
+            list_GT.append(
+                ground_truth.ravel()[unknown]==labelset[l],
+                )
       
     ## solve RW system 
     if not per_label:
         x = solve_at_once(
-            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0, list_GT=list_GT, **kwargs)
     else:
         x = solve_per_label(
             Lu,B,list_xm,list_Omega,list_x0,**kwargs)
@@ -135,7 +146,7 @@ def segment(
     else: return tuple(rargs)
     
     
-def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
+def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
@@ -147,6 +158,30 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
     Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
+                
+                
+    ## ground truth
+    if list_GT!=[]:
+        ''' Ax >= 0 '''
+        N = Lu.shape[0]
+        GT = np.asarray(list_GT).T
+        S = np.cumsum(GT,axis=0)
+        i_ = np.where(~GT)
+        rows = (i_[1]-S[i_])*N + i_[0]
+        cols =  i_[1]*N + i_[0]
+        
+        A = coo_matrix(
+            (-np.ones(len(rows)), (rows,cols)),
+            shape=(N*(nlabel-1),N*nlabel),
+            ).tocsr()
+        
+        A = A + sparse.bmat(
+            [[sparse.spdiags(list_gt[l],0,*Lu.shape) for l in range(label)] \
+                for l2 in range(nlabel-1)]
+            )
+        import ipdb; ipdb.set_trace() ## to check ...
+            
+            
                 
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
@@ -160,7 +195,9 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
         x = (1 - (q>0))/(nlabel - 1)
     else:
-        if optim_solver=='constrained':
+        # if list_GT!=[]:
+            # x = solve_qp_ground_truth(P,q,nlabel,x0,A) ## TODO 
+        elif optim_solver=='constrained':
             x = solve_qp_constrained(P,q,nlabel,x0)
         elif optim_solver=='unconstrained':
             x = solve_qp(P, q, **kwargs)
@@ -196,7 +233,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
         ## solve
         P = Lu + Omega
         q = B*xm - Omega*x0
-
+        
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
             x = (1 - (q>0))/(nlabel - 1)
@@ -218,7 +255,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
 ##------------------------------------------------------------------------------
 def solve_qp(P,q,**kwargs):
     import solver_qp as solver
-    reload(solver)
+    reload(solver)  ## TODO: tolerance bug ? (fails if tol < 1e-13)
     return solver.solve_qp(P,q,**kwargs)
     
     
@@ -281,12 +318,13 @@ def energy_anchor(
     beta    = kwargs.pop('beta', 1.)
     
     ## anchor function:
-    D = compute_D(  
-            image, 
-            marked=marked, 
-            weight_function=weight_function,
-            beta=beta)
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
+    # D = compute_D(  
+            # image, 
+            # marked=marked, 
+            # weight_function=weight_function,
+            # beta=beta)
+    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
     
     ## per label lists of vectors
     list_x0, list_Omega, list_xm = [],[],[]

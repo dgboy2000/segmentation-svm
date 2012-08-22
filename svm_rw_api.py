@@ -4,40 +4,92 @@ from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment)
 
 from rwsegment import utils_logging
-logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+logger = utils_logging.get_logger('svm_rw_api',utils_logging.DEBUG)
 
-class LossAnchorAPI(BaseAnchorAPI):    
+## combine all prior models
+class MetaAnchor():
     def __init__(
             self, 
-            loss, 
             prior, 
-            loss_weight=1.0,
-            prior_weight=1.0,
+            prior_models,
+            prior_weights,
+            loss=None,
+            loss_weight=None,
+            image=None,
             ):
-        BaseAnchorAPI.__init__(self, prior)
         self.prior = prior
-        
+        self.prior_models = prior_models
+        self.prior_weights = prior_weights
         self.loss = loss
         self.loss_weight = loss_weight
-        self.prior_weight = prior_weight
+        self.image = image        
+        self.labelset = prior['labelset']
+        
+    def get_labelset(self):
+        return self.labelset
+        
+    def get_anchor_and_weights(self,D):
+        all_anchor = 0
+        all_weights = 0
+        
+        ## prior models
+        for imodel, model in enumerate(self.prior_models.values()):
+            api = model(
+                self.prior, 
+                anchor_weight=self.prior_weights[imodel],
+                image=self.image,
+                )
+            anchor, weights = api.get_anchor_and_weights(D)
+            # anchor, weights = api.get_anchor_and_weights(1)
+            all_anchor  = all_anchor  + weights * anchor['data']
+            all_weights = all_weights + weights
+           
+        ## loss
+        imask = self.prior['imask']
+        if self.loss is not None:
+            all_anchor  = all_anchor + \
+                self.loss_weight * self.loss['data'][:,imask]
+            all_weights += self.loss_weight
+        
+        all_anchor = all_anchor / all_weights
+        labelset = self.prior['labelset']
+        all_anchor_dict = {'data':all_anchor, 'imask':imask, 'labelset':labelset}
+        return all_anchor_dict, all_weights 
+
+
+
+# class LossAnchorAPI(BaseAnchorAPI):    
+    # def __init__(
+            # self, 
+            # loss, 
+            # prior, 
+            # loss_weight=1.0,
+            # prior_weight=1.0,
+            # ):
+        # BaseAnchorAPI.__init__(self, prior)
+        # self.prior = prior
+        
+        # self.loss = loss
+        # self.loss_weight = loss_weight
+        # self.prior_weight = prior_weight
 
         
-    def get_anchor_and_weights(self,D): 
-        # constant prior for now
-        prior_weights = self.prior_weight * np.ones(D.size) * D
+    # def get_anchor_and_weights(self,D): 
+        ## constant prior for now
+        # prior_weights = self.prior_weight * np.ones(D.size) * D
         
-        anchor_weights = prior_weights + self.loss_weight
+        # anchor_weights = prior_weights + self.loss_weight
         
-        prior_data = self.prior['data']
-        loss_data = self.loss['data'][:,self.imask]
+        # prior_data = self.prior['data']
+        # loss_data = self.loss['data'][:,self.imask]
         
-        anchor = {
-            'imask':self.prior['imask'],
-            'data':(prior_weights*prior_data + self.loss_weight*loss_data)/ \
-                  anchor_weights,
-            }
+        # anchor = {
+            # 'imask':self.prior['imask'],
+            # 'data':(prior_weights*prior_data + self.loss_weight*loss_data)/ \
+                  # anchor_weights,
+            # }
         
-        return anchor, anchor_weights
+        # return anchor, anchor_weights
         
         
 class SVMRWMeanAPI(object):
@@ -68,6 +120,9 @@ class SVMRWMeanAPI(object):
         nprior = len(self.prior_models)
         self.indices_laplacians = np.arange(nlaplacian)
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
+        
+        
+        self.wsize = nprior + nlaplacian
         
         self.seeds = seeds
         self.rwparams = rwparams
@@ -108,7 +163,7 @@ class SVMRWMeanAPI(object):
             anchor_api = model( 
                 self.prior, 
                 anchor_weight=1.0,
-                image='x', # intensity prior needs an image
+                image=x, # intensity prior needs an image
                 )
             
             v.append(
@@ -122,7 +177,8 @@ class SVMRWMeanAPI(object):
         strpsi = ' '.join('{:.3}'.format(val) for val in v)
         logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
         
-        # import ipdb; ipdb.set_trace()
+        if v[0]==0:
+            import ipdb; ipdb.set_trace()
         return v
 
 
@@ -140,54 +196,6 @@ class SVMRWMeanAPI(object):
                 data += _w[iwf]*_data
             return ij, data
             
-        ## combine all prior models
-        class MetaAnchor():
-            def __init__(
-                    self, 
-                    prior, 
-                    prior_models,
-                    prior_weights,
-                    loss,
-                    loss_weight,
-                    image,
-                    ):
-                self.prior = prior
-                self.prior_models = prior_models
-                self.prior_weights = prior_weights
-                self.loss = loss
-                self.loss_weight = loss_weight
-                self.image = image
-                
-                self.labelset = prior['labelset']
-                
-            def get_labelset(self):
-                return self.labelset
-                
-            def get_anchor_and_weights(self,D):
-                all_anchor = 0
-                all_weights = 0
-                
-                ## prior models
-                for imodel, model in enumerate(self.prior_models.values()):
-                    api = model(
-                        self.prior, 
-                        anchor_weight=self.prior_weights[imodel],
-                        image=self.image,
-                        )
-                    anchor, weights = api.get_anchor_and_weights(D)
-                    all_anchor  = all_anchor  + weights * anchor['data']
-                    all_weights = all_weights + weights
-                   
-                ## loss
-                imask = self.prior['imask']
-                all_anchor  = all_anchor + \
-                    self.loss_weight * self.loss['data'][:,imask]
-                all_weights += self.loss_weight
-                
-                all_anchor = all_anchor / all_weights
-                labelset = self.prior['labelset']
-                all_anchor_dict = {'data':all_anchor, 'imask':imask, 'labelset':labelset}
-                return all_anchor_dict, all_weights 
                 
                 
         ## loss function
@@ -199,14 +207,7 @@ class SVMRWMeanAPI(object):
             im, 
             np.asarray(w)[self.indices_laplacians],
             )
-        
-        ## temp
-        # old_anchor_api = LossAnchorAPI(
-            # loss, 
-            # self.prior, 
-            # prior_weight=w[-1],
-            # loss_weight=loss_weight,
-            # )
+
                 
         anchor_api = MetaAnchor(
             prior=self.prior,
@@ -216,7 +217,7 @@ class SVMRWMeanAPI(object):
             loss_weight=loss_weight,
             image=x,
             )
-
+        
         
         ## best y_ most different from y
         y_ = rwsegment.segment(

@@ -42,6 +42,7 @@ from segmentation_utils import compute_dice_coef
 import svm_rw_api
 reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
+from svm_rw_api import MetaAnchor
 
 ## load volume names 
 import config
@@ -62,9 +63,11 @@ class SVMSegmenter(object):
         self.dir_svm = config.dir_work + 'learning/svm/'
         
         ## params
-        self.retrain = False
+        self.retrain = True
         self.force_recompute_prior = False
         self.use_parallel = True
+        if not self.use_parallel:
+            logger.warning('parallel is off')
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -84,7 +87,7 @@ class SVMSegmenter(object):
             # optimization
             'rtol': 1e-5,
             'maxiter': 1e3,
-            'per_label':False,
+            'per_label':True,
             'optim_solver':'unconstrained',
             }
             
@@ -109,26 +112,34 @@ class SVMSegmenter(object):
             
         ## weight functions
         self.weight_functions = {
-            'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+            # 'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
             # 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-            # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
             # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
             # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
             # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
             }
         
+        
+        
         ## priors models
         self.prior_models = {
             # 'constant': models.Constant,
-            'uniform': models.Uniform,
-            # 'entropy': models.Entropy,
-            # 'entropy_no_D': models.Entropy_no_D,
+            'entropy': models.Entropy_no_D,
             # 'intensity': models.Intensity,
             }
         
+        
+        
+        ## indices of w
+        nlaplacian = len(self.weight_functions)
+        nprior = len(self.prior_models)
+        self.indices_laplacians = np.arange(nlaplacian)
+        self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
+        
         ## compute the scale of psi
-        psi_scale = [1e4] * len(self.weight_functions) + [1e5]
-        self.svmparams['psi_scale'] = psi_scale
+        self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
+        self.svmparams['psi_scale'] = self.psi_scale
         
         ## parallel ?
         if self.use_parallel:
@@ -140,6 +151,12 @@ class SVMSegmenter(object):
             self.isroot = self.MPI_rank==0
         else:
             self.isroot = True
+            
+        if self.isroot:
+            strkeys = ', '.join(self.weight_functions.keys())
+            logger.info('laplacian functions (in order):{}'.format(strkeys))
+            strkeys = ', '.join(self.prior_models.keys())
+            logger.info('prior models (in order):{}'.format(strkeys))
         
         
     def train_svm(self,test):
@@ -186,12 +203,21 @@ class SVMSegmenter(object):
                     self.svm_rwmean_api.compute_loss,
                     self.svm_rwmean_api.compute_psi,
                     self.svm_rwmean_api.compute_mvc,
+                    wsize=self.svm_rwmean_api.wsize,
                     **self.svmparams
                     )
                 w,xi,info = self.svm.train()
+            except Exception as e:
+                import traceback
+                print e.message
+                traceback.print_exc()
+                import ipdb; ipdb.set_trace()
             finally:
-                # kill signal
-                self.comm.bcast(([],None),root=0)
+                ##kill signal
+                if self.use_parallel:
+                    # self.comm.bcast(('stop',None),root=0)
+                    for n in range(self.MPI_rank):
+                        self.comm.send(('stop',None),dest=n)
                 return w,xi,info
         else:
             ## parallel loss augmented inference
@@ -209,22 +235,26 @@ class SVMSegmenter(object):
         logger.info('running inference on: {}'.format(test))
         
         ## normalize w
-        w = w / np.sqrt(np.dot(w,w))
-        strw = ' '.join('{:.3}'.format(val) for val in w)
-        logger.debug('normalized w=[{}]'.format(strw))
+        # w = w / np.sqrt(np.dot(w,w))
+        strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w)*self.psi_scale)
+        logger.debug('scaled w=[{}]'.format(strw))
         
         outdir = self.dir_inf + test
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
     
+        weights_laplacians = np.asarray(w)[self.indices_laplacians]
+        weights_priors = np.asarray(w)[self.indices_priors]
+    
         ## segment test image with trained w
-        def wwf(im,_w):    
+        def meta_weight_functions(im,_w):    
             ''' meta weight function'''
             data = 0
             for iwf,wf in enumerate(self.weight_functions.values()):
                 ij,_data = wf(im)
                 data += _w[iwf]*_data
             return ij, data
+        weight_function = lambda im: meta_weight_functions(im, weights_laplacians)
         
         ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
@@ -235,19 +265,25 @@ class SVMSegmenter(object):
         
         ## save image
         io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
-        im = im/np.std(im) # normalize image by variance
+        im = im/np.std(im) # normalize image by std
     
         ## prior
-        anchor_api = BaseAnchorAPI(
-            self.prior, 
-            anchor_weight=w[-1],
+        # anchor_api = BaseAnchorAPI(
+            # self.prior, 
+            # anchor_weight=w[-1],
+            # )
+        anchor_api = MetaAnchor(
+            self.prior,
+            self.prior_models,
+            weights_priors,
+            image=im,
             )
     
         sol,y = rwsegment.segment(
             im, 
             anchor_api, 
             seeds=self.seeds,
-            weight_function=lambda im: wwf(im, w),
+            weight_function=weight_function,
             **self.rwparams_inf
             )
         
