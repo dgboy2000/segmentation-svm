@@ -255,7 +255,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
 ##------------------------------------------------------------------------------
 def solve_qp(P,q,**kwargs):
     import solver_qp as solver
-    reload(solver)
+    reload(solver)  ## TODO: tolerance bug ? (fails if tol < 1e-13)
     return solver.solve_qp(P,q,**kwargs)
     
     
