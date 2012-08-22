@@ -29,8 +29,7 @@ class BaseAnchorAPI(object):
     
     def get_anchor_and_weights(self,D):
         nlabel = len(self.labelset)
-        # weights = self.anchor_weight * np.ones((nlabel,D.size)) * D
-        weights = self.anchor_weight * np.ones((nlabel,D.size)) * 1
+        weights = self.anchor_weight * np.ones((nlabel,D.size)) * D
         return self.anchor, weights
         
 ##------------------------------------------------------------------------------
@@ -93,8 +92,8 @@ def segment(
         )
 
     ## anchor function:
-    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
+    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
         
     ## per label lists of vectors
     list_x0, list_Omega, list_xm = [],[],[]
@@ -283,11 +282,11 @@ def energy_anchor(
     beta    = kwargs.pop('beta', 1.)
     
     ## anchor function:
-    D = compute_D(  
-            image, 
-            marked=marked, 
-            weight_function=weight_function,
-            beta=beta)
+    # D = compute_D(  
+            # image, 
+            # marked=marked, 
+            # weight_function=weight_function,
+            # beta=beta)
     # anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
     anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
     

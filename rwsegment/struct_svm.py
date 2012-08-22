@@ -37,11 +37,14 @@ class StructSVM(object):
         self.epsilon = kwargs.pop('epsilon',1e-5)
         self.nitermax = kwargs.pop('nitermax',100)
         
+        self.wsize = kwargs.pop('wsize',None)
+        
         self.user_loss = loss_function
         self.user_psi  = psi
         self.user_mvc  = most_violated_constraint
         
         self.psi_cache  = {}
+        self.psis_cache = {}
         self.loss_cache = {}
         self.mvc_cache  = {}
         
@@ -53,22 +56,61 @@ class StructSVM(object):
     def parallel_mvc(self,w):
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
-        # data = ['root node does nothing'] +\
-               # [(w,s[0].data, s[1].data) for s in self.S]
-        # data = comm.scatter(data,root=0)
-        data = (w, self.S)
-        comm.bcast(data,root=0)
+        # data = (w, self.S)
+        # comm.bcast(('mvc',data),root=0)
         
-        # ys = comm.gather(None, root=0)[1:]
+        ntrain = len(self.S)
+        size = comm.Get_size()
+        indices = np.arange(ntrain)
+        for n in range(1,size):       
+            inds = indices[np.mod(indices,size-1) == (n-1)]
+            data = (inds,w,[self.S[i] for i in inds])
+            comm.send(('mvc',data), dest=n)
+
         ys = []
         ntrain = len(self.S)
         for i in range(ntrain):
             source_id = np.mod(i,comm.Get_size()-1) + 1
-            ys.append( DataContainer(
+            ys.append( 
                 comm.recv(source=source_id,tag=i),
-                ))
+                )
         return ys
     
+    
+    def parallel_all_psi(self,ys=None):
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        
+        ## send training data and cutting plane
+        # data = (self.S,ys)
+        # comm.bcast(('psi',data),root=0)
+        ntrain = len(self.S)
+        size = comm.Get_size()
+        indices = np.arange(ntrain)
+        for n in range(1,size):       
+            inds = indices[np.mod(indices,size-1) == (n-1)]
+            if ys is None:
+                data = (inds,[self.S[i] for i in inds],None)
+            else:
+                data = (inds,[self.S[i] for i in inds],[ys[i] for i in inds])
+            # source_id = np.mod(i,comm.Get_size()-1) + 1
+            comm.send(('psi',data), dest=n)
+    
+        ## get the psis back
+        cond = 0
+        ntrain = len(self.S)
+        psis = []
+        for i in range(ntrain):          
+            ## send to workers
+            ## recieve from workers
+            source_id = np.mod(i,comm.Get_size()-1) + 1
+            psi = comm.recv(source=source_id,tag=i)
+            psis.append(psi)
+            
+        # return psis
+        for i in range(ntrain):
+            yield psis[i]
+            
     
     
     def _current_solution(self, W):
@@ -136,9 +178,13 @@ class StructSVM(object):
         ## psi(x,z)
         Ssize = len(self.S)
         avg_psi_gt = [0 for i in range(self.wsize)]
-        for s in self.S:
-            for i_p,p in enumerate(self.psi(*s)): 
+        # for s in self.S:
+            # for i_p,p in enumerate(self.psi(*s)): 
+                # avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
+        for psi in self.compute_all_psi():
+            for i_p,p in enumerate(psi):
                 avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
+             
         
         ## set the constraints
         for j in range(NUMCON): 
@@ -147,6 +193,8 @@ class StructSVM(object):
             avg_psi = [0 for i in range(self.wsize)]
 
             avg_loss = 0
+            
+            '''
             for i_y,y_ in enumerate(W[j]):
                 # average loss
                 avg_loss += \
@@ -156,6 +204,17 @@ class StructSVM(object):
                 # average psi
                 for i_p,p in enumerate(self.psi(self.S[i_y][0],y_)): 
                     avg_psi[i_p] += p / float(Ssize)
+            '''
+            for i, psi in enumerate(self.compute_all_psi(W[j])):
+                y_ = W[j][i]
+                # average loss
+                avg_loss += \
+                    1. / float(Ssize) *\
+                    self.loss(self.S[i][1], y_) 
+
+                # average psi
+                for i_p,p in enumerate(psi):
+                    avg_psi[i_p] += 1.0/ float(Ssize) * p
             
             ## psi(x,y_) - psi(x,z)
             aval = \
@@ -229,32 +288,79 @@ class StructSVM(object):
         
         return w,xi
         
-    def _stop_condition(self,w,xi,ys):
+    # def stop_condition(self,w,xi,ys):
+        # cond = 0
+        # for s,y_ in zip(self.S,ys):
+            # x,z = s
+            # cond += self.loss(z,y_)
+            # psi_xy_ = self.psi(x,y_)
+            # psi_xz  = self.psi(x,z)
+            # for i in range(len(w)):
+                # cond -= w[i]*(psi_xy_[i] - psi_xz[i])
+        
+        # cond /= float(len(self.S))
+        
+        # if cond <= xi + self.epsilon:
+            # return True
+        # else:
+            # return False
+            
+            
+    def stop_condition(self,w,xi,ys):
         cond = 0
-        for s,y_ in zip(self.S,ys):
-            x,z = s
+        ntrain = len(self.S)
+        for i,psi_xz,psi_xy_ in zip(
+                range(ntrain),
+                self.compute_all_psi(),
+                self.compute_all_psi(ys)):
+            x,z = self.S[i]
+            y_ = ys[i]
             cond += self.loss(z,y_)
-            psi_xy_ = self.psi(x,y_)
-            psi_xz  = self.psi(x,z)
-            for i in range(len(w)):
-                cond -= w[i]*(psi_xy_[i] - psi_xz[i])
+            for iw in range(len(w)):
+                cond -= w[iw]*(psi_xy_[iw] - psi_xz[iw])
         
         cond /= float(len(self.S))
         
         if cond <= xi + self.epsilon:
-            # import pdb; pdb.set_trace()
             return True
         else:
             return False
             
-            
     def psi(self, x,y):
+        # return self.user_psi(x.data,y.data)
         if (x,y) in self.psi_cache:
             return self.psi_cache[(x,y)]
         else:
             v = self.user_psi(x.data,y.data)
             self.psi_cache[(x,y)] = v
             return v
+            
+    def compute_all_psi(self, ys=None):
+        if ys is None:
+            obj = None
+        else:
+            obj = ys[0]
+        if hash(obj) in self.psis_cache:
+            for psi in self.psis_cache[hash(obj)]:
+                yield psi
+            
+        elif self.use_parallel:
+            self.psis_cache[hash(obj)] = []
+            for psi in self.parallel_all_psi(ys):
+                self.psis_cache[hash(obj)].append(psi)
+                yield psi
+        else:
+            self.psis_cache[hash(obj)] = []
+            ntrain = len(self.S)
+            for i in range(ntrain):
+                x,z = self.S[i]
+                if ys is None:
+                    psi = self.psi(x,z)
+                else:
+                    psi = self.psi(x,ys[i])
+                    
+                self.psis_cache[hash(obj)].append(psi)
+                yield psi
             
     def loss(self,z,y):
         return self.user_loss(z.data,y.data)
@@ -275,8 +381,9 @@ class StructSVM(object):
         W = [] 
         
         ## initialize w
-        logger.info("compute length of psi")
-        self.wsize = len(self.psi(*self.S[0]))
+        if self.wsize is None:
+            logger.info("compute length of psi")
+            self.wsize = len(self.psi(*self.S[0]))
         
         niter = 1
         while 1:
@@ -317,7 +424,7 @@ class StructSVM(object):
             W.append(ys)
             
             ## stop condition
-            if self._stop_condition(w,xi,ys): 
+            if self.stop_condition(w,xi,ys): 
                 logger.info("stop condition reached")
                 break
             elif niter >= self.nitermax:

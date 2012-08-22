@@ -22,8 +22,7 @@ class MetaAnchor():
         self.prior_weights = prior_weights
         self.loss = loss
         self.loss_weight = loss_weight
-        self.image = image
-        
+        self.image = image        
         self.labelset = prior['labelset']
         
     def get_labelset(self):
@@ -40,8 +39,8 @@ class MetaAnchor():
                 anchor_weight=self.prior_weights[imodel],
                 image=self.image,
                 )
-            # anchor, weights = api.get_anchor_and_weights(D) ##TODO reintroduce D
-            anchor, weights = api.get_anchor_and_weights(1)
+            anchor, weights = api.get_anchor_and_weights(D)
+            # anchor, weights = api.get_anchor_and_weights(1)
             all_anchor  = all_anchor  + weights * anchor['data']
             all_weights = all_weights + weights
            
@@ -122,6 +121,9 @@ class SVMRWMeanAPI(object):
         self.indices_laplacians = np.arange(nlaplacian)
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
         
+        
+        self.wsize = nprior + nlaplacian
+        
         self.seeds = seeds
         self.rwparams = rwparams
     
@@ -161,7 +163,7 @@ class SVMRWMeanAPI(object):
             anchor_api = model( 
                 self.prior, 
                 anchor_weight=1.0,
-                image='x', # intensity prior needs an image
+                image=x, # intensity prior needs an image
                 )
             
             v.append(
