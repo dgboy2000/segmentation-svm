@@ -13,15 +13,15 @@
 #PBS -j oe
 
 # max execution time
-#PBS -l walltime=20:00:00
+#PBS -l walltime=03:59:00
 
-# ressources blocs to allocate
-#PBS -l select=1:ncpus=1:mem=12gb
+# resources blocs to allocate
+# mpiprocs is num. of train img + 1
+#PBS -l select=8:ncpus=4:mpiprocs=4:mem=22gb
 
 # queueName
 #PBS -q iceq
 
 cd $HOME/segmentation-svm/
-
-python learn_svm_batch.py
+mpirun -np 32 python learn_svm_batch.py
 
