@@ -17,7 +17,7 @@
 
 # resources blocs to allocate
 # mpiprocs is num. of train img + 1
-#PBS -l select=16:ncpus=2:mpiprocs=2:mem=22gb
+#PBS -l select=1:ncpus=12:mpiprocs=12:mem=60gb
 
 # queueName
 #PBS -q iceq
