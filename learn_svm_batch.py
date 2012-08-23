@@ -148,7 +148,7 @@ class SVMSegmenter(object):
             from mpi4py import MPI
             self.comm = MPI.COMM_WORLD
             self.MPI_rank = self.comm.Get_rank()
-            self.MPI_size = self.comm.Get_rank()
+            self.MPI_size = self.comm.Get_size()
             self.isroot = self.MPI_rank==0
         else:
             self.isroot = True
@@ -219,7 +219,7 @@ class SVMSegmenter(object):
                     # self.comm.bcast(('stop',None),root=0)
                     logger.info('root finished training svm on {}. about to kill workers'\
                         .format(test))
-                    for n in range(self.MPI_size):
+                    for n in range(1, self.MPI_size):
                         logger.debug('sending kill signal to worker #{}'.format(n))
                         self.comm.send(('stop',None),dest=n)
                 return w,xi,info
