@@ -197,7 +197,7 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     else:
         # if list_GT!=[]:
             # x = solve_qp_ground_truth(P,q,nlabel,x0,A) ## TODO 
-        elif optim_solver=='constrained':
+        if optim_solver=='constrained':
             x = solve_qp_constrained(P,q,nlabel,x0)
         elif optim_solver=='unconstrained':
             x = solve_qp(P, q, **kwargs)

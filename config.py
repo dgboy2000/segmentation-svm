@@ -61,7 +61,8 @@ def is_py_igloo():
 #### MACHINE-DEPENDENT CONFIGURATION
 
 if is_danny_laptop():
-  raise Exception("Not configured to run on Danny's laptop yet")
+  dir_reg     = '/Users/dannygoodman/Sites/ecp/svmdata/01_register/'
+  dir_work    = '/Users/dannygoodman/Sites/ecp/svmdata/segmentation_out'
 elif is_py_igloo():
   dir_reg     = '/workdir/baudinpy/01_register/'
   dir_work    = '/workdir/baudinpy/segmentation_out/'
