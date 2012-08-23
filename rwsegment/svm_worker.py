@@ -73,7 +73,7 @@ class SVMWorker(object):
         
     def work(self,):
         while True:
-            logger.debug('worker #{} about to do broadcast'.format(self.rank))
+            logger.debug('worker #{} about to receive next task'.format(self.rank))
             # task,data = self.comm.bcast(None,root=0)
             task,data = self.comm.recv(None,source=0)
             
@@ -84,10 +84,12 @@ class SVMWorker(object):
             elif task=='psi':
                 self.do_psi(data)
             elif task=='stop':
-                print 'Process #{}: received kill signal. Stopping.'\
-                    .format(self.rank)
+                logger.info('worker #{} received kill signal. Stopping.'\
+                    .format(self.rank))
                 break
             else:
+                logger.fatal('worker #{} did not recognize task: {}'\
+                    .format(self.rank, task))
                 raise Exception('did not recognize task: {}'.format(task))
                 sys.exit(0)
                 

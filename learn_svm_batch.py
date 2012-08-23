@@ -210,14 +210,17 @@ class SVMSegmenter(object):
                 w,xi,info = self.svm.train()
             except Exception as e:
                 import traceback
-                print e.message
+                logger.error('{}: {}'.format(e.message, e.__class__.__name__)
                 traceback.print_exc()
                 import ipdb; ipdb.set_trace()
             finally:
                 ##kill signal
                 if self.use_parallel:
                     # self.comm.bcast(('stop',None),root=0)
+                    logger.info('root finished training svm on {}. about to kill workers'\
+                        .format(test))
                     for n in range(self.MPI_rank):
+                        logger.debug('sending kill signal to worker #{}'.format(n))
                         self.comm.send(('stop',None),dest=n)
                 return w,xi,info
         else:
@@ -227,6 +230,7 @@ class SVMSegmenter(object):
             
             worker = svm_worker.SVMWorker(self.svm_rwmean_api)
             worker.work()
+            logger.debug('worker #{} about to exit'.format(rank))
             sys.exit(0)
         
         
