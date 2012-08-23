@@ -14,7 +14,7 @@
         maybe (1-2z)y  is better ?
 '''
 
-
+import commands
 import sys
 import os
 
@@ -58,9 +58,10 @@ class SVMSegmenter(object):
     def __init__(self):
     
         ## paths
+        current_code_version = commands.getoutput('git rev-parse HEAD')
         self.dir_reg = config.dir_reg
-        self.dir_inf = config.dir_work + 'learning/inference/'
-        self.dir_svm = config.dir_work + 'learning/svm/'
+        self.dir_inf = config.dir_work + 'learning/inference/{}/'.format(current_code_version)
+        self.dir_svm = config.dir_work + 'learning/svm/{}/'.format(current_code_version)
         
         ## params
         self.retrain = True
