@@ -303,10 +303,11 @@ class SVMSegmenter(object):
         
     def process_sample(self, test):
         outdir = self.dir_svm + test
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
         
         if self.isroot:
+            if not os.path.isdir(outdir):
+                os.makedirs(outdir)
+            
             prior, mask = load_or_compute_prior_and_mask(
                 test,force_recompute=self.force_recompute_prior)
             
