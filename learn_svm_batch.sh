@@ -13,7 +13,7 @@
 #PBS -j oe
 
 # max execution time
-#PBS -l walltime=00:19:00
+#PBS -l walltime=23:59:00
 
 # resources blocs to allocate
 # mpiprocs is num. of train img + 1
