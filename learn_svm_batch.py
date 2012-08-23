@@ -124,7 +124,7 @@ class SVMSegmenter(object):
         
         ## priors models
         self.prior_models = {
-            # 'constant': models.Constant,
+            'constant': models.Constant,
             'entropy': models.Entropy_no_D,
             # 'intensity': models.Intensity,
             }
