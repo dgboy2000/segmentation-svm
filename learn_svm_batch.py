@@ -210,7 +210,7 @@ class SVMSegmenter(object):
                 w,xi,info = self.svm.train()
             except Exception as e:
                 import traceback
-                logger.error('{}: {}'.format(e.message, e.__class__.__name__)
+                logger.error('{}: {}'.format(e.message, e.__class__.__name__))
                 traceback.print_exc()
                 import ipdb; ipdb.set_trace()
             finally:
