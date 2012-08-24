@@ -173,21 +173,21 @@ class SVMSegmenter(object):
         if self.isroot:
             logger.info('Learning with {} training examples'\
             .format(len(self.training_vols)))
-        for train in self.training_vols:
-            if test==train: continue
-            if self.isroot:  
-                logger.info('loading training data: {}'.format(train))
-            file_seg = self.dir_reg + test + train + 'regseg.hdr'
-            file_im  = self.dir_reg + test + train + 'reggray.hdr'
-            
-            im  = io_analyze.load(file_im)
-            im = im/np.std(im) # normalize image by std
-            
-            seg = io_analyze.load(file_seg)
-            seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
-            z = (seg.ravel()==np.c_[self.labelset])# make bin vector z
-            
-            self.training_set.append((im, z))
+            for train in self.training_vols:
+                if test==train: continue
+                if self.isroot:  
+                    logger.info('loading training data: {}'.format(train))
+                file_seg = self.dir_reg + test + train + 'regseg.hdr'
+                file_im  = self.dir_reg + test + train + 'reggray.hdr'
+                
+                im  = io_analyze.load(file_im)
+                im = im/np.std(im) # normalize image by std
+                
+                seg = io_analyze.load(file_seg)
+                seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
+                z = (seg.ravel()==np.c_[self.labelset])# make bin vector z
+                
+                self.training_set.append((im, z))
 
         ## instantiate functors
         self.svm_rwmean_api = SVMRWMeanAPI(
