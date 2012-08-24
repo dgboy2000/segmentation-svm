@@ -14,9 +14,10 @@
         maybe (1-2z)y  is better ?
 '''
 
-import commands
+# import commands
 import sys
 import os
+import subprocess
 
 import numpy as np
 
@@ -58,7 +59,9 @@ class SVMSegmenter(object):
     def __init__(self):
     
         ## paths
-        current_code_version = commands.getoutput('git rev-parse HEAD')
+        # current_code_version = commands.getoutput('git rev-parse HEAD')
+        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'], shell=True)[:-2]
+        print current_code_version
         self.dir_reg = config.dir_reg
         self.dir_inf = config.dir_work + 'learning/inference/{}/'.format(current_code_version)
         self.dir_svm = config.dir_work + 'learning/svm/{}/'.format(current_code_version)
@@ -305,6 +308,7 @@ class SVMSegmenter(object):
         outdir = self.dir_svm + test
         
         if self.isroot:
+            logger.info("output directory: {}".format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
             
