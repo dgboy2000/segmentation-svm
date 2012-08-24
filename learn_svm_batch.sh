@@ -13,11 +13,11 @@
 #PBS -j oe
 
 # max execution time
-#PBS -l walltime=23:59:00
+#PBS -l walltime=03:59:00
 
 # resources blocs to allocate
 # mpiprocs is num. of train img + 1
-#PBS -l select=1:ncpus=12:mpiprocs=12:mem=60gb
+#PBS -l select=8:ncpus=4:mpiprocs=4:mem=22gb
 
 # queueName
 #PBS -q iceq
