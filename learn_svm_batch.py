@@ -70,7 +70,7 @@ class SVMSegmenter(object):
         
         ## params
         self.retrain = True
-        self.force_recompute_prior = False
+        self.force_recompute_prior = True
         self.use_parallel = True
         if not self.use_parallel:
             logger.warning('parallel is off')
@@ -82,8 +82,8 @@ class SVMSegmenter(object):
         self.labelset = np.asarray([0,13,14,15,16])
         
         # self.training_vols = ['02/'] ## debug
-        # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        self.training_vols = ['02/','03/'] ## debug
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
