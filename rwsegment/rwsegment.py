@@ -159,30 +159,7 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
     Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
                 
-                
-    ## ground truth
-    if list_GT!=[]:
-        ''' Ax >= 0 '''
-        N = Lu.shape[0]
-        GT = np.asarray(list_GT).T
-        S = np.cumsum(GT,axis=0)
-        i_ = np.where(~GT)
-        rows = (i_[1]-S[i_])*N + i_[0]
-        cols =  i_[1]*N + i_[0]
-        
-        A = coo_matrix(
-            (-np.ones(len(rows)), (rows,cols)),
-            shape=(N*(nlabel-1),N*nlabel),
-            ).tocsr()
-        
-        A = A + sparse.bmat(
-            [[sparse.spdiags(list_gt[l],0,*Lu.shape) for l in range(label)] \
-                for l2 in range(nlabel-1)]
-            )
-        import ipdb; ipdb.set_trace() ## to check ...
-            
-            
-                
+     
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     logger.debug(
@@ -195,11 +172,14 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
         x = (1 - (q>0))/(nlabel - 1)
     else:
-        # if list_GT!=[]:
-            # x = solve_qp_ground_truth(P,q,nlabel,x0,A) ## TODO 
-        if optim_solver=='constrained':
-            x = solve_qp_constrained(P,q,nlabel,x0)
+        if list_GT!=[]:
+            ## ground truth constrained
+            x = solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs) ## TODO 
+        elif optim_solver=='constrained':
+            ## probability distribution constrained
+            x = solve_qp_constrained(P,q,nlabel,x0,**kwargs)
         elif optim_solver=='unconstrained':
+            ## unconstrained
             x = solve_qp(P, q, **kwargs)
         else:
             raise Exception('Did not recognize solver: {}'.format(optim_solver))
@@ -258,6 +238,55 @@ def solve_qp(P,q,**kwargs):
     reload(solver)  ## TODO: tolerance bug ? (fails if tol < 1e-13)
     return solver.solve_qp(P,q,**kwargs)
     
+def solve_qp_ground_truth(P,q,GT,nlabel,x0,**kwargs):
+    import solver_qp_constrained as solver
+    reload(solver)
+    
+    GT = np.asarray(list_GT).T
+    
+    ''' Ax >= b '''
+    N = Lu.shape[0]
+    S = np.cumsum(GT,axis=0)
+    i_ = np.where(~GT)
+    rows = (i_[1]-S[i_])*N + i_[0]
+    cols =  i_[1]*N + i_[0]
+    
+    G = coo_matrix(
+        (-np.ones(len(rows)), (rows,cols)),
+        shape=(N*(nlabel-1),N*nlabel),
+        ).tocsr()
+    
+    G = G + sparse.bmat(
+        [[sparse.spdiags(list_gt[l],0,*Lu.shape) for l in range(label)] \
+            for l2 in range(nlabel-1)]
+        )
+    h = kwargs.pop('ground_truth_margin',0.0)
+    xinit = kwargs.pop('ground_truth_init',None)
+    if xinit is None:
+        xinit = np.ones(q.shape)/nlabel
+    
+        
+    import ipdb; ipdb.set_trace() ## to check ...
+
+        
+    ## quadratic objective
+    objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
+    
+    ## log barrier solver
+    t0 = kwargs.pop('logbarrier_initial_t',1.0)
+    mu = kwargs.pop('logbarrier_mu',20.0)
+    epsilon = kwargs.pop('logbarrier_epsilon',1e-3)
+    solver = solver.ConstrainedSolver(
+        objective,
+        t0=t0,
+        mu=mu,
+        epsilon=epsilon,
+        )
+    
+    ## remove zero entries in initial guess
+    x = solver.solve(x0, **kwargs)
+    return x
+
     
 ##------------------------------------------------------------------------------
 def solve_qp_constrained(P,q,nlabel,x0,**kwargs):
@@ -276,9 +305,9 @@ def solve_qp_constrained(P,q,nlabel,x0,**kwargs):
     objective = solver.ObjectiveAPI(P, q, G=1, h=0, F=F,**kwargs)
     
     ## log barrier solver
-    t0 = 1
-    mu = 20
-    epsilon = 1e-3
+    t0 = kwargs.pop('logbarrier_initial_t',1.0)
+    mu = kwargs.pop('logbarrier_mu',20.0)
+    epsilon = kwargs.pop('logbarrier_epsilon',1e-3)
     solver = solver.ConstrainedSolver(
         objective,
         t0=t0,

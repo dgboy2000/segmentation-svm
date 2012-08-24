@@ -283,4 +283,48 @@ class SVMRWMeanAPI(object):
             else:
                 return y_seg
 
+                
+    def compute_aci(self,w,x,z,y0):
+        ''' annotation consistent inference'''
+        
+        ## combine all weight functions
+        class MetaLaplacianFunction(object):
+            def __init__(self,w,weight_functions):    
+                self.w = w
+                self.weight_functions = weight_functions
+                
+            def __call__(self,im):
+            ''' meta weight function'''
+            data = 0
+            for iwf,wf in enumerate(self.weight_functions.values()):
+                ij,_data = wf(im)
+                data += self.w[iwf]*_data
+            return ij, data
+            
+        
+        weight_function = MetaLaplacianFunction(
+            np.asarray(w)[self.indices_laplacians],
+            )
+        
+        ## combine all prior models
+        anchor_api = MetaAnchor(
+            prior=self.prior,
+            prior_models=self.prior_models,
+            prior_weights=np.asarray(w)[self.indices_priors],
+            image=x,
+            )
+        
+        ## annotation consistent inference
+        y = rwsegment.segment(
+            x, 
+            anchor_api,
+            seeds=self.seeds,
+            weight_function=weight_function,
+            return_arguments=['y'],
+            ground_truth=z,
+            ground_truth_init=y0,
+            **self.rwparams
+            )
+        
+                
 #-------------------------------------------------------------------------------

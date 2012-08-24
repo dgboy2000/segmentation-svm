@@ -73,6 +73,9 @@ class ConstrainedSolver(object):
         mu      = self.mu
         t0      = self.t0
         
+        ## initial guess x0 has to satisfy to the equality constraints !
+        ## Ax0 = b
+         
         x = x0
         t = t0
 
