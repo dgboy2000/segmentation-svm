@@ -81,7 +81,7 @@ elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
 elif is_TWIX():
-  dir_reg     = '..\\rwtrain\\01_register\\'
+  dir_reg     = '../01_register/'
   dir_work    = './'
 elif is_pawan_desktop():
   dir_reg     = '/home/baudinpy/svmdata/01_register/'
