@@ -1,0 +1,22 @@
+To get this code working on a new machine:
+
+1. Install the Enthought Python Distribution
+2. Install Install MOSEK and its python API
+3. Make sure openmpi is installed (so mpirun command is recognized)
+4. Install mpi4py module
+5. Add the data and output directories for your machine to config.py 
+
+
+Here is a sample .profile file that properly prepares the environment for a run:
+
+# For research purposes, use locally-installed software
+LOCAL=$HOME/local
+export PATH=$PATH:$LOCAL/git/bin
+export PATH=$LOCAL/epd-7.3-2-rh5-x86_64/bin:$PATH
+export MOSEKHOME=$LOCAL/mosek
+export MOSEKLM_LICENSE_FILE=$MOSEKHOME/6/licenses
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MOSEKHOME/6/tools/platform/linux64x86/bin
+export PATH=$PATH:$LOCAL/openmpi-1.6.1/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LOCAL/openmpi-1.6.1/lib
+
+
