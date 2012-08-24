@@ -70,7 +70,7 @@ class SVMSegmenter(object):
         
         ## params
         self.retrain = True
-        self.force_recompute_prior = True
+        self.force_recompute_prior = False
         self.use_parallel = True
         if not self.use_parallel:
             logger.warning('parallel is off')
