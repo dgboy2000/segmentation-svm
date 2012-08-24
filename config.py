@@ -80,7 +80,7 @@ elif is_danny_igloo():
 elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
-elif is_py_TWIX():
+elif is_TWIX():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
 elif is_pawan_desktop():
