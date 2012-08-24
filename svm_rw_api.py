@@ -294,12 +294,12 @@ class SVMRWMeanAPI(object):
                 self.weight_functions = weight_functions
                 
             def __call__(self,im):
-            ''' meta weight function'''
-            data = 0
-            for iwf,wf in enumerate(self.weight_functions.values()):
-                ij,_data = wf(im)
-                data += self.w[iwf]*_data
-            return ij, data
+                ''' meta weight function'''
+                data = 0
+                for iwf,wf in enumerate(self.weight_functions.values()):
+                    ij,_data = wf(im)
+                    data += self.w[iwf]*_data
+                return ij, data
             
         
         weight_function = MetaLaplacianFunction(
