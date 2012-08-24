@@ -17,11 +17,11 @@
 
 # resources blocs to allocate
 # mpiprocs is num. of train img + 1
-#PBS -l select=16:ncpus=12:mpiprocs=2:mem=22gb
+#PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
 
 # queueName
 #PBS -q iceq
 
 cd $HOME/segmentation-svm/
-mpirun -np 32 python learn_svm_batch.py
+mpirun -np 33 python learn_svm_batch.py
 
