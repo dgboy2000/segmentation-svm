@@ -50,6 +50,9 @@ def is_danny_laptop():
 
 def is_py_machine():
   return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES'
+
+def is_TWIX():
+  return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'TWIX-C411B-WIN'
   
 def is_danny_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand'
@@ -70,6 +73,9 @@ elif is_danny_igloo():
   dir_reg     = '/workdir/baudinpy/01_register/'
   dir_work    = '/workdir/goodmand/segmentation_out/'
 elif is_py_machine():
+  dir_reg     = '..\\rwtrain\\01_register\\'
+  dir_work    = './'
+elif is_py_TWIX():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
 else:
