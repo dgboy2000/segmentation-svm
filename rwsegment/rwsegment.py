@@ -369,12 +369,27 @@ def energy_rw(
     ## generate segmentation vector
     ## compute laplacian
     logger.debug('compute laplacian')
-    L, border, B = compute_laplacian(
-        image,
-        marked=marked,
-        beta=beta, 
-        weight_function=weight_function,
-        )
+    try:
+        L, border, B = compute_laplacian(
+            image,
+            marked=marked,
+            beta=beta, 
+            weight_function=weight_function,
+            )
+    except MemoryError as e:
+        import gc
+        from mpi4py import MPI
+        gc.collect()
+        logger.error(
+            'Memory error computing Laplacian in process #{}'\
+            .format(MPI.COMM_WORLD.Get_rank()))
+        L, border, B = compute_laplacian(
+            image,
+            marked=marked,
+            beta=beta, 
+            weight_function=weight_function,
+            )
+         
         
     ## compute energy
     en = 0.0
