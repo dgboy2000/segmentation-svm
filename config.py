@@ -58,14 +58,19 @@ def is_danny_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand'
 
 def is_py_igloo():
-  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'\
+    and os.path.isdir('/home/mudigondpk') and not os.path.isdir('/home/pawan')
+
+def is_pawan_desktop():
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'\
+    and os.path.isdir('/home/pawan') and not os.path.isdir('/home/mudigondpk')
 
 
 #### MACHINE-DEPENDENT CONFIGURATION
 
 if is_danny_laptop():
   dir_reg     = '/Users/dannygoodman/Sites/ecp/svmdata/01_register/'
-  dir_work    = '/Users/dannygoodman/Sites/ecp/svmdata/segmentation_out'
+  dir_work    = '/Users/dannygoodman/Sites/ecp/svmdata/segmentation_out/'
 elif is_py_igloo():
   dir_reg     = '/workdir/baudinpy/01_register/'
   dir_work    = '/workdir/baudinpy/segmentation_out/'
@@ -78,6 +83,9 @@ elif is_py_machine():
 elif is_py_TWIX():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
+elif is_pawan_desktop():
+  dir_reg     = '/home/baudinpy/svmdata/01_register/'
+  dir_work    = '/home/baudinpy/svmdata/segmentation_out/'
 else:
   raise Exception("Did not recognize the machine I'm running on")
 
