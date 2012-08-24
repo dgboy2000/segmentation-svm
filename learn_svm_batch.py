@@ -60,8 +60,10 @@ class SVMSegmenter(object):
     
         ## paths
         # current_code_version = commands.getoutput('git rev-parse HEAD')
-        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'], shell=True)[:-2]
-        print current_code_version
+        if sys.platform[:3]=='win':
+            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
+        else:
+            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
         self.dir_reg = config.dir_reg
         self.dir_inf = config.dir_work + 'learning/inference/{}/'.format(current_code_version)
         self.dir_svm = config.dir_work + 'learning/svm/{}/'.format(current_code_version)
