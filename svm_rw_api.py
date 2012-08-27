@@ -107,6 +107,9 @@ class SVMRWMeanAPI(object):
         self.labelset = labelset
         self.nlabel = len(labelset)
         
+        self.loss_type = kwargs.pop('loss_type','anchor')
+        logger.info('using loss type: {}'.format(self.loss_type))
+        
         self.weight_functions = weight_functions
         
         if prior_models is None:
@@ -120,7 +123,6 @@ class SVMRWMeanAPI(object):
         nprior = len(self.prior_models)
         self.indices_laplacians = np.arange(nlaplacian)
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
-        
         
         self.wsize = nprior + nlaplacian
         
@@ -196,19 +198,26 @@ class SVMRWMeanAPI(object):
                 data += _w[iwf]*_data
             return ij, data
             
-                
-                
-        ## loss function
-        ztilde = (1-z) / (self.nlabel - 1.0)
-        loss = {'data': ztilde}
-        loss_weight = (self.nlabel - 1.0) / float(z.size)
-        
         weight_function = lambda im: meta_weight_function(
-            im, 
-            np.asarray(w)[self.indices_laplacians],
-            )
-
+                im, 
+                np.asarray(w)[self.indices_laplacians],
+                )
                 
+        ## loss type
+        if self.loss_type=='anchor':
+            ztilde = (1-z) / (self.nlabel - 1.0)
+            loss = {'data': ztilde}
+            loss_weight = (self.nlabel - 1.0) / float(z.size)
+            L_loss = None
+        elif self.loss_type=='laplacian':
+            loss = None
+            loss_weight = None
+            L_loss = laplacian_loss(z)
+        else:
+            raise Exception('did not recognize loss type')
+            sys.exit(1)
+        
+        ## loss function        
         anchor_api = MetaAnchor(
             prior=self.prior,
             prior_models=self.prior_models,
@@ -217,6 +226,7 @@ class SVMRWMeanAPI(object):
             loss_weight=loss_weight,
             image=x,
             )
+          
         
         
         ## best y_ most different from y
@@ -226,6 +236,7 @@ class SVMRWMeanAPI(object):
             seeds=self.seeds,
             weight_function=weight_function,
             return_arguments=['y'],
+            additional_laplacian=L_loss,
             **self.rwparams
             )
             
@@ -304,6 +315,7 @@ class SVMRWMeanAPI(object):
         
         weight_function = MetaLaplacianFunction(
             np.asarray(w)[self.indices_laplacians],
+            self.weight_functions,
             )
         
         ## combine all prior models
@@ -328,3 +340,23 @@ class SVMRWMeanAPI(object):
         
                 
 #-------------------------------------------------------------------------------
+##------------------------------------------------------------------------------
+def laplacian_loss(ground_truth):
+    from scipy import sparse
+    
+    gt = ground_truth
+    size = ground_truth[0].size
+    nlabel = len(ground_truth)
+            
+    ## TODO: change weight
+    weight = 1.
+            
+    A_loss = sparse.bmat([
+        [sparse.spdiags(gt[l1]&(~gt[l2]),0,size,size) \
+            for l1 in range(nlabel)] \
+        for l2 in range(nlabel)
+        ])
+    D_loss = np.asarray(A_loss.sum(axis=0)).ravel()
+    L_loss = sparse.spdiags(D_loss,0,size,size) - A_loss
+
+    return weight*L_loss.tocsr()

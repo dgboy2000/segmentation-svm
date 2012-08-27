@@ -71,6 +71,28 @@ class SVMWorker(object):
         
         gc.collect()
         
+    def do_aci(self, data):
+        nproc = self.comm.Get_size()
+        inds,w,S = data
+        ntrain = len(S)
+        ys = []
+        
+        for i,ind in enumerate(inds):        
+            logger.debug('worker #{}: ACI on sample #{}'\
+                .format(self.rank, ind))
+            
+            x,z,y0 = S[i]
+            y = self.api.compute_aci(w,x,z,y0)
+            ys.append((ind, DataContainer(y_)))
+            
+        ## send data
+        for i, y_ in ys:
+            logger.debug('worker #{} sending back ACI for sample #{}'\
+                .format(self.rank, i))
+            self.comm.send(y_, dest=0, tag=i)
+        gc.collect()
+        
+        
     def work(self,):
         while True:
             logger.debug('worker #{} about to receive next task'.format(self.rank))
@@ -83,6 +105,8 @@ class SVMWorker(object):
                 self.do_mvc(data)
             elif task=='psi':
                 self.do_psi(data)
+            elif task=='aci':
+                self.do_aci(data)
             elif task=='stop':
                 logger.info('worker #{} received kill signal. Stopping.'\
                     .format(self.rank))

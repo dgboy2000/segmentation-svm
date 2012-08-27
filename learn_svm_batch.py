@@ -27,11 +27,13 @@ from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment
 from rwsegment import rwsegment_prior_models as models
 from rwsegment import struct_svm
+from rwsegment import latent_svm
 from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment),
 reload(wflib)
 reload(models)
 reload(struct_svm)
+reload(latent_svm)
 
 from rwsegment import svm_worker
 reload(svm_worker)
@@ -56,7 +58,7 @@ logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
 
 class SVMSegmenter(object):
 
-    def __init__(self):
+    def __init__(self,use_parallel=True, use_latent=False):
     
         ## paths
         # current_code_version = commands.getoutput('git rev-parse HEAD')
@@ -69,9 +71,10 @@ class SVMSegmenter(object):
         self.dir_svm = config.dir_work + 'learning/svm/{}/'.format(current_code_version)
         
         ## params
+        self.use_latent = use_latent
         self.retrain = True
         self.force_recompute_prior = False
-        self.use_parallel = True
+        self.use_parallel = use_parallel
         if not self.use_parallel:
             logger.warning('parallel is off')
         
@@ -82,8 +85,8 @@ class SVMSegmenter(object):
         self.labelset = np.asarray([0,13,14,15,16])
         
         # self.training_vols = ['02/'] ## debug
-        # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        self.training_vols = ['02/','03/'] ## debug
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
@@ -95,6 +98,11 @@ class SVMSegmenter(object):
             'maxiter': 1e3,
             'per_label':True,
             'optim_solver':'unconstrained',
+            }
+        
+        ## parameters for svm api
+        self.svm_api_params = {
+            'loss_type': 'laplacian',#'anchor',
             }
             
         ## parameters for rw inference
@@ -114,13 +122,19 @@ class SVMSegmenter(object):
             'C': 1,
             'nitermax':100,
             'use_parallel': self.use_parallel,
+            
+            # latent
+            'latent_niter_max': 100,
+            'latent_C': 10,
+            'latent_epsilon': 1e-3,
+            'latent_use_parallel': self.use_parallel,
             }
             
         ## weight functions
         self.weight_functions = {
-            'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+            # 'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
             'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+            # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
             # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
             # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
             # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
@@ -130,7 +144,7 @@ class SVMSegmenter(object):
         
         ## priors models
         self.prior_models = {
-            'constant': models.Constant,
+            # 'constant': models.Constant,
             'entropy': models.Entropy_no_D,
             # 'intensity': models.Intensity,
             }
@@ -183,13 +197,14 @@ class SVMSegmenter(object):
                 im  = io_analyze.load(file_im)
                 im = im/np.std(im) # normalize image by std
                 
-                seg = io_analyze.load(file_seg)
+                seg = io_analyze.load(file_seg).astype(int)
                 seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
                 z = (seg.ravel()==np.c_[self.labelset])# make bin vector z
                 
                 self.training_set.append((im, z))
 
         ## instantiate functors
+        
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
             self.weight_functions, 
@@ -197,6 +212,7 @@ class SVMSegmenter(object):
             self.rwparams_svm,
             prior_models=self.prior_models,   
             seeds=self.seeds,
+            **self.svm_api_params
             )
         
         
@@ -204,15 +220,27 @@ class SVMSegmenter(object):
             try:
                 ## learn struct svm
                 logger.debug('started root learning')
-                self.svm = struct_svm.StructSVM(
-                    self.training_set,
-                    self.svm_rwmean_api.compute_loss,
-                    self.svm_rwmean_api.compute_psi,
-                    self.svm_rwmean_api.compute_mvc,
-                    wsize=self.svm_rwmean_api.wsize,
-                    **self.svmparams
-                    )
-                w,xi,info = self.svm.train()
+                if self.use_latent:
+                    self.svm = latent_svm.LatentSVM(
+                        self.svm_rwmean_api.compute_loss,
+                        self.svm_rwmean_api.compute_psi,
+                        self.svm_rwmean_api.compute_mvc,
+                        self.svm_rwmean_api.compute_aci,
+                        **self.svmparams
+                        )
+                    w,xi,info = self.svm.train(self.training_set)
+                
+                else:
+                    self.svm = struct_svm.StructSVM(
+                        self.training_set,
+                        self.svm_rwmean_api.compute_loss,
+                        self.svm_rwmean_api.compute_psi,
+                        self.svm_rwmean_api.compute_mvc,
+                        wsize=self.svm_rwmean_api.wsize,
+                        **self.svmparams
+                        )
+                    w,xi,info = self.svm.train()
+                
             except Exception as e:
                 import traceback
                 logger.error('{}: {}'.format(e.message, e.__class__.__name__))
@@ -228,6 +256,7 @@ class SVMSegmenter(object):
                         logger.debug('sending kill signal to worker #{}'.format(n))
                         self.comm.send(('stop',None),dest=n)
                 return w,xi,info
+                
         else:
             ## parallel loss augmented inference
             rank = self.MPI_rank
@@ -356,8 +385,28 @@ class SVMSegmenter(object):
     
     
 if __name__=='__main__':
+    from optparse import OptionParser
+    opt = OptionParser()
+    opt.add_option( # laplacian parameter
+        '-p', '--parallel', dest='parallel', 
+        action="store_true", default=False,
+        help='use parallel',
+        )
+    opt.add_option( # laplacian parameter
+        '-l', '--latent', dest='latent', 
+        action="store_true", default=False,
+        help='latent svm',
+        )
+    (options, args) = opt.parse_args()
+    use_parallel = bool(options.parallel)
+    use_latent = bool(options.latent)
+    
+    
     ''' start script '''
-    svm_segmenter = SVMSegmenter()
+    svm_segmenter = SVMSegmenter(
+        use_parallel=use_parallel,
+        use_latent=use_latent,
+        )
     sample_list = ['01/']
     
     svm_segmenter.process_all_samples(sample_list)

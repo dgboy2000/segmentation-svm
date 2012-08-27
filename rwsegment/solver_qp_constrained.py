@@ -46,24 +46,33 @@ class ConstrainedSolver(object):
         self.epsilon   = kwargs.pop('epsilon',1e-3)
         self.t0 = kwargs.pop('to',1)
         self.mu = kwargs.pop('mu',20)
-            
+        self.maxiter = kwargs.pop('maxiter',100)
+        
         ## inequality constraints
         G, h = objective.iconst
-        if np.asmatrix(G).size==1:
+        if not hasattr(G,'T'):
+            ## scalar G
             self.G  = G
             self.GT = G
+            self.h = h
         else:
-            self.G  = np.asmatrix(G)
-            self.GT = self.G.T
-        self.h = h
+            ## matrix G
+            self.G  = G
+            self.GT = G.T
+            self.h = h
         
         ## equality constraints
-        if not hasattr(objective, 'eqconst') or objective.eqconst in [None, 1]:
-            self.F    = 1
-            self.nvar = self.G.shape[1]
+        self.nvar = np.inf
+        F = objective.eqconst
+        if F is None or not hasattr(F,'T'):
+            ## no equality constraints
+            self.F  = 1.0
+            self.FT = 1.0
         else:
-            self.F    = objective.eqconst
-            self.nvar = self.F.shape[1]
+            ## matrix F
+            self.F  = F
+            self.FT = F.T
+            self.nvar = np.minimum(F.shape[1], self.nvar)
         
     def solve(self, x0, **kwargs):
         ''' (parameters for the Newton solver in kwargs)
@@ -73,7 +82,7 @@ class ConstrainedSolver(object):
         mu      = self.mu
         t0      = self.t0
         
-        ## initial guess x0 has to satisfy to the equality constraints !
+        ## initial guess x0 has to satisfy the equality constraints !
         ## Ax0 = b
          
         x = x0
@@ -82,7 +91,9 @@ class ConstrainedSolver(object):
         G = self.G
         self.nconst = (G*x0).shape[0]
         
-        while 1:
+        nvar = min(self.nvar, x0.size)
+        
+        for iter in range(self.maxiter):
             ## solve with currant t
             logger.debug(
                 'calling constrained solver with t={}'.format(t))
@@ -90,7 +101,6 @@ class ConstrainedSolver(object):
             modf_objective = lambda u: self.barrier_objective_eqc(u,x,t)
             modf_gradient  = lambda u: self.barrier_gradient_eqc(u,x,t)
             modf_hessian   = lambda u: self.barrier_hessian_eqc(u,x,t)
-            init = np.zeros(self.nconst)
                
             ## Newton's method
             # increase epsilon with t
@@ -108,7 +118,8 @@ class ConstrainedSolver(object):
                 **kwargs)
                 
             # solve with Newton' method
-            u0 = np.asmatrix(np.zeros(self.nvar)).T
+            u0 = np.asmatrix(np.zeros(nvar)).T
+            import ipdb; ipdb.set_trace() ## to check ...
             u = solver.solve(u0)
 
             F = self.F
@@ -139,9 +150,10 @@ class ConstrainedSolver(object):
         gradient = self.objective.gradient
         F   = self.F
         G,GT,h = self.G, self.GT, self.h
+        FT = self.FT
         x = F*u + x0
         cond = G*x - h
-        return F.T * (t * gradient(x) + GT * self.barrier_gradient(cond))
+        return FT * (t * gradient(x) + GT * self.barrier_gradient(cond))
         
     def barrier_gradient(self,cond):
         return np.matrix(-1.0/np.asarray(cond).ravel()).T
@@ -151,9 +163,10 @@ class ConstrainedSolver(object):
         hessian = self.objective.hessian
         F   = self.F
         G,GT,h = self.G, self.GT, self.h
+        FT = self.FT
         x = F*u + x0
         cond = G*x - h
-        return F.T * (t * hessian(x) + \
+        return FT * (t * hessian(x) + \
                       GT * self.barrier_hessian(cond) * G) * F
         
     def barrier_hessian(self,cond):
@@ -201,7 +214,7 @@ class NewtonMethod(object):
         self.b = kwargs.pop('b', 0.8)
         
         self.epsilon = kwargs.pop('epsilon', 1e-6)
-        self.maxiter = kwargs.pop('maxiter', 100)
+        self.maxiter = int(kwargs.pop('maxiter', 100))
         
         self.use_diagonal_hessian = kwargs.pop('use_diagonal_hessian',False)
         

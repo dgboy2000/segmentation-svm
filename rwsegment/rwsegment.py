@@ -80,11 +80,6 @@ def segment(
     wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function
     per_label = kwargs.pop('per_label',True)
     
-    ## ground truth
-    ground_truth = kwargs.pop('ground_truth',None)
-    if ground_truth is not None:
-        ground_truth[~np.in1d(ground_truth,labelset)] = labelset[0]
-
     ## compute laplacian
     logger.debug('compute laplacian')
         
@@ -100,8 +95,12 @@ def segment(
     anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
     # anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
         
+    ## ground truth
+    ground_truth = kwargs.pop('ground_truth',None)
+    ground_truth_init = kwargs.pop('ground_truth_init',None)
+        
     ## per label lists of vectors
-    list_x0, list_Omega, list_xm, list_GT = [],[],[],[]
+    list_x0, list_Omega, list_xm, list_GT, list_GT_init = [],[],[],[],[]
     for l in range(nlabel):
         x0 = 1/float(nlabel) * np.ones(npixel)
         x0[anchor['imask']] = anchor['data'][l]
@@ -116,15 +115,25 @@ def segment(
             Omega[anchor['imask']] = anchor_weights[l]
         list_Omega.append(wanchor * Omega[unknown])
         
+        ## ground truth
         if ground_truth is not None:
-            list_GT.append(
-                ground_truth.ravel()[unknown]==labelset[l],
-                )
+            list_GT.append(ground_truth[l][unknown])
+        if ground_truth_init is not None:
+            list_GT_init.append(ground_truth_init[l][unknown])
+      
+    ## if additional laplacian
+    addL = kwargs.pop('additional_laplacian', None)
+    if addL is not None:
+        logger.debug('additional laplacian in solve at once')
+        addL = addL[unknown,:][:,unknown]
+      
       
     ## solve RW system 
-    if not per_label:
+    if ground_truth is not None or not per_label:
         x = solve_at_once(
-            Lu,B,list_xm,list_Omega,list_x0, list_GT=list_GT, **kwargs)
+            Lu,B,list_xm,list_Omega,list_x0, 
+            list_GT=list_GT, list_GT_init=list_GT_init, 
+            additional_laplacian=addL,**kwargs)
     else:
         x = solve_per_label(
             Lu,B,list_xm,list_Omega,list_x0,**kwargs)
@@ -158,14 +167,16 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
     Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
-                
-     
+
+    addL = kwargs.pop('additional_laplacian',sparse.csr_matrix(LL.shape))
+    import ipdb; ipdb.set_trace()
+    
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     logger.debug(
         'solve RW at once with solver="{}"'.format(optim_solver))
         
-    P = LL + Omega
+    P = LL + Omega + addL
     q = BB*xm - Omega*x0
 
     if P.nnz==0:
@@ -238,37 +249,37 @@ def solve_qp(P,q,**kwargs):
     reload(solver)  ## TODO: tolerance bug ? (fails if tol < 1e-13)
     return solver.solve_qp(P,q,**kwargs)
     
-def solve_qp_ground_truth(P,q,GT,nlabel,x0,**kwargs):
+def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     import solver_qp_constrained as solver
     reload(solver)
     
     GT = np.asarray(list_GT).T
     
     ''' Ax >= b '''
-    N = Lu.shape[0]
-    S = np.cumsum(GT,axis=0)
+    N = P.shape[0]/nlabel
+    S = np.cumsum(GT,axis=1)
     i_ = np.where(~GT)
     rows = (i_[1]-S[i_])*N + i_[0]
     cols =  i_[1]*N + i_[0]
     
-    G = coo_matrix(
+    G = sparse.coo_matrix(
         (-np.ones(len(rows)), (rows,cols)),
         shape=(N*(nlabel-1),N*nlabel),
         ).tocsr()
     
     G = G + sparse.bmat(
-        [[sparse.spdiags(list_gt[l],0,*Lu.shape) for l in range(label)] \
+        [[sparse.spdiags(list_GT[l],0,N,N) for l in range(nlabel)] \
             for l2 in range(nlabel-1)]
         )
     h = kwargs.pop('ground_truth_margin',0.0)
-    xinit = kwargs.pop('ground_truth_init',None)
-    if xinit is None:
-        xinit = np.ones(q.shape)/nlabel
-    
-        
-    import ipdb; ipdb.set_trace() ## to check ...
 
-        
+    ## initial guess
+    list_GT_init = kwargs.pop('list_GT_init',None)
+    if list_GT_init is None:
+        xinit = np.asmatrix(np.asarray(list_GT).ravel()).T
+    else:
+        xinit = np.asmatrix(np.asarray(list_GT_init).ravel()).T
+    
     ## quadratic objective
     objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
     
@@ -282,9 +293,8 @@ def solve_qp_ground_truth(P,q,GT,nlabel,x0,**kwargs):
         mu=mu,
         epsilon=epsilon,
         )
-    
-    ## remove zero entries in initial guess
-    x = solver.solve(x0, **kwargs)
+        
+    x = solver.solve(xinit, **kwargs)
     return x
 
     
