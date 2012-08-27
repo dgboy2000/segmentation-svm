@@ -357,6 +357,6 @@ def laplacian_loss(ground_truth):
         for l2 in range(nlabel)
         ])
     D_loss = np.asarray(A_loss.sum(axis=0)).ravel()
-    L_loss = sparse.spdiags(D_loss,0,size,size) - A_loss
+    L_loss = sparse.spdiags(D_loss,*A_loss.shape) - A_loss
 
     return weight*L_loss.tocsr()
