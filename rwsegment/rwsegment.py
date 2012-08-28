@@ -168,8 +168,9 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
     Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
 
-    addL = kwargs.pop('additional_laplacian',sparse.csr_matrix(LL.shape))
-    import ipdb; ipdb.set_trace()
+    addL = kwargs.pop('additional_laplacian',None)
+    if addL is None:
+        addL = sparse.csr_matrix(LL.shape)
     
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
@@ -178,6 +179,8 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
         
     P = LL + Omega + addL
     q = BB*xm - Omega*x0
+    # c = x0.T*Omega*x0
+    c = 0
 
     if P.nnz==0:
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -185,10 +188,10 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     else:
         if list_GT!=[]:
             ## ground truth constrained
-            x = solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs) ## TODO 
+            x = solve_qp_ground_truth(P,q,list_GT,nlabel,c=c,**kwargs) ## TODO 
         elif optim_solver=='constrained':
             ## probability distribution constrained
-            x = solve_qp_constrained(P,q,nlabel,x0,**kwargs)
+            x = solve_qp_constrained(P,q,nlabel,x0,c=c,**kwargs)
         elif optim_solver=='unconstrained':
             ## unconstrained
             x = solve_qp(P, q, **kwargs)

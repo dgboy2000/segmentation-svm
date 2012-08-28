@@ -9,9 +9,12 @@ class ObjectiveAPI(object):
         self.q = q
         self.iconst = (G,h)
         self.eqconst = F
+        
+        ## constant term
+        self.c = kwargs.pop('c',0)
 
     def __call__(self,x):
-        return 0.5 * x.T * self.P * x + self.q.T * x #+ self.c
+        return 0.5 * x.T * self.P * x + self.q.T * x + self.c
             
     def gradient(self,x):
         'Px + q'
@@ -119,7 +122,7 @@ class ConstrainedSolver(object):
                 
             # solve with Newton' method
             u0 = np.asmatrix(np.zeros(nvar)).T
-            import ipdb; ipdb.set_trace() ## to check ...
+            # import ipdb; ipdb.set_trace() ## to check ...
             u = solver.solve(u0)
 
             F = self.F
