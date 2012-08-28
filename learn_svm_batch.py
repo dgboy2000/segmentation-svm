@@ -397,12 +397,12 @@ class SVMSegmenter(object):
 if __name__=='__main__':
     from optparse import OptionParser
     opt = OptionParser()
-    opt.add_option( # laplacian parameter
+    opt.add_option( # use parallet
         '-p', '--parallel', dest='parallel', 
         action="store_true", default=False,
         help='use parallel',
         )
-    opt.add_option( # laplacian parameter
+    opt.add_option( # use latent
         '-l', '--latent', dest='latent', 
         action="store_true", default=False,
         help='latent svm',
