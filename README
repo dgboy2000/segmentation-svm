@@ -4,7 +4,8 @@ To get this code working on a new machine:
 2. Install Install MOSEK and its python API
 3. Make sure openmpi is installed (so mpirun command is recognized)
 4. Install mpi4py module
-5. Add the data and output directories for your machine to config.py 
+5. Add the data and output directories for your machine to config.py
+6. easy_install psutil
 
 
 Here is a sample .profile file that properly prepares the environment for a run:
