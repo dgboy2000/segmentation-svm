@@ -131,14 +131,22 @@ class SVMRWMeanAPI(object):
     
 
     def compute_loss(self,z,y_):
-        ''' 1 - (z.y_)/nnode '''
         if np.sum(y_<-1e-8) > 0:
+            ##import ipdb; ipdb.set_trace()
             logger.error('negative values in y_')
-    
-        nnode = z.size/float(self.nlabel)
-        return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
-
-## psi
+                
+        if self.loss_type == 'anchor':
+            ''' 1 - (z.y_)/nnode '''
+            nnode = z.size/float(self.nlabel)
+            return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
+        elif self.loss_type == 'laplacian':
+            L = laplacian_loss(z)
+            yy = np.asmatrix(np.asarray(y_).ravel()).T
+            return yy.T*L*yy
+        else:
+           raise Exception('wrong loss type')
+           sys.exit(1)
+## psi  
 
     def compute_psi(self, x,y):
         ''' - sum(a){Ea(x,y)} '''
@@ -212,7 +220,7 @@ class SVMRWMeanAPI(object):
         elif self.loss_type=='laplacian':
             loss = None
             loss_weight = None
-            L_loss = laplacian_loss(z)
+            L_loss = (-1.0)*laplacian_loss(z)
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
@@ -341,22 +349,25 @@ class SVMRWMeanAPI(object):
                 
 #-------------------------------------------------------------------------------
 ##------------------------------------------------------------------------------
-def laplacian_loss(ground_truth):
+def laplacian_loss(ground_truth,y=None):
     from scipy import sparse
     
     gt = ground_truth
     size = ground_truth[0].size
     nlabel = len(ground_truth)
             
-    ## TODO: change weight
-    weight = 1.
+    ## TODO: max loss is with uniform probability
+    weight = 1.0/float((nlabel-1)*size)
             
     A_loss = sparse.bmat([
-        [sparse.spdiags(gt[l1]&(~gt[l2]),0,size,size) \
-            for l1 in range(nlabel)] \
+        [sparse.coo_matrix((size,size)) for l11 in range(l2)] +
+        [sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size) \
+            for l12 in range(l2,nlabel)] \
         for l2 in range(nlabel)
         ])
+    A_loss = A_loss + A_loss.T
+    import ipdb; ipdb.set_trace() ## not working
     D_loss = np.asarray(A_loss.sum(axis=0)).ravel()
-    L_loss = sparse.spdiags(D_loss,*A_loss.shape) - A_loss
+    L_loss = sparse.spdiags(D_loss,0,*A_loss.shape) - A_loss
 
-    return weight*L_loss.tocsr()
+    return -weight*L_loss.tocsr()

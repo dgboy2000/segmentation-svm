@@ -182,6 +182,12 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     # c = x0.T*Omega*x0
     c = 0
 
+    
+    ## compute tolerance depending on the Laplacian
+    rtol = kwargs.pop('rtol', 1e-6)
+    tol = np.max(P.data)*rtol
+    logger.debug('absolute CG tolerance = {}'.format(tol))
+    
     if P.nnz==0:
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
         x = (1 - (q>0))/(nlabel - 1)
@@ -194,7 +200,7 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
             x = solve_qp_constrained(P,q,nlabel,x0,c=c,**kwargs)
         elif optim_solver=='unconstrained':
             ## unconstrained
-            x = solve_qp(P, q, **kwargs)
+            x = solve_qp(P, q, tol=tol,**kwargs)
         else:
             raise Exception('Did not recognize solver: {}'.format(optim_solver))
     return x.reshape((nlabel,-1))
