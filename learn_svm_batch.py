@@ -86,9 +86,9 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
-        # self.training_vols = ['02/'] ## debug
+        self.training_vols = ['02/'] ## debug
         # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
@@ -96,7 +96,7 @@ class SVMSegmenter(object):
             'labelset':self.labelset,
             
             # optimization
-            'rtol': 1e-5,
+            'rtol': 1e-6,#1e-5,
             'maxiter': 1e3,
             'per_label':True,
             'optim_solver':'unconstrained',
@@ -397,12 +397,12 @@ class SVMSegmenter(object):
 if __name__=='__main__':
     from optparse import OptionParser
     opt = OptionParser()
-    opt.add_option( # laplacian parameter
+    opt.add_option( # use parallet
         '-p', '--parallel', dest='parallel', 
         action="store_true", default=False,
         help='use parallel',
         )
-    opt.add_option( # laplacian parameter
+    opt.add_option( # use latent
         '-l', '--latent', dest='latent', 
         action="store_true", default=False,
         help='latent svm',
@@ -415,12 +415,13 @@ if __name__=='__main__':
     (options, args) = opt.parse_args()
     use_parallel = bool(options.parallel)
     use_latent = bool(options.latent)
-    
-    
+    loss_type = options.loss
+
     ''' start script '''
     svm_segmenter = SVMSegmenter(
         use_parallel=use_parallel,
         use_latent=use_latent,
+        loss_type=loss_type,
         )
     sample_list = ['01/']
     
