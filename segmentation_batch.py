@@ -44,9 +44,9 @@ class SegmentationBatch(object):
             }
         
         # laplacian_type = 'std_b50'
-        laplacian_type = 'inv_b100o1'
+        #laplacian_type = 'inv_b100o1'
         # laplacian_type = 'pdiff_r1b10'
-        # laplacian_type = 'pdiff_r2b10'
+        laplacian_type = 'pdiff_r2b10'
         logger.info('laplacian type is: {}'.format(laplacian_type))
         
         self.weight_functions = {
@@ -115,6 +115,7 @@ class SegmentationBatch(object):
             )
             
         ## start segmenting
+	#import ipdb; ipdb.set_trace()
         sol = rwsegment.segment(
             nim, 
             anchor_api,

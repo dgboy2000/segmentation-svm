@@ -145,12 +145,15 @@ class Allocator:
 
 
 ''' load library '''
-if platform.architecture()[0]=='64bit': build_dir = 'build64'
-else: build_dir = 'build32'
-
-config = 'Release'
-# config = 'Debug'
-libpath = 'lfunctions/%s/%s/lfunctions.dll' %(build_dir, config)
+if sys.platform[:3]=='win':
+    if platform.architecture()[0]=='64bit': build_dir = 'build64'
+    else: build_dir = 'build32'
+    
+    config = 'Release'
+    # config = 'Debug'
+    libpath = 'lfunctions/%s/%s/lfunctions.dll' %(build_dir, config)
+else:
+    libpath = 'lfunctions/build/libs/liblfunctions.so'
 path = os.path.abspath(os.path.dirname(__file__))
 if not len(path):
     path = './'

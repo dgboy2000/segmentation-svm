@@ -20,8 +20,11 @@ typedef void*(*Allocator)(int, unsigned int*, char*, char*);
 extern "C" {
 #endif
 
-extern __declspec(dllexport) 
-
+#ifdef _WIN32
+  extern __declspec(dllexport) 
+#elif _WIN64
+  extern __declspec(dllexport)
+#endif 
 ///-----------------------------------------------------------------------------
 /** patch difference
  */
@@ -37,7 +40,7 @@ int patch_diff_3d(
     unsigned int Ni = shape[0], Nj = shape[1], Nk = shape[2];
     unsigned int R0 = radius[0], R1 = radius[1];
     
-    typedef std::list<std::pair<unsigned int, unsigned int>> IndiceType;
+    typedef std::list<std::pair<unsigned int, unsigned int> > IndiceType;
     IndiceType indices;
     std::list<float> values;
     
@@ -86,10 +89,10 @@ int patch_diff_3d(
                 int j2 = j1 + (int)(dim[1]==1?step:0);
                 int k2 = k1 + (int)(dim[2]==1?step:0);
                 
-                // std::cout 
-                    // << "\tpos" << i1 << " " << j1 << " " << k1 << "\n"
-                    // << "\tpos" << i2 << " " << j2 << " " << k2 << "\n"
-                    // ;
+                //std::cout 
+                //    << "\tpos" << i1 << " " << j1 << " " << k1 << "\n"
+                //    << "\tpos" << i2 << " " << j2 << " " << k2 << "\n"
+                //    ;
                 
                 if (ISIN(i1,j1,k1)&&ISIN(i2,j2,k2))
                 {
@@ -105,10 +108,10 @@ int patch_diff_3d(
                     else
                         nv += 1;
                     
-                    // std::cout 
-                        // << "\tpos" << GETID(i1,j1,k1) << ": " << v1 << "\n"
-                        // << "\tpos" << GETID(i2,j2,k2) << ": " << v2 << "\n"
-                        // ;
+                    //std::cout 
+                    //    << "\tpos" << GETID(i1,j1,k1) << ": " << v1 << "\n"
+                    //    << "\tpos" << GETID(i2,j2,k2) << ": " << v2 << "\n"
+                    //    ;
                 }
             }
             
@@ -120,14 +123,16 @@ int patch_diff_3d(
     
     // allocate output
     unsigned int lshape[] = {(unsigned int)indices.size(),2};
-    int *inds = (int*) allocator(2, lshape, "int", "ij");
+    typedef long long int int64; 
+    typedef double float64;
+    int64 *inds = (int64*) allocator(2, lshape, "int64", "ij");
     unsigned int vshape[] = {lshape[0]};
-    float *vals = (float*) allocator(1,vshape, "float32", "data");
+    float64 *vals = (float64*) allocator(1,vshape, "float64", "data");
     
     IndiceType::const_iterator iindices = indices.begin();
     std::list<float>::const_iterator ivalues = values.begin();
-    int *iinds = inds;
-    float *ivals = vals;
+    int64 *iinds = inds;
+    float64 *ivals = vals;
     for (; iindices!=indices.end(); ++iindices, ++ivalues, ++iinds, ++ivals)
     {
         (*iinds) = iindices->first;
