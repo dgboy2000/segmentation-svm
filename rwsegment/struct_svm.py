@@ -389,6 +389,10 @@ class StructSVM(object):
         while 1:
             logger.info("iteration #{}".format(niter))
             
+            # garbage collect to save memory on each iteration
+            import gc
+            gc.collect()
+            
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
             # import ipdb; ipdb.set_trace()
