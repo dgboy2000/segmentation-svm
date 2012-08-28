@@ -358,15 +358,26 @@ def laplacian_loss(ground_truth,y=None):
             
     ## TODO: max loss is with uniform probability
     weight = 1.0/float((nlabel-1)*size)
-            
-    A_loss = sparse.bmat([
-        [sparse.coo_matrix((size,size)) for l11 in range(l2)] +
-        [sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size) \
-            for l12 in range(l2,nlabel)] \
-        for l2 in range(nlabel)
-        ])
+
+    import ipdb; ipdb.set_trace() ## not working            
+    A_blocks = []
+    for l2 in range(nlabel):
+        A_blocks_row = []
+        for l11 in range(l2):
+            A_blocks_row.append(sparse.coo_matrix((size,size)))
+        for l12 in range(l2,nlabel):
+            A_blocks_row.append(sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size))
+        A_blocks.append(A_blocks_row)
+    A_loss = sparse.bmat(A_blocks)
+    
+    # A_loss = sparse.bmat([
+    #     [sparse.coo_matrix((size,size)) for l11 in range(l2)] +
+    #     [sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size) \
+    #         for l12 in range(l2,nlabel)] \
+    #     for l2 in range(nlabel)
+    #     ])
+        
     A_loss = A_loss + A_loss.T
-    import ipdb; ipdb.set_trace() ## not working
     D_loss = np.asarray(A_loss.sum(axis=0)).ravel()
     L_loss = sparse.spdiags(D_loss,0,*A_loss.shape) - A_loss
 
