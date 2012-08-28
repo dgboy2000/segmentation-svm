@@ -50,7 +50,7 @@ class StructSVM(object):
         
         self.psi_scale = kwargs.pop('psi_scale', 1.0)
         
-        self.use_parallel = kwargs.pop('use_parallel', True)
+        self.use_parallel = kwargs.pop('use_parallel', False)
         
         
     def parallel_mvc(self,w):

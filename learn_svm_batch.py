@@ -58,7 +58,10 @@ logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
 
 class SVMSegmenter(object):
 
-    def __init__(self,use_parallel=True, use_latent=False):
+    def __init__(self,
+            use_parallel=True, 
+            use_latent=False,
+            loss_type='anchor'):
     
         ## paths
         # current_code_version = commands.getoutput('git rev-parse HEAD')
@@ -75,9 +78,7 @@ class SVMSegmenter(object):
         self.retrain = True
         self.force_recompute_prior = False
         self.use_parallel = use_parallel
-        
-        if not self.use_parallel:
-            logger.warning('parallel is off')
+
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -103,7 +104,7 @@ class SVMSegmenter(object):
         
         ## parameters for svm api
         self.svm_api_params = {
-            'loss_type': 'laplacian',#'anchor',
+            'loss_type': loss_type,#'laplacian',#'anchor',
             }
             
         ## parameters for rw inference
@@ -122,7 +123,7 @@ class SVMSegmenter(object):
         self.svmparams = {
             'C': 1,
             'nitermax':100,
-            'use_parallel': self.use_parallel,
+            
             
             # latent
             'latent_niter_max': 100,
@@ -134,11 +135,12 @@ class SVMSegmenter(object):
         ## weight functions
         self.weight_functions = {
             # 'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
-            'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
+            # 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
             # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
             # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
-            # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
-            # 'pdiff_r1b100': lambda im: wflib.weight_patch_diff(im, r0=1, beta=100),
+            'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
+            'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
+            'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
             }
         
         
@@ -170,14 +172,21 @@ class SVMSegmenter(object):
             self.MPI_rank = self.comm.Get_rank()
             self.MPI_size = self.comm.Get_size()
             self.isroot = self.MPI_rank==0
+            if self.MPI_size==1:
+                logger.warning('Found only one process. Not using parallel')
+                self.use_parallel = False
+            self.svmparams['use_parallel'] = self.use_parallel
+            self.svmparams['latent_use_parallel'] = self.use_parallel
         else:
             self.isroot = True
             
         if self.isroot:
+            logger.info('using parallel?: {}'.format(use_parallel))
             strkeys = ', '.join(self.weight_functions.keys())
             logger.info('laplacian functions (in order):{}'.format(strkeys))
             strkeys = ', '.join(self.prior_models.keys())
             logger.info('prior models (in order):{}'.format(strkeys))
+            logger.info('using loss type:{}'.format(loss_type))
         
         
     def train_svm(self,test):
@@ -397,6 +406,11 @@ if __name__=='__main__':
         '-l', '--latent', dest='latent', 
         action="store_true", default=False,
         help='latent svm',
+        )
+    opt.add_option( # loss type
+        '-o', '--loss', dest='loss', 
+        default='anchor', type=str,
+        help='loss type ("anchor", "laplacian")',
         )
     (options, args) = opt.parse_args()
     use_parallel = bool(options.parallel)

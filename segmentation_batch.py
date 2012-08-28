@@ -4,6 +4,7 @@ from scipy import ndimage
 
 from rwsegment import io_analyze
 from rwsegment import rwsegment
+from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment_prior_models as prior_models
 from rwsegment.rwsegment import  BaseAnchorAPI
 reload(rwsegment)
@@ -42,6 +43,23 @@ class SegmentationBatch(object):
             'maxiter'   : 2e3,
             }
         
+        # laplacian_type = 'std_b50'
+        laplacian_type = 'inv_b100o1'
+        # laplacian_type = 'pdiff_r1b10'
+        # laplacian_type = 'pdiff_r2b10'
+        logger.info('laplacian type is: {}'.format(laplacian_type))
+        
+        self.weight_functions = {
+            'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+            'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
+            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+            'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
+            'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
+            'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
+            'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
+            }
+        self.weight_function = self.weight_functions[laplacian_type]
+            
         self.anchor_weight = anchor_weight
         
         if self.model_type=='constant': 
@@ -102,6 +120,7 @@ class SegmentationBatch(object):
             anchor_api,
             seeds=seeds, 
             labelset=self.labelset, 
+            weight_function=self.weight_function,
             **self.params
             )
             
@@ -127,9 +146,9 @@ if __name__=='__main__':
     # segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
     # segmenter = SegmentationBatch(anchor_weight=1e-1,    model_type='uniform')
     # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
-    # segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
-    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
-    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='combined')
+    segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
+    # segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    # segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='combined')
     
     sample_list = ['01/']
     # sample_list = config.vols
