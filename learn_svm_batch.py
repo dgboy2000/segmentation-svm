@@ -86,9 +86,9 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
-        # self.training_vols = ['02/'] ## debug
+        self.training_vols = ['02/'] ## debug
         # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
