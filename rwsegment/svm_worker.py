@@ -17,20 +17,13 @@ class SVMWorker(object):
         
         
     def do_mvc(self,data):
-        nproc = self.comm.Get_size()
-        inds,w,S = data
-        
+        # Receive the specified number of tuples
+        mvc_data = self.receive_n_items(data)
         ys = []
-        # ntrain = len(S)
-        # for i in range(ntrain):
-        for i,ind in enumerate(inds):
-            # if (np.mod(i, nproc-1) + 1) != self.rank:
-                # continue
-                
+        for ind,w,x,z in mvc_data:
             logger.debug('worker #{}: MVC on sample #{}'\
                 .format(self.rank, ind))
-            
-            x,z = S[i]
+
             y_ = self.api.compute_mvc(w,x.data,z.data, exact=True)
             ys.append((ind, DataContainer(y_)))
             
@@ -43,9 +36,7 @@ class SVMWorker(object):
         gc.collect()
             
     def do_psi(self,data):
-        nproc = self.comm.Get_size()
-
-        # Receive the specified number of psis
+        # Receive the specified number of tuples
         psi_data = self.receive_n_items(data)
         psis = []
         
@@ -64,18 +55,16 @@ class SVMWorker(object):
         
         gc.collect()
         
-    def do_aci(self, data):
-        nproc = self.comm.Get_size()
-        inds,w,S = data
-        ntrain = len(S)
+    def do_aci(self, data):        
+        # Receive the specified number of tuples
+        aci_data = self.receive_n_items(data)
         ys = []
         
-        for i,ind in enumerate(inds):        
+        for ind,w,x,y0,z in aci_data:        
             logger.debug('worker #{}: ACI on sample #{}'\
                 .format(self.rank, ind))
             
-            x,z,y0 = S[i]
-            y = self.api.compute_aci(w,x,z,y0)
+            y_ = self.api.compute_aci(w,x,z,y0)
             ys.append((ind, DataContainer(y_)))
             
         ## send data
@@ -83,15 +72,15 @@ class SVMWorker(object):
             logger.debug('worker #{} sending back ACI for sample #{}'\
                 .format(self.rank, i))
             self.comm.send(y_, dest=0, tag=i)
+            
         gc.collect()
         
     
-    def receive_n_items(self, size):
-        nproc = self.comm.Get_size()
+    def receive_n_items(self, n):
         item_list = []
-        for i in range(size):
+        for i in range(n):
             logger.debug('Worker {} about to receive data item {} of {}'\
-                .format(self.rank, i+1, size))
+                .format(self.rank, i+1, n))
             item = self.comm.recv(None,source=0)
             item_list.append(item)
         return item_list

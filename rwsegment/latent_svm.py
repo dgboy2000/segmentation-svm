@@ -48,8 +48,10 @@ class LatentSVM(object):
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
-            data = (inds,w,[(xs[i],zs[i],y0s[i]) for i in inds])
-            comm.send(('aci',data), dest=n)
+            comm.send(('aci',len(inds)), dest=n)
+            for i in inds:
+                comm.send((i,w,xs[i],y0s[i],zs[i]), dest=n)
+                
 
         ys = []
         for i in range(ntrain):

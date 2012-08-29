@@ -53,8 +53,8 @@ def weight_inv(image, beta=1., offset=1.):
         for d in range(im.ndim)
         ])]
     data = 1. / (offset + beta*data)
-    print '(weight value spread: {:.2}-{:.2})'.format(
-        np.min(data), np.max(data))
+    # print '(weight value spread: {:.2}-{:.2})'.format(
+    #     np.min(data), np.max(data))
     
     
     ## affinity matrix sparse indices

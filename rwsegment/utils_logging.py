@@ -23,7 +23,7 @@ class LoggerInfo:
         if name == 'memory':
             result = self._format_free_memory()
         elif name == 'rank':
-            result = 'process #{}'.format(MPI.COMM_WORLD.Get_rank())
+            result = 'process {}'.format(MPI.COMM_WORLD.Get_rank())
         else:
             result = self.__dict__.get(name, '?')
         return result
