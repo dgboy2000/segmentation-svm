@@ -56,8 +56,6 @@ class StructSVM(object):
     def parallel_mvc(self,w):
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
-        # data = (w, self.S)
-        # comm.bcast(('mvc',data),root=0)
         
         ntrain = len(self.S)
         size = comm.Get_size()
@@ -82,8 +80,6 @@ class StructSVM(object):
         comm = MPI.COMM_WORLD
         
         ## send training data and cutting plane
-        # data = (self.S,ys)
-        # comm.bcast(('psi',data),root=0)
         ntrain = len(self.S)
         size = comm.Get_size()
         indices = np.arange(ntrain)
@@ -93,7 +89,6 @@ class StructSVM(object):
                 data = (inds,[self.S[i] for i in inds],None)
             else:
                 data = (inds,[self.S[i] for i in inds],[ys[i] for i in inds])
-            # source_id = np.mod(i,comm.Get_size()-1) + 1
             comm.send(('psi',data), dest=n)
     
         ## get the psis back
@@ -101,7 +96,6 @@ class StructSVM(object):
         ntrain = len(self.S)
         psis = []
         for i in range(ntrain):          
-            ## send to workers
             ## recieve from workers
             source_id = np.mod(i,comm.Get_size()-1) + 1
             psi = comm.recv(source=source_id,tag=i)
@@ -123,6 +117,9 @@ class StructSVM(object):
             st. for all (y1_,...yn_) in W
                 1/n wt sum(k){psi(xk,yk) - psi(xk,yk_)} 
                     >= 1/n sum(k) {loss(yk,yk_) - xi
+                    
+        Our data structure:
+        W = [{'psis':[],'losses':[]}, {'psis':[],'losses':[]}]
         '''
         import mosek
         import sys
@@ -178,9 +175,6 @@ class StructSVM(object):
         ## psi(x,z)
         Ssize = len(self.S)
         avg_psi_gt = [0 for i in range(self.wsize)]
-        # for s in self.S:
-            # for i_p,p in enumerate(self.psi(*s)): 
-                # avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
         for psi in self.compute_all_psi():
             for i_p,p in enumerate(psi):
                 avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
@@ -188,33 +182,19 @@ class StructSVM(object):
         
         ## set the constraints
         for j in range(NUMCON): 
-         
-            ## psi(x,y_)
-            avg_psi = [0 for i in range(self.wsize)]
-
-            avg_loss = 0
             
-            '''
-            for i_y,y_ in enumerate(W[j]):
-                # average loss
-                avg_loss += \
-                    1. / float(Ssize) *\
-                    self.loss(self.S[i_y][1], y_) 
-                
-                # average psi
-                for i_p,p in enumerate(self.psi(self.S[i_y][0],y_)): 
-                    avg_psi[i_p] += p / float(Ssize)
-            '''
-            for i, psi in enumerate(self.compute_all_psi(W[j])):
-                y_ = W[j][i]
-                # average loss
-                avg_loss += \
-                    1. / float(Ssize) *\
-                    self.loss(self.S[i][1], y_) 
-
-                # average psi
+            ## psi(x,y_)
+            # average psi
+            avg_psi = [0 for i in range(self.wsize)]
+            for psi in W[j]['psis']:
                 for i_p,p in enumerate(psi):
                     avg_psi[i_p] += 1.0/ float(Ssize) * p
+                    
+            # average loss
+            avg_loss = 0
+            for loss in W[j]['losses']:
+                avg_loss += \
+                    1. / float(Ssize) * loss
             
             ## psi(x,y_) - psi(x,z)
             aval = \
@@ -287,23 +267,6 @@ class StructSVM(object):
         w,xi = xx[:self.wsize], xx[-1]
         
         return w,xi
-        
-    # def stop_condition(self,w,xi,ys):
-        # cond = 0
-        # for s,y_ in zip(self.S,ys):
-            # x,z = s
-            # cond += self.loss(z,y_)
-            # psi_xy_ = self.psi(x,y_)
-            # psi_xz  = self.psi(x,z)
-            # for i in range(len(w)):
-                # cond -= w[i]*(psi_xy_[i] - psi_xz[i])
-        
-        # cond /= float(len(self.S))
-        
-        # if cond <= xi + self.epsilon:
-            # return True
-        # else:
-            # return False
             
             
     def stop_condition(self,w,xi,ys):
@@ -424,8 +387,12 @@ class StructSVM(object):
                         import ipdb; ipdb.set_trace()
             # logger.debug("ys={}".format(ys))
             
+            ## compute psis and losses:
+            psis = list(self.compute_all_psi(ys))
+            losses = [self.loss(self.S[i][1], y_) for i,y_ in enumerate(ys)]
+            
             ## add to test set
-            W.append(ys)
+            W.append({'psis': psis, 'losses': losses})
             
             ## stop condition
             if self.stop_condition(w,xi,ys): 
