@@ -20,9 +20,9 @@
 ##PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
 
 # Params for icemem48gbq
-#PBS -l select=1:ncpus=12:mpiprocs=5:mem=44gb
+#PBS -l select=1:ncpus=12:mpiprocs=6:mem=44gb
 #PBS -l walltime=23:59:00
-NP=5
+NP=6
 #
 ## Params for icemem72gbq
 ##PBS -l select=1:ncpus=12:mpiprocs=7:mem=68gb
@@ -35,9 +35,9 @@ NP=5
 # NP=33
 #
 ## Params for icetestq
-##PBS -l select=1:ncpus=12:mpiprocs=3:mem=22gb
+##PBS -l select=1:ncpus=12:mpiprocs=6:mem=22gb
 ##PBS -l walltime=00:19:59
-# NP=3
+# NP=6
 
 # queueName
 #PBS -q iceq
