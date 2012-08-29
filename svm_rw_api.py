@@ -128,21 +128,28 @@ class SVMRWMeanAPI(object):
         
         self.seeds = seeds
         self.rwparams = rwparams
-    
+        self.mask = np.asarray([seeds.ravel()<0 for i in range(self.nlabel)])
 
     def compute_loss(self,z,y_):
-        if np.sum(y_<-1e-8) > 0:
-            ##import ipdb; ipdb.set_trace()
-            logger.error('negative values in y_')
-                
+        if np.sum(y_<-1e-6) > 0:
+            logger.warning('negative (<1e-6) values in y_')
+
         if self.loss_type == 'anchor':
             ''' 1 - (z.y_)/nnode '''
             nnode = z.size/float(self.nlabel)
             return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
         elif self.loss_type == 'laplacian':
-            L = laplacian_loss(z)
+            L = laplacian_loss(z,mask=self.mask)
             yy = np.asmatrix(np.asarray(y_).ravel()).T
-            return yy.T*L*yy
+            loss = float(yy.T*L*yy)
+	    if self.mask is not None:
+                dice = 1 - np.sum(self.mask*np.abs(y_-z))\
+                    /float(np.sum(self.mask[0]))/2.0
+            else:
+                dice = 1 - np.sum(np.abs(y_-z))/float(z.shape[1])/2.0
+            logger.debug('for dice={:.2}, loss={:.2}'.format(dice, loss))
+            #import ipdb; ipdb.set_trace()
+            return loss 
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
@@ -220,7 +227,7 @@ class SVMRWMeanAPI(object):
         elif self.loss_type=='laplacian':
             loss = None
             loss_weight = None
-            L_loss = (-1.0)*laplacian_loss(z)
+            L_loss = (-1.0)*laplacian_loss(z, mask=self.mask)
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
@@ -349,27 +356,34 @@ class SVMRWMeanAPI(object):
                 
 #-------------------------------------------------------------------------------
 ##------------------------------------------------------------------------------
-def laplacian_loss(ground_truth,y=None):
+def laplacian_loss(ground_truth, mask=None):
     from scipy import sparse
     
-    gt = ground_truth
     size = ground_truth[0].size
+    if mask is None:
+        gt = ground_truth
+        npix = size
+    else:
+        npix = np.sum(mask[0])
+        gt = ground_truth*mask
+
     nlabel = len(ground_truth)
             
     ## TODO: max loss is with uniform probability
-    weight = 1.0/float((nlabel-1)*size)
+    weight = 1.0/float((nlabel-1)*npix)
 
-    import ipdb; ipdb.set_trace() ## not working            
     A_blocks = []
     for l2 in range(nlabel):
         A_blocks_row = []
         for l11 in range(l2):
             A_blocks_row.append(sparse.coo_matrix((size,size)))
         for l12 in range(l2,nlabel):
-            A_blocks_row.append(sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size))
+            A_blocks_row.append(
+                sparse.spdiags(1.0*np.logical_xor(gt[l12],gt[l2]),0,size,size))
         A_blocks.append(A_blocks_row)
     A_loss = sparse.bmat(A_blocks)
-    
+     
+    #import ipdb; ipdb.set_trace() ## not working  
     # A_loss = sparse.bmat([
     #     [sparse.coo_matrix((size,size)) for l11 in range(l2)] +
     #     [sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size) \
