@@ -19,17 +19,17 @@
 ## mpiprocs is num. of train img + 1
 ##PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
 
-## Params for icemem48gbq
-##PBS -l select=1:ncpus=12:mpiprocs=5:mem=44gb
-##PBS -l walltime=23:59:00
+# Params for icemem48gbq
+#PBS -l select=1:ncpus=12:mpiprocs=5:mem=44gb
+#PBS -l walltime=23:59:00
 #
 ## Params for icemem72gbq
 ##PBS -l select=1:ncpus=12:mpiprocs=7:mem=68gb
 ##PBS -l walltime=23:59:00
 #
-# Params for icepar156q
-#PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
-#PBS -l walltime=03:59:00
+## Params for icepar156q
+##PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
+##PBS -l walltime=03:59:00
 #
 ## Params for icetestq
 ##PBS -l select=1:ncpus=12:mpiprocs=3:mem=22gb
