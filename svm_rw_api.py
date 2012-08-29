@@ -143,11 +143,12 @@ class SVMRWMeanAPI(object):
             yy = np.asmatrix(np.asarray(y_).ravel()).T
             loss = float(yy.T*L*yy)
 	    if self.mask is not None:
-                dice = 1 - np.sum(self.mask*np.abs(y_-z))/float(z.shape[1])/2.0
+                dice = 1 - np.sum(self.mask*np.abs(y_-z))\
+                    /float(np.sum(self.mask[0]))/2.0
             else:
                 dice = 1 - np.sum(np.abs(y_-z))/float(z.shape[1])/2.0
             logger.debug('for dice={:.2}, loss={:.2}'.format(dice, loss))
-            import ipdb; ipdb.set_trace()
+            #import ipdb; ipdb.set_trace()
             return loss 
         else:
            raise Exception('wrong loss type')
@@ -363,7 +364,7 @@ def laplacian_loss(ground_truth, mask=None):
         gt = ground_truth
         npix = size
     else:
-        npix = np.sum(mask)
+        npix = np.sum(mask[0])
         gt = ground_truth*mask
 
     nlabel = len(ground_truth)
