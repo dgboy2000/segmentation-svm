@@ -43,5 +43,5 @@ NP=6
 #PBS -q iceq
 
 cd $HOME/segmentation-svm/
-mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian
+mpirun -np $NP python learn_svm_batch.py --parallel --latent
 

@@ -182,6 +182,7 @@ class SVMSegmenter(object):
             
         if self.isroot:
             logger.info('using parallel?: {}'.format(use_parallel))
+            logger.info('using latent?: {}'.format(use_latent))
             strkeys = ', '.join(self.weight_functions.keys())
             logger.info('laplacian functions (in order):{}'.format(strkeys))
             strkeys = ', '.join(self.prior_models.keys())
