@@ -32,7 +32,7 @@
 ##PBS -l walltime=03:59:00
 
 # Params for icetestq
-#PBS -l select=11:ncpus=12:mpiprocs=3:mem=22gb
+#PBS -l select=1:ncpus=12:mpiprocs=3:mem=22gb
 #PBS -l walltime=00:19:59
 
 # queueName
