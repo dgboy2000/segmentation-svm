@@ -44,23 +44,16 @@ class SVMWorker(object):
             
     def do_psi(self,data):
         nproc = self.comm.Get_size()
-        inds, S,ys = data
-        ntrain = len(S)
+
+        # Receive the specified number of psis
+        psi_data = self.receive_n_items(data)
         psis = []
-        # for i in range(ntrain):
-        for i,ind in enumerate(inds):
-            # if (np.mod(i, nproc-1) + 1) != self.rank:
-                # continue
-                
+        
+        for ind, x, y in psi_data:
             logger.debug('worker #{}: PSI for sample #{}'\
                 .format(self.rank, ind))
             
-            x,z = S[i]
-            if ys is None:
-                psi = self.api.compute_psi(x.data, z.data)
-            else:
-                psi = self.api.compute_psi(x.data, ys[i].data)
-                
+            psi = self.api.compute_psi(x.data, y.data)    
             psis.append((ind,psi))
             
         ## send data
@@ -92,11 +85,20 @@ class SVMWorker(object):
             self.comm.send(y_, dest=0, tag=i)
         gc.collect()
         
+    
+    def receive_n_items(self, size):
+        nproc = self.comm.Get_size()
+        item_list = []
+        for i in range(size):
+            logger.debug('Worker {} about to receive data item {} of {}'\
+                .format(self.rank, i+1, size))
+            item = self.comm.recv(None,source=0)
+            item_list.append(item)
+        return item_list
         
     def work(self,):
         while True:
             logger.debug('worker #{} about to receive next task'.format(self.rank))
-            # task,data = self.comm.bcast(None,root=0)
             task,data = self.comm.recv(None,source=0)
             
             nproc = self.comm.Get_size()

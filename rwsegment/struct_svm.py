@@ -85,11 +85,14 @@ class StructSVM(object):
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
-            if ys is None:
-                data = (inds,[self.S[i] for i in inds],None)
-            else:
-                data = (inds,[self.S[i] for i in inds],[ys[i] for i in inds])
-            comm.send(('psi',data), dest=n)
+            comm.send(('psi',len(inds)), dest=n)
+            for ind in inds:
+                x,z = self.S[ind]
+                if ys is None:                
+                    comm.send((ind,x,z), dest=n)
+                else:
+                    comm.send((ind,x,ys[ind]), dest=n)
+    
     
         ## get the psis back
         cond = 0
