@@ -39,5 +39,5 @@
 #PBS -q iceq
 
 cd $HOME/segmentation-svm/
-mpirun -np 33 python learn_svm_batch.py
+mpirun -np 33 python learn_svm_batch.py --parallel
 
