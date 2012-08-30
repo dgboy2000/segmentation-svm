@@ -33,7 +33,7 @@ class MetaAnchor():
         all_weights = 0
         
         ## prior models
-        for imodel, model in enumerate(self.prior_models.values()):
+        for imodel, model in enumerate(self.prior_models):
             api = model(
                 self.prior, 
                 anchor_weight=self.prior_weights[imodel],
@@ -58,45 +58,27 @@ class MetaAnchor():
 
 
 
-# class LossAnchorAPI(BaseAnchorAPI):    
-    # def __init__(
-            # self, 
-            # loss, 
-            # prior, 
-            # loss_weight=1.0,
-            # prior_weight=1.0,
-            # ):
-        # BaseAnchorAPI.__init__(self, prior)
-        # self.prior = prior
+## combine all weight functions
+class MetaLaplacianFunction(object):
+    def __init__(self,w,laplacian_functions):    
+        self.w = w
+        self.laplacian_functions = laplacian_functions
         
-        # self.loss = loss
-        # self.loss_weight = loss_weight
-        # self.prior_weight = prior_weight
-
-        
-    # def get_anchor_and_weights(self,D): 
-        ## constant prior for now
-        # prior_weights = self.prior_weight * np.ones(D.size) * D
-        
-        # anchor_weights = prior_weights + self.loss_weight
-        
-        # prior_data = self.prior['data']
-        # loss_data = self.loss['data'][:,self.imask]
-        
-        # anchor = {
-            # 'imask':self.prior['imask'],
-            # 'data':(prior_weights*prior_data + self.loss_weight*loss_data)/ \
-                  # anchor_weights,
-            # }
-        
-        # return anchor, anchor_weights
+    def __call__(self,im):
+        ''' meta weight function'''
+        data = 0
+        for iwf,wf in enumerate(self.laplacian_functions):
+            ij,_data = wf(im)
+            data += self.w[iwf]*_data
+        return ij, data
+            
         
         
 class SVMRWMeanAPI(object):
     def __init__(
             self, 
             prior, 
-            weight_functions,
+            laplacian_functions,
             labelset,
             rwparams,
             prior_models=None,  
@@ -110,7 +92,7 @@ class SVMRWMeanAPI(object):
         self.loss_type = kwargs.pop('loss_type','anchor')
         logger.info('using loss type: {}'.format(self.loss_type))
         
-        self.weight_functions = weight_functions
+        self.laplacian_functions = laplacian_functions
         
         if prior_models is None:
             anchor_api = BaseAnchorAPI
@@ -119,7 +101,7 @@ class SVMRWMeanAPI(object):
             self.prior_models = prior_models
         
         ## indices of w
-        nlaplacian = len(weight_functions)
+        nlaplacian = len(laplacian_functions)
         nprior = len(self.prior_models)
         self.indices_laplacians = np.arange(nlaplacian)
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
@@ -165,7 +147,7 @@ class SVMRWMeanAPI(object):
         
         ## energy value for each weighting function
         v = []
-        for wf in self.weight_functions.values():
+        for wf in self.laplacian_functions:
             
             v.append( 
                 rwsegment.energy_rw(
@@ -176,7 +158,7 @@ class SVMRWMeanAPI(object):
                 )/normalize)
                 
         ## energy for each prior models
-        for model in self.prior_models.values():
+        for model in self.prior_models:
             anchor_api = model( 
                 self.prior, 
                 anchor_weight=1.0,
@@ -205,18 +187,10 @@ class SVMRWMeanAPI(object):
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
             
         ## combine all weight functions
-        def meta_weight_function(im,_w):    
-            ''' meta weight function'''
-            data = 0
-            for iwf,wf in enumerate(self.weight_functions.values()):
-                ij,_data = wf(im)
-                data += _w[iwf]*_data
-            return ij, data
-            
-        weight_function = lambda im: meta_weight_function(
-                im, 
-                np.asarray(w)[self.indices_laplacians],
-                )
+        weight_function = MetaLaplacianFunction(
+            np.asarray(w)[self.indices_laplacians],
+            self.laplacian_functions,
+            )
                 
         ## loss type
         if self.loss_type=='anchor':
@@ -241,7 +215,6 @@ class SVMRWMeanAPI(object):
             loss_weight=loss_weight,
             image=x,
             )
-          
         
         
         ## best y_ most different from y
@@ -270,20 +243,17 @@ class SVMRWMeanAPI(object):
             )
     
         ## combine all weight functions
-        def wwf(im,_w):    
-            ''' meta weight function'''
-            data = 0
-            for iwf,wf in enumerate(self.weight_functions.values()):
-                ij,_data = wf(im)
-                data += _w[iwf]*_data
-            return ij, data
+        weight_function = MetaLaplacianFunction(
+            np.asarray(w)[self.indices_laplacians],
+            self.laplacian_functions,
+            )
             
         ## best y_ most different from y
         y_ = rwsegment.segment(
             x, 
             anchor_api,
             seeds=self.seeds,
-            weight_function=lambda im: wwf(im, w),
+            weight_function=weight_function,
             return_arguments=['y'],
             **self.rwparams
             )
@@ -313,24 +283,9 @@ class SVMRWMeanAPI(object):
     def compute_aci(self,w,x,z,y0):
         ''' annotation consistent inference'''
         
-        ## combine all weight functions
-        class MetaLaplacianFunction(object):
-            def __init__(self,w,weight_functions):    
-                self.w = w
-                self.weight_functions = weight_functions
-                
-            def __call__(self,im):
-                ''' meta weight function'''
-                data = 0
-                for iwf,wf in enumerate(self.weight_functions.values()):
-                    ij,_data = wf(im)
-                    data += self.w[iwf]*_data
-                return ij, data
-            
-        
         weight_function = MetaLaplacianFunction(
             np.asarray(w)[self.indices_laplacians],
-            self.weight_functions,
+            self.laplacian_functions,
             )
         
         ## combine all prior models

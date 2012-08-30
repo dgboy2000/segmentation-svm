@@ -61,7 +61,9 @@ class SVMSegmenter(object):
     def __init__(self,
             use_parallel=True, 
             use_latent=False,
-            loss_type='anchor'):
+            loss_type='anchor',
+            ntrain='all',
+            ):
     
         ## paths
         # current_code_version = commands.getoutput('git rev-parse HEAD')
@@ -86,9 +88,14 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
+        if ntrain in ['all']:
+            self.training_vols = config.vols
+        elif ntrain.isdigit():
+            n = int(ntrain)
+            self.training_vols = config.vols.keys()[:n]
         # self.training_vols = ['02/'] ## debug
         # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
@@ -151,9 +158,7 @@ class SVMSegmenter(object):
             'entropy': models.Entropy_no_D,
             'intensity': models.Intensity,
             }
-        
-        
-        
+
         ## indices of w
         nlaplacian = len(self.weight_functions)
         nprior = len(self.prior_models)
@@ -163,6 +168,12 @@ class SVMSegmenter(object):
         ## compute the scale of psi
         self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
         self.svmparams['psi_scale'] = self.psi_scale
+        
+        ## make arrays of function
+        self.laplacian_functions = self.weight_functions.values()
+        self.laplacian_names     = self.weight_functions.keys()
+        self.prior_functions     = self.prior_models.values()
+        self.prior_names         = self.prior_models.keys()
         
         ## parallel ?
         if self.use_parallel:
@@ -183,9 +194,9 @@ class SVMSegmenter(object):
         if self.isroot:
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(use_latent))
-            strkeys = ', '.join(self.weight_functions.keys())
+            strkeys = ', '.join(self.laplacian_names)
             logger.info('laplacian functions (in order):{}'.format(strkeys))
-            strkeys = ', '.join(self.prior_models.keys())
+            strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order):{}'.format(strkeys))
             logger.info('using loss type:{}'.format(loss_type))
         
@@ -218,10 +229,10 @@ class SVMSegmenter(object):
         
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
-            self.weight_functions, 
+            self.laplacian_functions, 
             self.labelset,
             self.rwparams_svm,
-            prior_models=self.prior_models,   
+            prior_models=self.prior_functions,   
             seeds=self.seeds,
             **self.svm_api_params
             )
@@ -300,7 +311,7 @@ class SVMSegmenter(object):
         def meta_weight_functions(im,_w):    
             ''' meta weight function'''
             data = 0
-            for iwf,wf in enumerate(self.weight_functions.values()):
+            for iwf,wf in enumerate(self.laplacian_functions):
                 ij,_data = wf(im)
                 data += _w[iwf]*_data
             return ij, data
@@ -324,7 +335,7 @@ class SVMSegmenter(object):
             # )
         anchor_api = MetaAnchor(
             self.prior,
-            self.prior_models,
+            self.prior_functions,
             weights_priors,
             image=im,
             )
@@ -413,16 +424,24 @@ if __name__=='__main__':
         default='anchor', type=str,
         help='loss type ("anchor", "laplacian")',
         )
+    opt.add_option( # nb training set
+        '-t', '--training', dest='ntrain', 
+        default='all', type=str,
+        help='number of training set (default: "all")',
+        )
+        
     (options, args) = opt.parse_args()
     use_parallel = bool(options.parallel)
     use_latent = bool(options.latent)
     loss_type = options.loss
+    ntrain = options.ntrain
 
     ''' start script '''
     svm_segmenter = SVMSegmenter(
         use_parallel=use_parallel,
         use_latent=use_latent,
         loss_type=loss_type,
+        ntrain=ntrain,
         )
     sample_list = ['01/']
     
