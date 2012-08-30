@@ -15,7 +15,7 @@ logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 def load_or_compute_prior_and_mask(test, force_recompute=False):
 
     labelset = np.asarray(config.labelset)
-    outdir = 'prior/' + test
+    outdir = config.dir_work+'/prior/' + test
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     
