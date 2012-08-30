@@ -21,6 +21,9 @@ import subprocess
 
 import numpy as np
 
+## Initialize logging before loading any modules
+import config
+reload(config)
 
 from rwsegment import io_analyze
 from rwsegment import weight_functions as wflib
@@ -47,12 +50,11 @@ reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
 from svm_rw_api import MetaAnchor
 
-## load volume names 
-import config
-reload(config)
+
 
 
 from rwsegment import utils_logging
+logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
 
 class SVMSegmenter(object):
 
@@ -64,22 +66,9 @@ class SVMSegmenter(object):
             ):
     
         ## paths
-        # current_code_version = commands.getoutput('git rev-parse HEAD')
-        if sys.platform[:3]=='win':
-            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
-        else:
-            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
         self.dir_reg = config.dir_reg
-        self.dir_log = config.dir_work + 'learning/{}'.format(current_code_version)
-        self.dir_inf = config.dir_work + 'learning/{}/inference/'.format(current_code_version)
-        self.dir_svm = config.dir_work + 'learning/{}/svm/'.format(current_code_version)
-        
-        ## Set up global logging to file
-        if not os.path.isdir(self.dir_log):
-            os.makedirs(self.dir_log)
-        utils_logging.LOG_OUTPUT_DIR = self.dir_log
-        logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
-        globals()['logger'] = logger
+        self.dir_inf = config.dir_inf
+        self.dir_svm = config.dir_svm
         
         ## params
         self.use_latent = use_latent

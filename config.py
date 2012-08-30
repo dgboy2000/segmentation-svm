@@ -91,7 +91,20 @@ else:
 
 
 
+## output paths
+if sys.platform[:3]=='win':
+  current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
+else:
+  current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
+dir_log = dir_work + 'learning/{}'.format(current_code_version)
+dir_inf = dir_work + 'learning/{}/inference/'.format(current_code_version)
+dir_svm = dir_work + 'learning/{}/svm/'.format(current_code_version)
 
+## Set up global logging to file
+from rwsegment import utils_logging
+if not os.path.isdir(dir_log):
+    os.makedirs(dir_log)
+utils_logging.LOG_OUTPUT_DIR = dir_log
 
 
 
