@@ -53,8 +53,7 @@ reload(config)
 
 
 from rwsegment import utils_logging
-logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
-
+logger = None # Will be initialized later
 
 class SVMSegmenter(object):
 
@@ -72,8 +71,15 @@ class SVMSegmenter(object):
         else:
             current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
         self.dir_reg = config.dir_reg
-        self.dir_inf = config.dir_work + 'learning/inference/{}/'.format(current_code_version)
-        self.dir_svm = config.dir_work + 'learning/svm/{}/'.format(current_code_version)
+        self.dir_log = config.dir_work + 'learning/{}'.format(current_code_version)
+        self.dir_inf = config.dir_work + 'learning/{}/inference/'.format(current_code_version)
+        self.dir_svm = config.dir_work + 'learning/{}/svm/'.format(current_code_version)
+        
+        ## Set up global logging to file
+        if not os.path.isdir(self.dir_log):
+            os.makedirs(self.dir_log)
+        utils_logging.LOG_OUTPUT_DIR = self.dir_log
+        logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
         
         ## params
         self.use_latent = use_latent
@@ -192,6 +198,7 @@ class SVMSegmenter(object):
             self.isroot = True
             
         if self.isroot:
+            logger.info('passed these command line arguments: {}'.format(str(sys.argv)))
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(use_latent))
             strkeys = ', '.join(self.laplacian_names)

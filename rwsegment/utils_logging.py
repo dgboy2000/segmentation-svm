@@ -44,13 +44,12 @@ class LoggerInfo:
         total_mb = mem_info.total / BYTES_PER_MB
         return '{}/{}MB'.format(free_mb, total_mb)
         
-
+LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
-    logger.setLevel(log_level)
 
-    # create console handler with a higher log level
+    # create console handler
     if len(logger.handlers)==0:
         ch = logging.StreamHandler()
         ch.setLevel(log_level)
@@ -64,6 +63,11 @@ def get_logger(name, log_level):
         ch.setFormatter(formatter)
         # add the handlers to the logger
         logger.addHandler(ch)
+        
+        if LOG_OUTPUT_DIR is not None:
+            hdlr = logging.FileHandler('{}/output.log'.format(LOG_OUTPUT_DIR))
+            hdlr.setFormatter(formatter)
+            logger.addHandler(hdlr) 
     else:
         logger.handlers[0].setLevel(log_level)
         
@@ -71,6 +75,7 @@ def get_logger(name, log_level):
     if ADD_EXTRA_LOGGING_INFO:
         logger = logging.LoggerAdapter(logger, LoggerInfo())
     
+    logger.setLevel(log_level)
     return logger
     
     
