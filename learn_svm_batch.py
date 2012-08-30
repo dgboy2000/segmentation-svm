@@ -61,7 +61,9 @@ class SVMSegmenter(object):
     def __init__(self,
             use_parallel=True, 
             use_latent=False,
-            loss_type='anchor'):
+            loss_type='anchor',
+            ntrain='all',
+            ):
     
         ## paths
         # current_code_version = commands.getoutput('git rev-parse HEAD')
@@ -86,9 +88,14 @@ class SVMSegmenter(object):
         
         self.labelset = np.asarray([0,13,14,15,16])
         
+        if ntrain in ['all']:
+            self.training_vols = config.vols
+        elif ntrain.isdigit():
+            n = int(ntrain)
+            self.training_vols = config.vols.keys()[:n]
         # self.training_vols = ['02/'] ## debug
         # self.training_vols = ['02/','03/'] ## debug
-        self.training_vols = config.vols
+        # self.training_vols = config.vols
 
         
         ## parameters for rw learning
@@ -413,16 +420,24 @@ if __name__=='__main__':
         default='anchor', type=str,
         help='loss type ("anchor", "laplacian")',
         )
+    opt.add_option( # nb training set
+        '-t', '--training', dest='ntrain', 
+        default='all', type=str,
+        help='number of training set (default: "all")',
+        )
+        
     (options, args) = opt.parse_args()
     use_parallel = bool(options.parallel)
     use_latent = bool(options.latent)
     loss_type = options.loss
+    ntrain = options.ntrain
 
     ''' start script '''
     svm_segmenter = SVMSegmenter(
         use_parallel=use_parallel,
         use_latent=use_latent,
         loss_type=loss_type,
+        ntrain=ntrain,
         )
     sample_list = ['01/']
     
