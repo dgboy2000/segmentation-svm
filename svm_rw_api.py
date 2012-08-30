@@ -123,7 +123,7 @@ class SVMRWMeanAPI(object):
         elif self.loss_type == 'laplacian':
             L = laplacian_loss(z,mask=self.mask)
             yy = np.asmatrix(np.asarray(y_).ravel()).T
-            loss = float(yy.T*L*yy)
+            loss = 1. + float(yy.T*L*yy)
 	    if self.mask is not None:
                 dice = 1 - np.sum(self.mask*np.abs(y_-z))\
                     /float(np.sum(self.mask[0]))/2.0
