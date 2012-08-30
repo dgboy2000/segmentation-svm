@@ -102,8 +102,6 @@ dir_svm = dir_work + 'learning/{}/svm/'.format(current_code_version)
 
 ## Set up global logging to file
 from rwsegment import utils_logging
-if not os.path.isdir(dir_log):
-    os.makedirs(dir_log)
 utils_logging.LOG_OUTPUT_DIR = dir_log
 
 

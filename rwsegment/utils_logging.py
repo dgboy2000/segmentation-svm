@@ -23,7 +23,7 @@ class LoggerInfo:
         if name == 'memory':
             result = self._format_free_memory()
         elif name == 'rank':
-            result = 'process {}'.format(MPI.COMM_WORLD.Get_rank())
+            result = 'process {}'.format(RANK)
         else:
             result = self.__dict__.get(name, '?')
         return result
@@ -46,6 +46,7 @@ class LoggerInfo:
         
 LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
+RANK = MPI.COMM_WORLD.Get_rank()
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
@@ -66,7 +67,16 @@ def get_logger(name, log_level):
         logger.addHandler(ch)
         
         if LOG_OUTPUT_DIR is not None:
-            hdlr = logging.FileHandler('{}/output{}.log'.format(LOG_OUTPUT_DIR, MPI.COMM_WORLD.Get_rank()))
+            
+            ## Make sure that log directory exists
+            if RANK == 0:
+                if not os.path.isdir(LOG_OUTPUT_DIR):
+                    os.makedirs(dir_log)
+            else:
+                while not os.path.isdir(LOG_OUTPUT_DIR):
+                    pass
+            
+            hdlr = logging.FileHandler('{}/output{}.log'.format(LOG_OUTPUT_DIR, RANK))
             hdlr.setFormatter(formatter)
             logger.addHandler(hdlr) 
     else:
