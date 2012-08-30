@@ -66,7 +66,7 @@ def get_logger(name, log_level):
         logger.addHandler(ch)
         
         if LOG_OUTPUT_DIR is not None:
-            hdlr = logging.FileHandler('{}/output.log'.format(LOG_OUTPUT_DIR))
+            hdlr = logging.FileHandler('{}/output{}.log'.format(LOG_OUTPUT_DIR, MPI.COMM_WORLD.Get_rank()))
             hdlr.setFormatter(formatter)
             logger.addHandler(hdlr) 
     else:
