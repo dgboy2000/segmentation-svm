@@ -158,9 +158,7 @@ class SVMSegmenter(object):
             'entropy': models.Entropy_no_D,
             'intensity': models.Intensity,
             }
-        
-        
-        
+
         ## indices of w
         nlaplacian = len(self.weight_functions)
         nprior = len(self.prior_models)
@@ -170,6 +168,12 @@ class SVMSegmenter(object):
         ## compute the scale of psi
         self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
         self.svmparams['psi_scale'] = self.psi_scale
+        
+        ## make arrays of function
+        self.laplacian_functions = self.weight_functions.values()[::-1]
+        self.laplacian_names     = self.weight_functions.keys()[::-1]
+        self.prior_functions     = self.prior_models.values()[::-1]
+        self.prior_names         = self.prior_models.keys()[::-1]
         
         ## parallel ?
         if self.use_parallel:
@@ -190,9 +194,9 @@ class SVMSegmenter(object):
         if self.isroot:
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(use_latent))
-            strkeys = ', '.join(self.weight_functions.keys())
+            strkeys = ', '.join(self.laplacian_names)
             logger.info('laplacian functions (in order):{}'.format(strkeys))
-            strkeys = ', '.join(self.prior_models.keys())
+            strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order):{}'.format(strkeys))
             logger.info('using loss type:{}'.format(loss_type))
         
@@ -225,10 +229,10 @@ class SVMSegmenter(object):
         
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
-            self.weight_functions, 
+            self.laplacian_functions, 
             self.labelset,
             self.rwparams_svm,
-            prior_models=self.prior_models,   
+            prior_models=self.prior_functions,   
             seeds=self.seeds,
             **self.svm_api_params
             )
@@ -307,7 +311,7 @@ class SVMSegmenter(object):
         def meta_weight_functions(im,_w):    
             ''' meta weight function'''
             data = 0
-            for iwf,wf in enumerate(self.weight_functions.values()):
+            for iwf,wf in enumerate(self.laplacian_functions):
                 ij,_data = wf(im)
                 data += _w[iwf]*_data
             return ij, data
@@ -331,7 +335,7 @@ class SVMSegmenter(object):
             # )
         anchor_api = MetaAnchor(
             self.prior,
-            self.prior_models,
+            self.prior_functions,
             weights_priors,
             image=im,
             )
