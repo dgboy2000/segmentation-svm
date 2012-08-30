@@ -64,7 +64,8 @@ class StructSVM(object):
             inds = indices[np.mod(indices,size-1) == (n-1)]
             comm.send(('mvc',len(inds)), dest=n)
             for i in inds:
-                comm.send((i,w,*self.S[i]), dest=n)
+                x,z = self.S[i]
+                comm.send((i,w,x,z), dest=n)
 
         ys = []
         ntrain = len(self.S)
