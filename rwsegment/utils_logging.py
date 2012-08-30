@@ -48,6 +48,7 @@ LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
+    logger.setLevel(log_level)
 
     # create console handler
     if len(logger.handlers)==0:
@@ -75,7 +76,6 @@ def get_logger(name, log_level):
     if ADD_EXTRA_LOGGING_INFO:
         logger = logging.LoggerAdapter(logger, LoggerInfo())
     
-    logger.setLevel(log_level)
     return logger
     
     
