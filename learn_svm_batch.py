@@ -118,7 +118,8 @@ class SVMSegmenter(object):
             'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':True,
-            'optim_solver':'unconstrained',
+            # 'optim_solver':'unconstrained',
+            'optim_solver':'constrained', ## debug
             }
             
         ## svm params
