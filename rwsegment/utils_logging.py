@@ -72,7 +72,7 @@ def get_logger(name, log_level):
             ## Make sure that log directory exists
             if RANK == 0:
                 if not os.path.isdir(LOG_OUTPUT_DIR):
-                    os.makedirs(dir_log)
+                    os.makedirs(LOG_OUTPUT_DIR)
             else:
                 while not os.path.isdir(LOG_OUTPUT_DIR):
                     pass
