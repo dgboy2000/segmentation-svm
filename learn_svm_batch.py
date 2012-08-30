@@ -53,7 +53,6 @@ reload(config)
 
 
 from rwsegment import utils_logging
-logger = None # Will be initialized later
 
 class SVMSegmenter(object):
 
@@ -80,6 +79,7 @@ class SVMSegmenter(object):
             os.makedirs(self.dir_log)
         utils_logging.LOG_OUTPUT_DIR = self.dir_log
         logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
+        globals()['logger'] = logger
         
         ## params
         self.use_latent = use_latent
