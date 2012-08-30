@@ -170,10 +170,10 @@ class SVMSegmenter(object):
         self.svmparams['psi_scale'] = self.psi_scale
         
         ## make arrays of function
-        self.laplacian_functions = self.weight_functions.values()[::-1]
-        self.laplacian_names     = self.weight_functions.keys()[::-1]
-        self.prior_functions     = self.prior_models.values()[::-1]
-        self.prior_names         = self.prior_models.keys()[::-1]
+        self.laplacian_functions = self.weight_functions.values()
+        self.laplacian_names     = self.weight_functions.keys()
+        self.prior_functions     = self.prior_models.values()
+        self.prior_names         = self.prior_models.keys()
         
         ## parallel ?
         if self.use_parallel:

@@ -13,7 +13,8 @@ weight_functions = {
     'pdiff_r1b100'   : lambda im: weight_patch_diff(im, r0=1, beta=100),
     }
 '''
-
+import utils_logging
+logger = utils.logging.get_logger('weigth_functions',utils_logging.DEBUG)
 
 def weight_std(image, beta=1.0):
     ''' standard weight function '''
@@ -53,8 +54,8 @@ def weight_inv(image, beta=1., offset=1.):
         for d in range(im.ndim)
         ])]
     data = 1. / (offset + beta*data)
-    print '(weight value spread: {:.2}-{:.2})'.format(
-        np.min(data), np.max(data))
+    logger.debug('(weight value spread: {:.2}-{:.2})'.format(
+        np.min(data), np.max(data)))
     
     
     ## affinity matrix sparse indices
