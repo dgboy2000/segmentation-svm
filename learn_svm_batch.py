@@ -195,6 +195,7 @@ class SVMSegmenter(object):
             strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order):{}'.format(strkeys))
             logger.info('using loss type:{}'.format(loss_type))
+            logger.info('writing svm output to: {}'.format(self.dir_svm))
         
         
     def train_svm(self,test):
