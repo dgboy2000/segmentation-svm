@@ -100,7 +100,8 @@ class SVMSegmenter(object):
             # optimization
             'rtol': 1e-6,#1e-5,
             'maxiter': 1e3,
-            'per_label':True,
+            #'per_label':True,
+            'per_label':False,
             # 'optim_solver':'unconstrained',
             'optim_solver':'constrained',
             }
