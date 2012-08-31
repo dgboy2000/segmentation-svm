@@ -1,7 +1,8 @@
 import numpy as np
 import gc
 
-from mpi4py import MPI
+import mpi
+# from mpi4py import MPI
 import utils_logging
 logger = utils_logging.get_logger('svm_worker',utils_logging.DEBUG)
 
@@ -10,8 +11,9 @@ from struct_svm import DataContainer
 class SVMWorker(object):
     def __init__(self,svm_rw_api):
         self.api = svm_rw_api
-        self.comm = MPI.COMM_WORLD
-        self.rank = self.comm.Get_rank()
+        # self.comm = MPI.COMM_WORLD
+        self.comm = mpi.COMM
+        self.rank = mpi.RANK
         
         self.cache_psi = {}
         

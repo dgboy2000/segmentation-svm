@@ -50,7 +50,10 @@ def is_danny_laptop():
 
 def is_py_machine():
   return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES'
-
+  
+def is_py_machine_idm():
+  return os.environ["USERDOMAIN"] == 'MYOLOGIE_DOMAIN'
+  
 def is_TWIX():
   return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'TWIX-C411B-WIN'
   
@@ -80,6 +83,9 @@ elif is_danny_igloo():
 elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
+elif is_py_machine_idm():
+  dir_reg     = '..\\rwtrain\\01_register\\'
+  dir_work    = './'
 elif is_TWIX():
   dir_reg     = '../01_register/'
   dir_work    = './'
@@ -91,22 +97,28 @@ else:
 
 
 
-## output paths
-if sys.platform[:3]=='win':
-  current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
-else:
-  current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
-dir_log = dir_work + 'learning/{}'.format(current_code_version)
-dir_inf = dir_work + 'learning/{}/inference/'.format(current_code_version)
-dir_svm = dir_work + 'learning/{}/svm/'.format(current_code_version)
-
+      
+if '-d' in sys.argv or '--debug' in sys.argv:
+    debug = True
+ 
 ## Set up global logging to file
 from rwsegment import utils_logging
-utils_logging.LOG_OUTPUT_DIR = dir_log
+if not debug:
+    print 'not debug'
+    ## output paths
+    if sys.platform[:3]=='win':
+      current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
+    else:
+      current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
+    dir_log = dir_work + 'learning/{}'.format(current_code_version)
+    dir_inf = dir_work + 'learning/{}/inference/'.format(current_code_version)
+    dir_svm = dir_work + 'learning/{}/svm/'.format(current_code_version)
+    utils_logging.LOG_OUTPUT_DIR = dir_log
 
-
-
-
+else:
+    dir_log = None
+    dir_inf = None
+    dir_svm = None
 
 
 

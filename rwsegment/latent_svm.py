@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import mpi
 
 import utils_logging
 logger = utils_logging.get_logger('latent_svm',utils_logging.DEBUG)
@@ -40,11 +41,12 @@ class LatentSVM(object):
         return ys
         
     def _parallel_all_aci(self,w,xs,zs,y0s):
-        from mpi4py import MPI
-        comm = MPI.COMM_WORLD
+        # from mpi4py import MPI
+        # comm = MPI.COMM_WORLD
+        comm = mpi.COMM
+        size = mpi.SIZE
         
         ntrain = len(xs)
-        size = comm.Get_size()
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]

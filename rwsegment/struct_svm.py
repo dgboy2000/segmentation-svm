@@ -1,6 +1,8 @@
 import logging
 import numpy as np
 
+import mpi
+
 import utils_logging
 logger = utils_logging.get_logger('struct_svm',utils_logging.DEBUG)
 
@@ -52,13 +54,20 @@ class StructSVM(object):
         
         self.use_parallel = kwargs.pop('use_parallel', False)
         
+        try:
+            import mosek
+            self._current_solution = self.mosek_current_solution
+        except ImportError:
+            self._current_solution = self.no_mosek_current_solution
+        
         
     def parallel_mvc(self,w):
-        from mpi4py import MPI
-        comm = MPI.COMM_WORLD
+        # from mpi4py import MPI
+        # comm = MPI.COMM_WORLD
+        comm = mpi.COMM
+        size = mpi.SIZE
         
         ntrain = len(self.S)
-        size = comm.Get_size()
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
@@ -78,12 +87,13 @@ class StructSVM(object):
     
     
     def parallel_all_psi(self,ys=None):
-        from mpi4py import MPI
-        comm = MPI.COMM_WORLD
+        # from mpi4py import MPI
+        # comm = MPI.COMM_WORLD
+        comm = mpi.COMM
+        size = mpi.SIZE
         
         ## send training data and cutting plane
         ntrain = len(self.S)
-        size = comm.Get_size()
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
@@ -109,10 +119,74 @@ class StructSVM(object):
         # return psis
         for i in range(ntrain):
             yield psis[i]
+    
+
+    
+    def no_mosek_current_solution(self,W, w=None, xi=None):
+        from solver_qp_constrained import ObjectiveAPI, ConstrainedSolver
+        
+        n = self.wsize
+        ncons = len(W)
+        
+        if ncons == 0:
+            w = np.zeros(n,dtype=float)
+            xi = 0.0
+            return w,xi
+        
+        ## psi(x,z)
+        Ssize = len(self.S)
+        avg_psi_gt = np.zeros(n)
+        for psi in self.compute_all_psi():
+            for i_p,p in enumerate(psi):
+                avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
+        
+        def compute_avg_psi(j):
+            avg_psi = p.zeros(n)
+            for psi in W[j]['psis']:
+                for i_p,p in enumerate(psi):
+                    avg_psi[i_p] += 1.0/ float(Ssize) * p
+            return avg_psi
             
+        def compute_avg_loss(j):
+            avg_loss = 0
+            for loss in W[j]['losses']:
+                avg_loss += \
+                    1. / float(Ssize) * loss
+            return avg_loss
+            
+        ## objective
+        P = np.mat(np.diag([s for s in self.psi_scale] + [0]))
+        q = np.mat(np.c_[[0 for i in range(n)] + [self.C]])
+        G = np.bmat(
+            # constraints
+            [[p - pgt for p,pgt in  zip(compute_avg_psi(j),avg_psi_gt)] + [1.] \
+                for j in range(ncons)] + \
+            # positivity constraints on w and xi
+            np.diag([1 for i in range(n)] + [1])
+            )
+        h = np.mat(np.c_[
+            # constraints
+            [compute_avg_loss(j) for j in range(ncons)] + \
+            # positivity constraints
+            [0 for i in range(n+1)]
+            ])
+            
+        
+        obj = ObjectiveAPI(P,q,G=G,h=h)
+        import ipdb; ipdb.set_trace()
+        
+        solver = ConstrainedSolver(obj)
+        
+        if w is None:
+            w = np.zeros(n)
+        if xi is None:
+            x = np.zeros(1)
+        sol0 = np.mat(np.r_[w,xi]).T
+        sol = solver.solve(sol0) 
+        w,xi = sol[:n],sol[n]
+        return w,xi
     
-    
-    def _current_solution(self, W):
+    def mosek_current_solution(self, W, **kwargs):
         ''' quadratic programming 
         min ztPz + 2*ztq 
             st. Az <= b
@@ -347,6 +421,7 @@ class StructSVM(object):
         
         ## test set for qp
         W = [] 
+        w,xi = None,None
         
         ## initialize w
         if self.wsize is None:
@@ -363,8 +438,7 @@ class StructSVM(object):
             
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
-            # import ipdb; ipdb.set_trace()
-            w,xi = self._current_solution(W)
+            w,xi = self._current_solution(W,w,xi)
             
             ## logging
             wstr = ' '.join('{:.2}'.format(wval) for wval in w)

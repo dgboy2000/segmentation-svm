@@ -1,8 +1,5 @@
 import logging
 import os
-import psutil
-
-from mpi4py import MPI
 
 DEBUG = logging.DEBUG
 INFO = logging.INFO
@@ -38,16 +35,27 @@ class LoggerInfo:
         keys.extend(self.__dict__.keys())
         return keys.__iter__()
 
-    def _format_free_memory(self):
-        BYTES_PER_MB = 2**20
-        mem_info = psutil.virtual_memory()
-        free_mb = mem_info.available / BYTES_PER_MB
-        total_mb = mem_info.total / BYTES_PER_MB
-        return '{}/{}MB'.format(free_mb, total_mb)
+    try:
+        import psutil
+        def _format_free_memory(self):
+            BYTES_PER_MB = 2**20
+            mem_info = psutil.virtual_memory()
+            free_mb = mem_info.available / BYTES_PER_MB
+            total_mb = mem_info.total / BYTES_PER_MB
+            return '{}/{}MB'.format(free_mb, total_mb)
+    except ImportError:
+        def _format_free_memory(self):
+            return ''
+            
         
 LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
-RANK = MPI.COMM_WORLD.Get_rank()
+
+try:
+    from mpi4py import MPI
+    RANK = MPI.COMM_WORLD.Get_rank()
+except ImportError:
+    RANK = 0
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)

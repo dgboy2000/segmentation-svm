@@ -50,7 +50,7 @@ reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
 from svm_rw_api import MetaAnchor
 
-
+from rwsegment import mpi
 
 
 from rwsegment import utils_logging
@@ -63,6 +63,7 @@ class SVMSegmenter(object):
             use_latent=False,
             loss_type='anchor',
             ntrain='all',
+            debug=False,
             ):
     
         ## paths
@@ -74,8 +75,8 @@ class SVMSegmenter(object):
         self.use_latent = use_latent
         self.retrain = True
         self.force_recompute_prior = False
-        self.use_parallel = use_parallel
-
+        self.use_parallel = use_parallel    
+        self.debug = debug
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -88,10 +89,7 @@ class SVMSegmenter(object):
         elif ntrain.isdigit():
             n = int(ntrain)
             self.training_vols = config.vols.keys()[:n]
-        # self.training_vols = ['02/'] ## debug
-        # self.training_vols = ['02/','03/'] ## debug
-        # self.training_vols = config.vols
-
+        print self.training_vols
         
         ## parameters for rw learning
         self.rwparams_svm = {
@@ -100,10 +98,10 @@ class SVMSegmenter(object):
             # optimization
             'rtol': 1e-6,#1e-5,
             'maxiter': 1e3,
-            #'per_label':True,
-            'per_label':False,
-            # 'optim_solver':'unconstrained',
-            'optim_solver':'constrained',
+            'per_label':True,
+            # 'per_label':False,
+            'optim_solver':'unconstrained',
+            # 'optim_solver':'constrained',
             }
         
         ## parameters for svm api
@@ -128,7 +126,6 @@ class SVMSegmenter(object):
             'C': 1,
             'nitermax':100,
             
-            
             # latent
             'latent_niter_max': 100,
             'latent_C': 10,
@@ -138,10 +135,10 @@ class SVMSegmenter(object):
             
         ## weight functions
         self.weight_functions = {
-            'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+            # 'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
             'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
-            'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
+            # 'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+            # 'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
             # 'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
             # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
             # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
@@ -152,8 +149,8 @@ class SVMSegmenter(object):
         ## priors models
         self.prior_models = {
             'constant': models.Constant,
-            'entropy': models.Entropy_no_D,
-            'intensity': models.Intensity,
+            # 'entropy': models.Entropy_no_D,
+            # 'intensity': models.Intensity,
             }
 
         ## indices of w
@@ -175,10 +172,13 @@ class SVMSegmenter(object):
         ## parallel ?
         if self.use_parallel:
             ## communicator
-            from mpi4py import MPI
-            self.comm = MPI.COMM_WORLD
-            self.MPI_rank = self.comm.Get_rank()
-            self.MPI_size = self.comm.Get_size()
+            # from mpi4py import MPI
+            # self.comm = MPI.COMM_WORLD
+            # self.MPI_rank = self.comm.Get_rank()
+            # self.MPI_size = self.comm.Get_size()
+            self.comm = mpi.COMM
+            self.MPI_rank = mpi.RANK
+            self.MPI_size = mpi.SIZE
             self.isroot = self.MPI_rank==0
             if self.MPI_size==1:
                 logger.warning('Found only one process. Not using parallel')
@@ -197,11 +197,13 @@ class SVMSegmenter(object):
             strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order):{}'.format(strkeys))
             logger.info('using loss type:{}'.format(loss_type))
-            logger.info('writing svm output to: {}'.format(self.dir_svm))
+            if self.debug:
+                logger.info('debug mode, no saving')
+            else:
+                logger.info('writing svm output to: {}'.format(self.dir_svm))
         
         
     def train_svm(self,test):
-        outdir = test
 
         ## training images and segmentations
         self.training_set = []
@@ -270,7 +272,6 @@ class SVMSegmenter(object):
             finally:
                 ##kill signal
                 if self.use_parallel:
-                    # self.comm.bcast(('stop',None),root=0)
                     logger.info('root finished training svm on {}. about to kill workers'\
                         .format(test))
                     for n in range(1, self.MPI_size):
@@ -298,10 +299,6 @@ class SVMSegmenter(object):
         # w = w / np.sqrt(np.dot(w,w))
         strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w)*self.psi_scale)
         logger.debug('scaled w=[{}]'.format(strw))
-        
-        outdir = self.dir_inf + test
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
     
         weights_laplacians = np.asarray(w)[self.indices_laplacians]
         weights_priors = np.asarray(w)[self.indices_priors]
@@ -323,15 +320,10 @@ class SVMSegmenter(object):
         seg = io_analyze.load(file_seg)
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
-        ## save image
-        io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
-        im = im/np.std(im) # normalize image by std
+        
+        nim = im/np.std(im) # normalize image by std
     
         ## prior
-        # anchor_api = BaseAnchorAPI(
-            # self.prior, 
-            # anchor_weight=w[-1],
-            # )
         anchor_api = MetaAnchor(
             self.prior,
             self.prior_functions,
@@ -340,30 +332,34 @@ class SVMSegmenter(object):
             )
     
         sol,y = rwsegment.segment(
-            im, 
+            nim, 
             anchor_api, 
             seeds=self.seeds,
             weight_function=weight_function,
             **self.rwparams_inf
             )
         
-        np.save(outdir + 'y.npy',y)        
-        io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
-        
         ## compute Dice coefficient
         dice = compute_dice_coef(sol, seg,labelset=self.labelset)
-        np.savetxt(
-            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %f')
+        
+        ## saving
+        if self.debug:
+            pass
+        elif self.isroot:
+            outdir = self.dir_inf + test
+            if not os.path.isdir(outdir):
+                os.makedirs(outdir)
+            io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
+            np.save(outdir + 'y.npy',y)        
+            io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
+            np.savetxt(
+                outdir + 'dice.txt', 
+                np.c_[dice.keys(),dice.values()],fmt='%d %f')
         
         
     def process_sample(self, test):
-        outdir = self.dir_svm + test
         
         if self.isroot:
-            logger.info("output directory: {}".format(outdir))
-            if not os.path.isdir(outdir):
-                os.makedirs(outdir)
-            
             prior, mask = load_or_compute_prior_and_mask(
                 test,force_recompute=self.force_recompute_prior)
             
@@ -379,18 +375,26 @@ class SVMSegmenter(object):
         
         ## training
         if self.retrain:
+            
             w,xi,info = self.train_svm(test)
-            np.savetxt(outdir + 'w',w)
-            np.savetxt(outdir + 'xi',[xi])     
+            
+            if self.debug:
+                pass
+            elif self.isroot:
+                outdir = self.dir_svm + test
+                if not os.path.isdir(outdir):
+                    os.makedirs(outdir)
+                np.savetxt(outdir + 'w',w)
+                np.savetxt(outdir + 'xi',[xi])     
         else:
             if self.isroot and not self.retrain:    
                 logger.warning('Not retraining svm')
-            w = np.loadtxt(outdir + 'w')
-        
-        self.w = w
+                w = np.loadtxt(outdir + 'w')
         
         ## inference
         if self.isroot: 
+            self.w = w
+            
             self.run_svm_inference(test,w)
         
         
@@ -429,19 +433,30 @@ if __name__=='__main__':
         help='number of training set (default: "all")',
         )
         
+    opt.add_option( # nb training set
+        '-g', '--debug', dest='debug', 
+        default=False, action="store_true",
+        help='debug mode (no saving)',
+        )
+        
     (options, args) = opt.parse_args()
+
     use_parallel = bool(options.parallel)
     use_latent = bool(options.latent)
     loss_type = options.loss
     ntrain = options.ntrain
-
+    debug = options.debug
+    
     ''' start script '''
     svm_segmenter = SVMSegmenter(
         use_parallel=use_parallel,
         use_latent=use_latent,
         loss_type=loss_type,
         ntrain=ntrain,
+        debug=debug,
         )
+        
+        
     sample_list = ['01/']
     
     svm_segmenter.process_all_samples(sample_list)
