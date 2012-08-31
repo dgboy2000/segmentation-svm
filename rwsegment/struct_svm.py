@@ -438,7 +438,7 @@ class StructSVM(object):
             
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
-            w,xi = self._current_solution(W,w,xi)
+            w,xi = self._current_solution(W,w=w,xi=xi)
             
             ## logging
             wstr = ' '.join('{:.2}'.format(wval) for wval in w)
