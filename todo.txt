@@ -1,0 +1,14 @@
+===========
+TODO SVM RW
+===========
+
+08.31.2012
+- debug svm_struct with / without mosek
+Q. What values for RW + prior objective if L=0 ? x = x0 ? (first iteration)
+Q. (first iteration) w should be exactly 0. With the rescaling of psi, it is not.
+
+- debug convergence of ACI
+idea: test log-barrier with constraints Gx > -inf. Should be equiv. to no constraints.
+
+
+
