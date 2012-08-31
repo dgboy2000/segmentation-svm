@@ -141,7 +141,7 @@ class StructSVM(object):
                 avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
         
         def compute_avg_psi(j):
-            avg_psi = p.zeros(n)
+            avg_psi = np.zeros(n)
             for psi in W[j]['psis']:
                 for i_p,p in enumerate(psi):
                     avg_psi[i_p] += 1.0/ float(Ssize) * p
@@ -183,7 +183,7 @@ class StructSVM(object):
             x = np.zeros(1)
         sol0 = np.mat(np.r_[w,xi]).T
         sol = solver.solve(sol0) 
-        w,xi = sol[:n],sol[n]
+        w,xi = [val for val in sol[:n]],sol[n]
         return w,xi
     
     def mosek_current_solution(self, W, **kwargs):
