@@ -35,17 +35,24 @@ class LoggerInfo:
         keys.extend(self.__dict__.keys())
         return keys.__iter__()
 
-    try:
-        import psutil
-        def _format_free_memory(self):
-            BYTES_PER_MB = 2**20
-            mem_info = psutil.virtual_memory()
-            free_mb = mem_info.available / BYTES_PER_MB
-            total_mb = mem_info.total / BYTES_PER_MB
-            return '{}/{}MB'.format(free_mb, total_mb)
-    except ImportError:
-        def _format_free_memory(self):
+    def __init__(self):
+        try:
+            import psutil
+            self._format_free_memory = self._psutil_format_free_memory
+        except ImportError:
+            self._format_free_memory = self._no_psutil_format_free_memory
+    
+    def _no_psutil_format_free_memory(self):
             return ''
+    
+    def _psutil_format_free_memory(self):
+        import psutil
+        BYTES_PER_MB = 2**20
+        mem_info = psutil.virtual_memory()
+        free_mb = mem_info.available / BYTES_PER_MB
+        total_mb = mem_info.total / BYTES_PER_MB
+        return '{}/{}MB'.format(free_mb, total_mb)
+    
             
         
 LOG_OUTPUT_DIR = None
