@@ -52,7 +52,7 @@ def is_py_machine():
   return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'JACQUES'
   
 def is_py_machine_idm():
-  return os.environ["USERDOMAIN"] == 'MYOLOGIE_DOMAIN'
+  return "USERDOMAIN" in os.environ and os.environ["USERDOMAIN"] == 'MYOLOGIE_DOMAIN'
   
 def is_TWIX():
   return "COMPUTERNAME" in os.environ and os.environ["COMPUTERNAME"] == 'TWIX-C411B-WIN'
