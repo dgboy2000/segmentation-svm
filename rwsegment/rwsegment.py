@@ -128,7 +128,7 @@ def segment(
         addL = addL[unknown,:][:,unknown]
       
       
-    ## solve RW system 
+    ## solve RW system
     if ground_truth is not None or not per_label:
         x = solve_at_once(
             Lu,B,list_xm,list_Omega,list_x0, 
@@ -211,6 +211,11 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     
     nlabel = len(list_xm)
 
+    ## if no laplacian, return prior
+    if len(Lu.data)==0:
+       x = list_x0
+       return x
+    
     ## compute separately for each label (best)
     nvar = Lu.shape[0]
     x = np.zeros((nlabel,nvar))
@@ -426,11 +431,11 @@ def energy_rw(
             )
     except MemoryError as e:
         import gc
-        from mpi4py import MPI
+        import mpi
         gc.collect()
         logger.error(
             'Memory error computing Laplacian in process #{}'\
-            .format(MPI.COMM_WORLD.Get_rank()))
+            .format(mpi.RANK))
         L, border, B = compute_laplacian(
             image,
             marked=marked,
@@ -520,6 +525,7 @@ def compute_laplacian(
     
     ## affinity matrix
     logger.debug('laplacian matrix')
+    # import ipdb; ipdb.set_trace()
     A = sparse.coo_matrix((data, ij), shape=(N,N))
     A = A + A.T
     
