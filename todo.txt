@@ -4,21 +4,29 @@ TODO SVM RW
 
 ______________________________________________________________________________
 09.04.2012
+Q. What is the value of the objective function you obtain for both the 
+    loss functions ?
 
+Q. a*w0 is within the feasible region of the optimization problem.
+    value of the objective for different values of a ?
 
+Q. results when the regularization term is a simple square of L2 norm ?
+
+Q. what is the value of the loss augmented objective with the laplacian loss
+     is L and anchor are zero ?
+A. it is the uniform probability 1/nlabel
 ______________________________________________________________________________
 08.31.2012
 - debug svm_struct with / without mosek
 Q. What values for RW + prior objective if L=0 ? x = x0 ? (first iteration)
+A. yes
+
+Q. (first iteration) w should be exactly 0. With the rescaling of psi, 
+    it is not.
 A. results are different when forcing w and xi to be exactly 0 at the 
     first iteration:
 without: w=[2.3e-14 1.8e-07], xi=0.041, in 8 iterations, objective=0.0410947915456
 with:    w=[2.9e-15 2.2e-07], xi=0.041, in 10 iterations, objective=0.0410524308538
-
-
-Q. (first iteration) w should be exactly 0. With the rescaling of psi, 
-    it is not.
-
 
 
 - debug convergence of ACI

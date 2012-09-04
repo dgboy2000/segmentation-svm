@@ -50,8 +50,12 @@ class MetaAnchor():
             all_anchor  = all_anchor + \
                 self.loss_weight * self.loss['data'][:,imask]
             all_weights += self.loss_weight
-        
-        all_anchor = all_anchor / all_weights
+       
+        if np.max(all_weights) < 1e-10:
+             all_anchor = np.zeros(all_anchor.shape)
+             all_weights = np.zeros(all_weights.shape)
+        else: 
+             all_anchor = all_anchor / all_weights
         labelset = self.prior['labelset']
         all_anchor_dict = {'data':all_anchor, 'imask':imask, 'labelset':labelset}
         return all_anchor_dict, all_weights 

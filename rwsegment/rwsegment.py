@@ -125,7 +125,8 @@ def segment(
     addL = kwargs.pop('additional_laplacian', None)
     if addL is not None:
         logger.debug('additional laplacian in solve at once')
-        addL = addL[unknown,:][:,unknown]
+        uunknown = (unknown + np.c_[np.arange(nlabel)*npixel]).ravel()
+        addL = addL[uunknown,:][:,uunknown]
         if per_label is True:
             logger.warning('additional lapacian is not None, using "solve at once"')
             per_label = False
@@ -178,7 +179,7 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     logger.debug(
         'solve RW at once with solver="{}"'.format(optim_solver))
-        
+    #import ipdb; ipdb.set_trace()    
     P = LL + Omega + addL
     q = BB*xm - Omega*x0
     # c = x0.T*Omega*x0
@@ -191,8 +192,12 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     logger.debug('absolute CG tolerance = {}'.format(tol))
     
     if P.nnz==0:
+        # if no laplacian 
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
         x = (1 - (q>0))/(nlabel - 1)
+    elif np.sqrt(np.dot(q.T,q)) < 1e-10:
+        # if no linear term: x is constant and has to remain a probability
+        x = 1./nlabel * np.mat(np.ones(q.shape))
     else:
         if list_GT!=[]:
             ## ground truth constrained
