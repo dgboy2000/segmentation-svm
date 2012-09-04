@@ -13,7 +13,7 @@
         - the loss function (1-zy) is ambiguous: what is worse 0 or 1-z ?
         maybe (1-2z)y  is better ?
 '''
-
+ 
 # import commands
 import sys
 import os
