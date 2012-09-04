@@ -6,6 +6,8 @@ ______________________________________________________________________________
 09.04.2012
 Q. What is the value of the objective function you obtain for both the 
     loss functions ?
+anchor loss: 172009.service0,6b1d69003dc8b43fd878bfeeb773960c3c92f940
+laplacian loss: TODO 
 
 Q. a*w0 is within the feasible region of the optimization problem.
     value of the objective for different values of a ?
