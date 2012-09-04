@@ -126,8 +126,10 @@ def segment(
     if addL is not None:
         logger.debug('additional laplacian in solve at once')
         addL = addL[unknown,:][:,unknown]
-      
-      
+        if per_label is True:
+            logger.warning('additional lapacian is not None, using "solve at once"')
+            per_label = False
+
     ## solve RW system
     if ground_truth is not None or not per_label:
         x = solve_at_once(
@@ -212,7 +214,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     nlabel = len(list_xm)
 
     ## if no laplacian, return prior
-    if len(Lu.data)==0:
+    if len(Lu.data)==0 or np.max(np.abs(Lu.data)<1e-10):
        x = list_x0
        return x
     

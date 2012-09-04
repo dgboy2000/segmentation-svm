@@ -117,26 +117,37 @@ class SVMRWMeanAPI(object):
             logger.warning('negative (<1e-6) values in y_')
 
         if self.loss_type == 'anchor':
-            ''' 1 - (z.y_)/nnode '''
-            nnode = z.size/float(self.nlabel)
-            return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
+            #''' 1 - (z.y_)/nnode '''
+            #nnode = z.size/float(self.nlabel)
+            #return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
+            '''- |y - tilde(z)|^2'''
+            nlabel = self.nlabel
+            mask = self.mask
+            if mask is None:
+                 nnode  = len(z[0])
+                 mask = 1.0
+            else:
+                nnode = np.sum(self.mask[0])
+            ztilde = (1. - np.asarray(z))/(nlabel - 1.)
+            loss = 1 - np.sum(mask*(ztilde - y_)**2) * (nlabel - 1.)/float(nlabel*nnode)
         elif self.loss_type == 'laplacian':
             L = laplacian_loss(z,mask=self.mask)
             yy = np.asmatrix(np.asarray(y_).ravel()).T
             loss = 1. + float(yy.T*L*yy)
-	    if self.mask is not None:
-                dice = 1 - np.sum(self.mask*np.abs(y_-z))\
-                    /float(np.sum(self.mask[0]))/2.0
-            else:
-                dice = 1 - np.sum(np.abs(y_-z))/float(z.shape[1])/2.0
-            logger.debug('for dice={:.2}, loss={:.2}'.format(dice, loss))
+	    #if self.mask is not None:
+            #    dice = 1 - np.sum(self.mask*np.abs(y_-z))\
+            #        /float(np.sum(self.mask[0]))/2.0
+            #else:
+            #    dice = 1 - np.sum(np.abs(y_-z))/float(z.shape[1])/2.0
+            #logger.debug('for dice={:.2}, loss={:.2}'.format(dice, loss))
             #import ipdb; ipdb.set_trace()
-            return loss 
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
-## psi  
+        #logger.debug('loss={:.2}'.format( loss))
+        return loss
 
+    ## psi  
     def compute_psi(self, x,y):
         ''' - sum(a){Ea(x,y)} '''
         nnode = x.size
@@ -194,9 +205,11 @@ class SVMRWMeanAPI(object):
                 
         ## loss type
         if self.loss_type=='anchor':
-            ztilde = (1-z) / (self.nlabel - 1.0)
+            nlabel = self.nlabel
+            nnode = len(z[0])
+            ztilde = (1. - np.asarray(z)) / (nlabel - 1.0)
             loss = {'data': ztilde}
-            loss_weight = (self.nlabel - 1.0) / float(z.size)
+            loss_weight = (self.nlabel - 1.0) / float(nlabel*nnode)
             L_loss = None
         elif self.loss_type=='laplacian':
             loss = None
@@ -236,10 +249,13 @@ class SVMRWMeanAPI(object):
         return y_
         
     def best_segmentation_inference(self, w,x):
-    
-        anchor_api = BaseAnchorAPI(
-            self.prior, 
-            anchor_weight=w[-1],
+        anchor_api = MetaAnchor(
+            prior=self.prior,
+            prior_models=self.prior_models,
+            prior_weights=np.asarray(w)[self.indices_priors],
+            loss=None,
+            loss_weight=None,
+            image=x,
             )
     
         ## combine all weight functions

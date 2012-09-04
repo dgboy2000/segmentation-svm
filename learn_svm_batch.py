@@ -64,6 +64,7 @@ class SVMSegmenter(object):
             loss_type='anchor',
             ntrain='all',
             debug=False,
+            **kwargs
             ):
     
         ## paths
@@ -77,6 +78,7 @@ class SVMSegmenter(object):
         self.force_recompute_prior = False
         self.use_parallel = use_parallel    
         self.debug = debug
+        self.nomosek=kwargs.pop('nomosek',False)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -124,7 +126,8 @@ class SVMSegmenter(object):
         ## svm params
         self.svmparams = {
             'C': 1,
-            'nitermax':100,
+            'nitermax': 100,
+            'nomosek': self.nomosek,
             
             # latent
             'latent_niter_max': 100,
@@ -196,6 +199,7 @@ class SVMSegmenter(object):
             logger.info('laplacian functions (in order):{}'.format(strkeys))
             strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order):{}'.format(strkeys))
+            logger.info('don\'t use mosek ?: {}'.format(self.nomosek))
             logger.info('using loss type:{}'.format(loss_type))
             if self.debug:
                 logger.info('debug mode, no saving')
@@ -438,7 +442,12 @@ if __name__=='__main__':
         default=False, action="store_true",
         help='debug mode (no saving)',
         )
-        
+    
+    opt.add_option( # no mosek
+        '--nomosek', dest='nomosek', 
+        default=False, action="store_true",
+        help='don\'t use mosek',
+        )   
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -446,6 +455,7 @@ if __name__=='__main__':
     loss_type = options.loss
     ntrain = options.ntrain
     debug = options.debug
+    nomosek = options.nomosek
     
     ''' start script '''
     svm_segmenter = SVMSegmenter(
@@ -454,6 +464,7 @@ if __name__=='__main__':
         loss_type=loss_type,
         ntrain=ntrain,
         debug=debug,
+        nomosek=nomosek,
         )
         
         

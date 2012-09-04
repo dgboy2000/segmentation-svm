@@ -54,10 +54,16 @@ class StructSVM(object):
         
         self.use_parallel = kwargs.pop('use_parallel', False)
         
+        nomosek = kwargs.pop('nomosek',False)
+
         try:
-            import mosek
-            self._current_solution = self.mosek_current_solution
+            if nomosek:
+                 self._current_solution = self.no_mosek_current_solution
+            else:
+                import mosek
+                self._current_solution = self.mosek_current_solution
         except ImportError:
+            logger.warning('Mosek not found, using solver_qp_constrained')
             self._current_solution = self.no_mosek_current_solution
         
         
@@ -199,7 +205,13 @@ class StructSVM(object):
                     
         Our data structure:
         W = [{'psis':[],'losses':[]}, {'psis':[],'losses':[]}]
-        '''
+        ''' 
+        
+        if len(W)==0:
+            w = [0.0 for i in range(self.wsize)]
+            xi = 0.0
+            return w,xi
+        
         import mosek
         import sys
         
@@ -460,10 +472,14 @@ class StructSVM(object):
                 ys = self.parallel_mvc(w)
             else:
                 for s in self.S:
-                    y_ = self.mvc(w, *s, exact=True)
+                    x,z = s
+                    y_ = self.mvc(w, x, z, exact=True)
                     ys.append(y_)
                     if np.std(np.sum(y_.data,axis=0)) > 1e-5:
                         import ipdb; ipdb.set_trace()
+                    # compute loss of solution
+                    loss_y_ = self.loss(z,y_)
+                    logger.debug('loss = {:.2}'.format(loss_y_))
             # logger.debug("ys={}".format(ys))
             
             ## compute psis and losses:
