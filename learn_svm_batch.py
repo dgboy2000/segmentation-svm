@@ -163,7 +163,8 @@ class SVMSegmenter(object):
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
         
         ## compute the scale of psi
-        self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
+        #self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
+        self.psi_scale = [1.0] * nlaplacian + [1.0] * nprior
         self.svmparams['psi_scale'] = self.psi_scale
         
         ## make arrays of function
