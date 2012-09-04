@@ -97,7 +97,7 @@ else:
 
 
 
-      
+debug = False      
 if '-d' in sys.argv or '--debug' in sys.argv:
     debug = True
  
