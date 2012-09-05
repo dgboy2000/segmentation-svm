@@ -461,7 +461,13 @@ if __name__=='__main__':
         '--nomosek', dest='nomosek', 
         default=False, action="store_true",
         help='don\'t use mosek',
-        )   
+        )  
+    
+    opt.add_option( # folder name
+        '--folder', dest='folder', 
+        default='', type=str,
+        help='set folder name',
+        ) 
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -470,7 +476,8 @@ if __name__=='__main__':
     ntrain = options.ntrain
     debug = options.debug
     nomosek = options.nomosek
-    
+    folder = options.folder #unused
+
     ''' start script '''
     svm_segmenter = SVMSegmenter(
         use_parallel=use_parallel,
