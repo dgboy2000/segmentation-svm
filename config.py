@@ -104,7 +104,6 @@ if '-d' in sys.argv or '--debug' in sys.argv:
 ## Set up global logging to file
 from rwsegment import utils_logging
 if not debug:
-    print 'not debug'
     ## output paths
     if sys.platform[:3]=='win':
       current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]

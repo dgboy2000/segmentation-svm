@@ -6,8 +6,8 @@ ______________________________________________________________________________
 09.04.2012
 Q. What is the value of the objective function you obtain for both the 
     loss functions ?
-anchor loss: 172009.service0,6b1d69003dc8b43fd878bfeeb773960c3c92f940
-laplacian loss: 31a028436c5bdb78ac74b89b160a508fae200af4 
+anchor loss: 172050.service0,84c81f130f43ce471d2385166b0bef873109db6a
+laplacian loss: 
 
 Q. a*w0 is within the feasible region of the optimization problem.
     value of the objective for different values of a ?
@@ -15,7 +15,7 @@ Q. a*w0 is within the feasible region of the optimization problem.
 Q. results when the regularization term is a simple square of L2 norm ?
 
 Q. what is the value of the loss augmented objective with the laplacian loss
-     is L and anchor are zero ?
+     if L and anchor are zero ?
 A. it is the uniform probability 1/nlabel
 ______________________________________________________________________________
 08.31.2012
