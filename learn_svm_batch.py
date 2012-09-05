@@ -148,7 +148,7 @@ class SVMSegmenter(object):
                 # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
                 # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
                 }
-        
+         
         ## priors models
         if self.debug:
             self.prior_models = {'constant': models.Constant}
