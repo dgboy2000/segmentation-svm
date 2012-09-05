@@ -168,7 +168,7 @@ class StructSVM(object):
             [[p - pgt for p,pgt in  zip(compute_avg_psi(j),avg_psi_gt)] + [1.] \
                 for j in range(ncons)] + \
             # positivity constraints on w and xi
-            np.diag([1 for i in range(n)] + [1])
+            np.diag([1 for i in range(n)] + [1]).tolist()
             )
         h = np.mat(np.c_[
             # constraints
@@ -177,7 +177,7 @@ class StructSVM(object):
             [0 for i in range(n+1)]
             ])
             
-        
+        import ipdb; ipdb.set_trace()
         obj = ObjectiveAPI(P,q,G=G,h=h)
         import ipdb; ipdb.set_trace()
         
