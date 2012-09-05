@@ -12,11 +12,19 @@ w=[3.6e-14 4.6e-14 2.2e-14 9.7e-14 1.5e-06 3.3e-12 6e-14], xi=0.44
 objective SVM = 0.435556019059
 objective RW = 3.858242829405135e-09
 
+one prior, one laplacian
+w=[6.6e-15 1.5e-06], xi=0.44
+objective RW = 1.89e-10 
+
 laplacian loss: 172060.service0, f050805eea0411b98be38ab8597a6506ee0b40ee
 9 iterations,
 w=[1.6e-14 1.9e-14 1.1e-14 3.1e-14 3.4e-06 8.8e-13 1.9e-14], xi=0.78
 objective SVM = 0.77931789261
 objective RW = 1.6446765784077383e-09
+
+if one prior, one laplacian:
+w=[1.36e-14 2.52e-06]
+objective RW = 3.9e-10
 
 Q. a*w0 is within the feasible region of the optimization problem.
     value of the objective for different values of a ?

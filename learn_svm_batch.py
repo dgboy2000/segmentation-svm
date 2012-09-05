@@ -74,10 +74,11 @@ class SVMSegmenter(object):
         
         ## params
         self.use_latent = use_latent
-        self.retrain = True
+        #self.retrain = True
         self.force_recompute_prior = False
         self.use_parallel = use_parallel    
         self.debug = debug
+        self.retrain = kwargs.pop('retrain', True)
         self.nomosek=kwargs.pop('nomosek',False)
         
         ## params
@@ -354,7 +355,7 @@ class SVMSegmenter(object):
         ## objective
         en_rw = rwsegment.energy_rw(
             nim, y, seeds=self.seeds,weight_function=weight_function, **self.rwparams_inf)
-        en_anchor = rwsegment_anchor(
+        en_anchor = rwsegment.energy_anchor(
             nim, y, anchor_api, seeds=self.seeds, **self.rwparams_inf)
         obj = en_rw + en_anchor
         logger.info('Objective = {:.3}'.format(obj))
@@ -406,6 +407,7 @@ class SVMSegmenter(object):
                 np.savetxt(outdir + 'xi',[xi])     
         else:
             if self.isroot and not self.retrain:    
+                outdir = self.dir_svm + test
                 logger.warning('Not retraining svm')
                 w = np.loadtxt(outdir + 'w')
         
@@ -463,6 +465,12 @@ if __name__=='__main__':
         help='don\'t use mosek',
         )  
     
+    opt.add_option( # retrain ?
+        '--noretrain', dest='noretrain', 
+        default=False, action="store_true",
+        help='retrain svm ?',
+        )  
+    
     opt.add_option( # folder name
         '--folder', dest='folder', 
         default='', type=str,
@@ -476,6 +484,7 @@ if __name__=='__main__':
     ntrain = options.ntrain
     debug = options.debug
     nomosek = options.nomosek
+    retrain = 1 - options.noretrain
     folder = options.folder #unused
 
     ''' start script '''
@@ -485,6 +494,7 @@ if __name__=='__main__':
         loss_type=loss_type,
         ntrain=ntrain,
         debug=debug,
+        retrain=retrain,
         nomosek=nomosek,
         )
         

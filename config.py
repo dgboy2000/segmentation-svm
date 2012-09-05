@@ -103,34 +103,28 @@ if '-d' in sys.argv or '--debug' in sys.argv:
 if '--folder' in sys.argv:
     ind = sys.argv.index('--folder')
     folder = sys.argv[ind+1]
-    print folder
 else:
     folder = None
  
 ## Set up global logging to file
 from rwsegment import utils_logging
-if not debug:
-    ## output paths
-    if sys.platform[:3]=='win':
-        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
-    else:
-        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
-    if folder is None:
-        folder = current_code_version
-    dir_log = dir_work + 'learning/{}'.format(folder)
-    dir_inf = dir_work + 'learning/{}/inference/'.format(folder)
-    dir_svm = dir_work + 'learning/{}/svm/'.format(folder)
-    utils_logging.LOG_OUTPUT_DIR = dir_log
-
+## output paths
+if sys.platform[:3]=='win':
+    current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
 else:
-    dir_log = None
-    dir_inf = None
-    dir_svm = None
+    current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
+if folder is None:
+    folder = current_code_version
+
+dir_log = dir_work + 'learning/{}'.format(folder)
+dir_inf = dir_work + 'learning/{}/inference/'.format(folder)
+dir_svm = dir_work + 'learning/{}/svm/'.format(folder)
+
+if not debug:
+    utils_logging.LOG_OUTPUT_DIR = dir_log
 
 logger = utils_logging.get_logger('config', utils_logging.DEBUG)
 logger.info('current code version: {}'.format(current_code_version))
-
-
 
 
 
