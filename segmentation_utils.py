@@ -85,7 +85,7 @@ def compute_objective(test, y, w):
     from rwsegment import rwsegment
     en_rw = rwsegment.energy_rw(
             nim,
-            y
+            y,
             seeds=seeds,
             weight_function=weight_function,
             **rwparams
@@ -93,7 +93,7 @@ def compute_objective(test, y, w):
 
     en_anchor = rwsegment.energy_anchor(
             nim,
-            y
+            y,
             anchor_api,
             seeds=seeds,
             **rwparams
