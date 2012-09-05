@@ -43,7 +43,8 @@ NP=33
 #PBS -q iceq
 
 cd $HOME/segmentation-svm/
-mpirun -np $NP python learn_svm_batch.py --parallel --folder baseline_1l1p
-mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian --folder baseline_1l1p_laplacian
-# mpirun -np $NP python learn_svm_batch.py --parallel --latent
+#mpirun -np $NP python learn_svm_batch.py --parallel --folder baseline_1l1p
+#mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian --folder baseline_1l1p_laplacian
+mpirun -np $NP python learn_svm_batch.py --parallel --latent --loss laplacian --folder 2012.09.06_latent_laplacian
+mpirun -np $NP python learn_svm_batch.py --parallel --latent --folder 2012.09.06_latent
 
