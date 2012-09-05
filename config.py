@@ -111,11 +111,11 @@ else:
 from rwsegment import utils_logging
 if not debug:
     ## output paths
+    if sys.platform[:3]=='win':
+        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
+    else:
+        current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
     if folder is None:
-        if sys.platform[:3]=='win':
-            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'],shell=True)[:-2]
-        else:
-            current_code_version = subprocess.check_output(['git','rev-parse', 'HEAD'])[:-2]
         folder = current_code_version
     dir_log = dir_work + 'learning/{}'.format(folder)
     dir_inf = dir_work + 'learning/{}/inference/'.format(folder)
@@ -126,6 +126,9 @@ else:
     dir_log = None
     dir_inf = None
     dir_svm = None
+
+logger = utils_logging.get_logger('config', utils_logging.DEBUG)
+logger.info('current code version: {}'.format(current_code_version))
 
 
 
