@@ -7,7 +7,14 @@ ______________________________________________________________________________
 Q. What is the value of the objective function you obtain for both the 
     loss functions ?
 anchor loss: 172050.service0,84c81f130f43ce471d2385166b0bef873109db6a
-laplacian loss:172055.service0, d93e28dba5dcf12316177e2278e5ac3c344918e2 
+9 iterations,
+w=[3.6e-14 4.6e-14 2.2e-14 9.7e-14 1.5e-06 3.3e-12 6e-14], xi=0.44
+objective=0.435556019059
+
+laplacian loss: 172060.service0, f050805eea0411b98be38ab8597a6506ee0b40ee
+9 iterations,
+w=[1.6e-14 1.9e-14 1.1e-14 3.1e-14 3.4e-06 8.8e-13 1.9e-14], xi=0.78
+objective=0.77931789261
 
 Q. a*w0 is within the feasible region of the optimization problem.
     value of the objective for different values of a ?

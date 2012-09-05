@@ -47,7 +47,7 @@ class ConstrainedSolver(object):
         self.objective = objective
         
         self.epsilon   = kwargs.pop('epsilon',1e-3)
-        self.t0 = kwargs.pop('to',1)
+        self.t0 = kwargs.pop('t0',1)
         self.mu = kwargs.pop('mu',20)
         self.maxiter = kwargs.pop('maxiter',100)
         
@@ -81,10 +81,12 @@ class ConstrainedSolver(object):
         ''' (parameters for the Newton solver in kwargs)
         '''
         
-        epsilon = self.epsilon # WARNING: not used
+        epsilon = self.epsilon
         mu      = self.mu
         t0      = self.t0
         
+        newt_epsilon = kwargs.pop('epsilon', None)
+
         ## initial guess x0 has to satisfy the equality constraints !
         ## Ax0 = b
          
@@ -107,24 +109,26 @@ class ConstrainedSolver(object):
                
             ## Newton's method
             # increase epsilon with t
-            eps_newton = kwargs.pop('epsilon',1e-3)
-            eps_newton = np.maximum(1e-3,t*1e-6)
+            if newt_epsilon is None:
+                eps = np.maximum(1e-3,t*1e-6)
+            else:
+                eps = newt_epsilon
             logger.debug(
-                'calling Newton solver with tol={:2}'.format(eps_newton))
+                'calling Newton solver with tol={:.2}'.format(eps))
             
             # instanciate solver
             solver = NewtonMethod(
                 modf_objective, 
                 modf_gradient, 
                 modf_hessian,
-                epsilon=eps_newton,
+                epsilon=eps,
                 **kwargs)
                 
             # solve with Newton' method
             u0 = np.asmatrix(np.zeros(nvar)).T
-            # import ipdb; ipdb.set_trace() ## to check ...
             u = solver.solve(u0)
-
+            #import ipdb; ipdb.set_trace() ## to check ...
+            
             F = self.F
             x = F*u + x
             
@@ -240,7 +244,8 @@ class NewtonMethod(object):
             else:
                 ## standard Newton's Method
                 import gc
-                u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
+                #u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
+                u_nt,info = splinalg.cg(Hu,-gradu, tol=epsilon, maxiter=1000)
                 u_nt = np.asmatrix(u_nt).T
                 gc.collect()
             
@@ -249,7 +254,7 @@ class NewtonMethod(object):
             lmbda2 = - np.dot(gradu.T, u_nt)
 
             ## stopping conditions
-            if 0.5*lmbda2 <= epsilon:
+            if (0.5*lmbda2 <= epsilon): 
                 logger.debug(
                     'Newt: return, lambda2={:.02}'.format(float(lmbda2)))
                 return u

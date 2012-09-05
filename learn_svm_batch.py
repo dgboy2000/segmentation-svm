@@ -349,7 +349,16 @@ class SVMSegmenter(object):
         
         ## compute Dice coefficient
         dice = compute_dice_coef(sol, seg,labelset=self.labelset)
-        
+        logger.info('Dice coefficients: {}'.format(dice))
+
+        ## objective
+        en_rw = rwsegment.energy_rw(
+            nim, y, seeds=self.seeds,weight_function=weight_function, **self.rwparams_inf)
+        en_anchor = rwsegment_anchor(
+            nim, y, anchor_api, seeds=self.seeds, **self.rwparams_inf)
+        obj = en_rw + en_anchor
+        logger.info('Objective = {:.3}'.format(obj))
+ 
         ## saving
         if self.debug:
             pass
@@ -360,6 +369,7 @@ class SVMSegmenter(object):
             io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
             np.save(outdir + 'y.npy',y)        
             io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
+            np.savetxt(outdir + 'objective.txt', [obj])
             np.savetxt(
                 outdir + 'dice.txt', 
                 np.c_[dice.keys(),dice.values()],fmt='%d %f')

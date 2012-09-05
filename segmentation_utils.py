@@ -12,6 +12,95 @@ reload(config)
 from rwsegment import utils_logging
 logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 
+
+def compute_objective(test, y, w):
+    im = io_analyze.load(config.dir_reg + test + 'gray.hdr')
+    nim = im/np.std(im)
+     
+    prior,mask = load_or_compute_prior_and_mask(
+        test, force_recompute=False)
+    seeds = (-1)*mask.astype(int)
+
+    from rwsegment import rwsegment_prior_models as models
+    from rwsegment import weight_functions as wflib
+    rwparams = {
+            'labelset': np.asarray([0,13,14,15,16]),
+
+            # optimization
+            'rtol': 1e-6,
+            'maxiter': 1e3,
+            'per_label':True,
+            'optim_solver':'unconstrained',
+            }
+
+    weight_functions = {
+        'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+        'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
+        'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+        'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
+        # 'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
+        # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
+        # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
+        }
+
+    prior_models = {
+        'constant': models.Constant,
+        'entropy': models.Entropy_no_D,
+        'intensity': models.Intensity,
+        }
+    
+    ## indices of w
+    nlaplacian = len(weight_functions)
+    nprior = len(prior_models)
+    indices_laplacians = np.arange(nlaplacian)
+    indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
+  
+    laplacian_functions = weight_functions.values()
+    laplacian_names     = weight_functions.keys()
+    prior_functions     = prior_models.values()
+    prior_names         = prior_models.keys()
+    
+    weights_laplacians = np.asarray(w)[indices_laplacians]
+    weights_priors = np.asarray(w)[indices_priors]
+
+    def meta_weight_functions(im,_w):
+        ''' meta weight function'''
+        data = 0
+        for iwf,wf in enumerate(laplacian_functions):
+            ij,_data = wf(im)
+            data += _w[iwf]*_data
+        return ij, data
+    weight_function = lambda im: meta_weight_functions(im, weights_laplacians)
+    
+    
+
+    from svm_rw_api import MetaAnchor 
+    anchor_api = MetaAnchor(
+        prior,
+        prior_functions,
+        weights_priors,
+        image=im,
+        )
+
+    from rwsegment import rwsegment
+    en_rw = rwsegment.energy_rw(
+            nim,
+            y
+            seeds=seeds,
+            weight_function=weight_function,
+            **rwparams
+            )
+
+    en_anchor = rwsegment.energy_anchor(
+            nim,
+            y
+            anchor_api,
+            seeds=seeds,
+            **rwparams
+            )
+    obj = en_rw + en_anchor
+    return obj
+
 def load_or_compute_prior_and_mask(test, force_recompute=False):
 
     labelset = np.asarray(config.labelset)
@@ -25,7 +114,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
     file_prior = outdir + 'prior.npz'
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
-    
+   
     if (not force_recompute) and os.path.exists(file_prior):        # logger.info('load prior')
         mask  = io_analyze.load(file_mask)
         prior = np.load(file_prior)

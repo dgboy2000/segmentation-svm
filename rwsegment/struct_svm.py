@@ -163,13 +163,13 @@ class StructSVM(object):
         ## objective
         P = np.mat(np.diag([s for s in self.psi_scale] + [0]))
         q = np.mat(np.c_[[0 for i in range(n)] + [self.C]])
-        G = np.bmat(
+        G = np.bmat([
             # constraints
-            [[p - pgt for p,pgt in  zip(compute_avg_psi(j),avg_psi_gt)] + [1.] \
-                for j in range(ncons)] + \
+            [[[p - pgt for p,pgt in  zip(compute_avg_psi(j),avg_psi_gt)] + [1.] \
+                for j in range(ncons)]],
             # positivity constraints on w and xi
-            np.diag([1 for i in range(n)] + [1]).tolist()
-            )
+            [np.diag([1 for i in range(n)] + [1])],
+            ])
         h = np.mat(np.c_[
             # constraints
             [compute_avg_loss(j) for j in range(ncons)] + \
@@ -177,19 +177,23 @@ class StructSVM(object):
             [0 for i in range(n+1)]
             ])
             
-        import ipdb; ipdb.set_trace()
         obj = ObjectiveAPI(P,q,G=G,h=h)
-        import ipdb; ipdb.set_trace()
         
-        solver = ConstrainedSolver(obj)
+        solver = ConstrainedSolver(obj,epsilon=1e-15,t0=1.0)
         
         if w is None:
             w = np.zeros(n)
-        if xi is None:
-            x = np.zeros(1)
-        sol0 = np.mat(np.r_[w,xi]).T
-        sol = solver.solve(sol0) 
-        w,xi = [val for val in sol[:n]],sol[n]
+        #if xi is None:
+        #    xi = np.zeros(1i)
+
+        sol0 = np.mat(np.r_[w, 1.0]).T
+        if np.sqrt(np.dot(sol0[:-1].T,sol0[:-1])) < 1e-10:
+            sol0[:-1] += 1e-10
+        sol0[-1] = np.max([compute_avg_loss(j) for j in range(ncons)]) + 1e-8
+        
+        sol = solver.solve(sol0,epsilon=1e-4) 
+        
+        w,xi = sol[:n].A.ravel().tolist(), float(sol[n].A)
         return w,xi
     
     def mosek_current_solution(self, W, **kwargs):
