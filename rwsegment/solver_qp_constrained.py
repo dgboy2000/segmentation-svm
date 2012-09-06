@@ -110,7 +110,8 @@ class ConstrainedSolver(object):
             ## Newton's method
             # increase epsilon with t
             if newt_epsilon is None:
-                eps = np.maximum(1e-3,t*1e-6)
+                #eps = np.maximum(1e-3,t*1e-6)
+                eps = 1e-6
             else:
                 eps = newt_epsilon
             logger.debug(
@@ -151,7 +152,8 @@ class ConstrainedSolver(object):
         if np.min(cond)<= 0:
             ## in case of negative values, return infinity
             return np.infty
-        return t * objective(x) - np.sum(np.log(cond))
+        #return t * objective(x) - np.sum(np.log(cond))
+        return objective(x) - 1./t * np.sum(np.log(cond))
     
     def barrier_gradient_eqc(self,u,x0,t):
         gradient = self.objective.gradient
@@ -160,7 +162,8 @@ class ConstrainedSolver(object):
         FT = self.FT
         x = F*u + x0
         cond = G*x - h
-        return FT * (t * gradient(x) + GT * self.barrier_gradient(cond))
+        #return FT * (t * gradient(x) + GT * self.barrier_gradient(cond))
+        return FT * ( gradient(x) + 1.0/t * GT * self.barrier_gradient(cond))
         
     def barrier_gradient(self,cond):
         return np.matrix(-1.0/np.asarray(cond).ravel()).T
@@ -173,42 +176,15 @@ class ConstrainedSolver(object):
         FT = self.FT
         x = F*u + x0
         cond = G*x - h
-        return FT * (t * hessian(x) + \
-                      GT * self.barrier_hessian(cond) * G) * F
-        
+        #return FT * (t * hessian(x) + \
+        #              GT * self.barrier_hessian(cond) * G) * F
+        return FT * (hessian(x) + \
+                      1./t * GT * self.barrier_hessian(cond) * G) * F
+ 
     def barrier_hessian(self,cond):
         n = cond.size
         return sparse.spdiags(1.0/np.asarray(cond).ravel()**2,0,n,n)
     
-    
-    # def barrier_objective(self,x,t):
-        # objective = self.objective        
-        # G,h = self.objective.iconst
-        # cond = G*x - h
-        # if np.min(cond)<= 0:
-            # in case of negative values, return infinity
-            # return np.infty
-        # return t * objective(u) - np.sum(np.log(cond))
-        
-    # def barrier_gradient(self,x,t):
-        # gradient = self.objective.gradient
-        # G,h = self.objective.iconst
-        # if np.asmatrix(G).size==1: GT = G
-        # else: GT = np.asmatrix(G).T
-        # cond = G*x - h
-        # return F.T * (t * gradient(x) + GT * self.barrier_gradient(cond))
-        
-    
-    # def barrier_hessian(self,x,t):
-        # hessian = self.objective.hessian
-        # G,h = self.objective.iconst
-        # if np.asmatrix(G).size==1: GT = G
-        # else: GT = np.asmatrix(G).T
-        # cond = G*x - h
-        # return F.T * (t * hessian(x) + \
-                      # GT * self.barrier_hessian(cond) * G) * F
-        
-        
         
 class NewtonMethod(object):
     def __init__(self, objective, gradient, hessian, **kwargs):
