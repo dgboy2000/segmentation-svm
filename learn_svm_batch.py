@@ -79,7 +79,8 @@ class SVMSegmenter(object):
         self.use_parallel = use_parallel    
         self.debug = debug
         self.retrain = kwargs.pop('retrain', True)
-        self.nomosek=kwargs.pop('nomosek',False)
+        self.nomosek = kwargs.pop('nomosek',False)
+        C = kwargs.pop('C',1.0)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -125,10 +126,11 @@ class SVMSegmenter(object):
             
         ## svm params
         self.svmparams = {
-            'C': 1,
+            'C': C,
             'nitermax': 100,
             'nomosek': self.nomosek,
-            
+            'epsilon': 1e-5,
+
             # latent
             'latent_niter_max': 100,
             'latent_C': 10,
@@ -201,11 +203,12 @@ class SVMSegmenter(object):
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(use_latent))
             strkeys = ', '.join(self.laplacian_names)
-            logger.info('laplacian functions (in order):{}'.format(strkeys))
+            logger.info('laplacian functions (in order): {}'.format(strkeys))
             strkeys = ', '.join(self.prior_names)
-            logger.info('prior models (in order):{}'.format(strkeys))
+            logger.info('prior models (in order): {}'.format(strkeys))
             logger.info('don\'t use mosek ?: {}'.format(self.nomosek))
-            logger.info('using loss type:{}'.format(loss_type))
+            logger.info('using loss type: {}'.format(loss_type))
+            logger.info('SVM parameters: {}'.format(self.svmparams))
             if self.debug:
                 logger.info('debug mode, no saving')
             else:
@@ -470,7 +473,13 @@ if __name__=='__main__':
         default=False, action="store_true",
         help='retrain svm ?',
         )  
-    
+ 
+    opt.add_option( # C
+        '-C', dest='C', 
+        default=1.0, type=float,
+        help='C value',
+        )  
+       
     opt.add_option( # folder name
         '--folder', dest='folder', 
         default='', type=str,
@@ -485,10 +494,13 @@ if __name__=='__main__':
     debug = options.debug
     nomosek = options.nomosek
     retrain = 1 - options.noretrain
+    C = options.C
+
     folder = options.folder #unused
 
     ''' start script '''
     svm_segmenter = SVMSegmenter(
+        C=C,
         use_parallel=use_parallel,
         use_latent=use_latent,
         loss_type=loss_type,
