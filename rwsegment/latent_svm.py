@@ -33,7 +33,13 @@ class LatentSVM(object):
             
     def psi(self,x,y):
         return self.user_psi(x,y)
-            
+    
+    def loss_function(self,z,y):
+        return self.user_loss(z,y)    
+    
+    def most_violated_constraint(self,w,x,z):
+        return self.user_mvc(w,x,z)
+    
     def _sequential_all_aci(self,w,xs,zs,y0s):
         ys = []
         for x,z,y0 in zip(xs,zs,y0s):
@@ -125,7 +131,7 @@ class LatentSVM(object):
                
             ## Stop condition
             # TODO: check it does the right thing
-            if (self.objective(w,x) - obj) < self.epsilon:
+            if (self.svm_objective(w,x) - obj) < self.epsilon:
                 strw = ' '.join('{:.3}'.format(val) for val in w)
                 logger.debug('latent svm stopping with: w=[{}],xi={}'\
                     .format(strw,xi))
@@ -134,6 +140,6 @@ class LatentSVM(object):
                 strw = ' '.join('{:.3}'.format(val) for val in w)
                 logger.debug('done iteration #{}, with: w=[{}],xi={}'\
                     .format(iter, strw,xi))
-                obj = self.objective(w,x)
+                obj = self.svm_objective(w,x)
             
             
