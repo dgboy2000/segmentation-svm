@@ -143,10 +143,10 @@ class SVMSegmenter(object):
             self.weight_functions = {'std_b50': lambda im: wflib.weight_std(im, beta=50)}
         else:
             self.weight_functions = {
-                #'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+                'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
                 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-                #'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
-                #'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
+                'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+                'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
                 # 'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
                 # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
                 # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
@@ -157,9 +157,9 @@ class SVMSegmenter(object):
             self.prior_models = {'constant': models.Constant}
         else:
             self.prior_models = {
-                #'constant': models.Constant,
+                'constant': models.Constant,
                 'entropy': models.Entropy_no_D,
-                #'intensity': models.Intensity,
+                'intensity': models.Intensity,
                 }
 
         ## indices of w
