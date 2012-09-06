@@ -183,15 +183,16 @@ class StructSVM(object):
         
         if w is None:
             w = np.zeros(n)
-        #if xi is None:
-        #    xi = np.zeros(1i)
 
-        sol0 = np.mat(np.r_[w, 1.0]).T
-        if np.sqrt(np.dot(sol0[:-1].T,sol0[:-1])) < 1e-10:
-            sol0[:-1] += 1e-10
-        sol0[-1] = np.max([compute_avg_loss(j) for j in range(ncons)]) + 1e-8
+        import ipdb; ipdb.set_trace() 
         
-        sol = solver.solve(sol0,epsilon=1e-4) 
+        xi0 = np.max(h[:ncons] - G[:ncons,:-1]*np.mat(w).T)
+        sol0 = np.mat(np.r_[w, xi0]).T
+        #if np.sqrt(np.dot(sol0[:-1].T,sol0[:-1])) < 1e-10:
+        #    sol0[:-1] += 1e-10
+        #sol0[-1] = np.max([compute_avg_loss(j) for j in range(ncons)]) + 1e-8
+       
+        sol = solver.solve(sol0,epsilon=1e-8) 
         
         w,xi = sol[:n].A.ravel().tolist(), float(sol[n].A)
         return w,xi
@@ -438,7 +439,11 @@ class StructSVM(object):
         ## test set for qp
         W = [] 
         w,xi = None,None
-        
+       
+        ## compute psis of ground truth
+        logger.debug('compute psis of ground truth')
+        list(self.compute_all_psi())
+ 
         ## initialize w
         if self.wsize is None:
             logger.info("compute length of psi")
@@ -487,6 +492,7 @@ class StructSVM(object):
             # logger.debug("ys={}".format(ys))
             
             ## compute psis and losses:
+            logger.debug('compute psis and losses for added constraints')
             psis = list(self.compute_all_psi(ys))
             losses = [self.loss(self.S[i][1], y_) for i,y_ in enumerate(ys)]
             
@@ -494,6 +500,7 @@ class StructSVM(object):
             W.append({'psis': psis, 'losses': losses})
             
             ## stop condition
+            logger.debug('compute stop condition')
             if self.stop_condition(w,xi,ys): 
                 logger.info("stop condition reached")
                 break
