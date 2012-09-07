@@ -63,13 +63,13 @@ def output(job_name):
 def folder():
     return '\ncd $HOME/segmentation-svm/\n'
 
-def make_job(job_name, command, queue=icepar156q):
+def make_job(job_name, command, queue='icepar156q'):
     job_file = job_name + '.sh'
 
     f = open(job_file, 'w')
     f.write(header)
     f.write(output(job_name))
-    f.write(queue())
+    f.write(eval(queue)())
     f.write(folder())
     f.write('\n#command:\n')
     f.write(command)
@@ -80,17 +80,23 @@ def make_job(job_name, command, queue=icepar156q):
     os.system('qsub -k oe {}'.format(job_file))
 
 if __name__=='__main__':
-     
+
      ## jobs
      make_job(
-         '2012.09.07.baseline_C10',
-         'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
+         '2012.09.07.segmentation_all',
+         'python segmentation_batch.py',
+         queue='icemem48gbq',
          )
+
+     #make_job(
+     #    '2012.09.07.baseline_C10',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
+     #    )
  
-     make_job(
-         '2012.09.07.baseline_C10_laplacian',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian -C 10',
-         )
+     #make_job(
+     #    '2012.09.07.baseline_C10_laplacian',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian -C 10',
+     #    )
      
      #make_job(
      #    '2012.09.06.baseline_C10',
