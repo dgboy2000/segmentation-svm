@@ -219,7 +219,7 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     nlabel = len(list_xm)
 
     ## if no laplacian, return prior
-    if len(Lu.data)==0 or np.max(np.abs(Lu.data)<1e-10):
+    if len(Lu.data)==0 or np.max(np.abs(Lu.data))<1e-10:
        x = list_x0
        return x
     

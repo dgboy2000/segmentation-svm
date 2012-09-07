@@ -3,6 +3,10 @@ TODO SVM RW
 ===========
 
 ______________________________________________________________________________
+09.07.2012
+Q. big bug in rwsegment per label: need to rerun baseline
+
+______________________________________________________________________________
 09.06.2012
 Q. In the baseline, in optimization of w, using log barrier instead of mosek:
     psi gt: [5.8e+04 7.08e+04]

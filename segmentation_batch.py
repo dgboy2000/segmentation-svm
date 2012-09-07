@@ -119,7 +119,7 @@ class SegmentationBatch(object):
             )
             
         ## start segmenting
-        #import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         sol,y = rwsegment.segment(
             nim, 
             anchor_api,
