@@ -83,6 +83,7 @@ class SVMSegmenter(object):
         self.retrain = kwargs.pop('retrain', True)
         self.nomosek = kwargs.pop('nomosek',False)
         C = kwargs.pop('C',1.0)
+	self.minimal_svm = kwargs.pop('minimal_svm', False)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -141,7 +142,7 @@ class SVMSegmenter(object):
             }
             
         ## weight functions
-        if self.debug:
+        if self.minimal_svm:
             self.weight_functions = {'std_b50': lambda im: wflib.weight_std(im, beta=50)}
         else:
             self.weight_functions = {
@@ -155,7 +156,7 @@ class SVMSegmenter(object):
                 }
          
         ## priors models
-        if self.debug:
+        if self.minimal_svm:
             self.prior_models = {'constant': models.Constant}
         else:
             self.prior_models = {

@@ -83,13 +83,23 @@ if __name__=='__main__':
      
      ## jobs
      make_job(
-         '2012.09.06.baseline_C10',
+         '2012.09.07.baseline_C10',
          'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
          )
-
+ 
      make_job(
-         '2012.09.06.baseline_C100',
-         'mpirun -np $NP python learn_svm_batch.py --parallel -C 100',
+         '2012.09.07.baseline_C10_laplacian',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --loss laplacian -C 10',
          )
+     
+     #make_job(
+     #    '2012.09.06.baseline_C10',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
+     #    )
+
+     #make_job(
+     #    '2012.09.06.baseline_C100',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 100',
+     #    )
 
 
