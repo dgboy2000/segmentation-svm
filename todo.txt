@@ -7,7 +7,7 @@ ______________________________________________________________________________
 Q. big bug in rwsegment per label: need to rerun baseline
 
 Q. Pawan idea: in log barrier, remove values that become ~0 (< some tol).
-
+ie. in log barrier, if condition is too small, do something !
 ______________________________________________________________________________
 09.06.2012
 Q. In the baseline, in optimization of w, using log barrier instead of mosek:
