@@ -177,23 +177,22 @@ class StructSVM(object):
             [0 for i in range(n+1)]
             ])
             
+        ## make solver object
         obj = ObjectiveAPI(P,q,G=G,h=h)
-        
         solver = ConstrainedSolver(obj,epsilon=1e-15,t0=1.0)
         
+        ## make initial guess for w,xi
         if w is None:
             w = np.zeros(n)
 
-        import ipdb; ipdb.set_trace() 
-        
-        xi0 = np.max(h[:ncons] - G[:ncons,:-1]*np.mat(w).T)
-        sol0 = np.mat(np.r_[w, xi0]).T
-        #if np.sqrt(np.dot(sol0[:-1].T,sol0[:-1])) < 1e-10:
-        #    sol0[:-1] += 1e-10
-        #sol0[-1] = np.max([compute_avg_loss(j) for j in range(ncons)]) + 1e-8
+        w_ = np.asarray(w) + 1e-5
+        xi0 = np.maximum(np.max(h[:ncons] - G[:ncons,:-1]*np.mat(w_).T),0) + 1e-5
+        sol0 = np.mat(np.r_[w_, xi0]).T
        
+        ## solve w,xi
         sol = solver.solve(sol0,epsilon=1e-8) 
         
+        ## return solution
         w,xi = sol[:n].A.ravel().tolist(), float(sol[n].A)
         return w,xi
     

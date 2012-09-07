@@ -79,24 +79,31 @@ class ConstrainedSolver(object):
         
     def solve(self, x0, **kwargs):
         ''' (parameters for the Newton solver in kwargs)
+            initial guess x0 has to satisfy the equality constraints !
+            Ax0 = b
         '''
         
         epsilon = self.epsilon
         mu      = self.mu
         t0      = self.t0
-        
         newt_epsilon = kwargs.pop('epsilon', None)
 
-        ## initial guess x0 has to satisfy the equality constraints !
-        ## Ax0 = b
-         
         x = x0
         t = t0
 
-        G = self.G
+        G,h = self.G, self.h
         self.nconst = (G*x0).shape[0]
         
         nvar = min(self.nvar, x0.size)
+        
+        ## test inequality constraints
+        inconst = np.min(G*x0 - h)
+        try:
+            assert inconst > 0
+        except:
+            import sys
+            logger.error('Inequality constraint not satisfied, by {:.3}'.format(inconst))
+            sys.exit(1)
         
         for iter in range(self.maxiter):
             ## solve with currant t
