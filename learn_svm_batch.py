@@ -31,12 +31,14 @@ from rwsegment import rwsegment
 from rwsegment import rwsegment_prior_models as models
 from rwsegment import struct_svm
 from rwsegment import latent_svm
+from rwsegment import loss_functions
 from rwsegment.rwsegment import BaseAnchorAPI
 reload(rwsegment),
 reload(wflib)
 reload(models)
 reload(struct_svm)
 reload(latent_svm)
+reload(loss_functions)
 
 from rwsegment import svm_worker
 reload(svm_worker)
@@ -362,14 +364,35 @@ class SVMSegmenter(object):
             nim, y, anchor_api, seeds=self.seeds, **self.rwparams_inf)
         obj = en_rw + en_anchor
         logger.info('Objective = {:.3}'.format(obj))
- 
+
+        
+        ## compute losses
+        z = seg.ravel()==np.c_[self.labelset]
+        mask = self.seeds < 0
+        flatmask = mask.ravel()*np.ones((len(self.labelset),1))
+        
+        ## loss 0 : 1 - Dice(y,z)
+        loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
+        logger.info('loss0 (Dice) = {}'.format(loss0))
+        
+        ## loss2: squared difference with ztilde
+        loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
+        logger.info('loss1 (anchor) = {}'.format(loss1))
+        
+        ## loss3: laplacian loss
+        loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
+        logger.info('loss2 (laplacian) = {}'.format(loss2))
+
+        
         ## saving
         if self.debug:
             pass
         elif self.isroot:
             outdir = self.dir_inf + test
+            logger.info('saving data in: {}'.format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
+                
             io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
             np.save(outdir + 'y.npy',y)        
             io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
@@ -378,6 +401,11 @@ class SVMSegmenter(object):
                 outdir + 'dice.txt', 
                 np.c_[dice.keys(),dice.values()],fmt='%d %f')
         
+            f = open(outdir + 'losses.txt', 'w')
+            f.write('ideal_loss\t{}\n'.format(loss0))
+            f.write('anchor_loss\t{}\n'.format(loss1))
+            f.write('laplacian_loss\t{}\n'.format(loss2))
+            f.close()
         
     def process_sample(self, test):
         

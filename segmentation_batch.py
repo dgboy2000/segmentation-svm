@@ -6,8 +6,10 @@ from rwsegment import io_analyze
 from rwsegment import rwsegment
 from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment_prior_models as prior_models
+from rwsegment import loss_functions
 from rwsegment.rwsegment import  BaseAnchorAPI
 reload(rwsegment)
+reload(loss_functions)
 reload(prior_models)
 
 
@@ -20,6 +22,8 @@ from segmentation_utils import compute_dice_coef
 import config
 reload(config)
 
+from rwsegment import utils_logging
+logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
 
 class SegmentationBatch(object):
     
@@ -34,7 +38,7 @@ class SegmentationBatch(object):
         
         self.params  = {
             'beta'             : 50,     # contrast parameter
-            'return_arguments' :['image'],
+            'return_arguments' :['image','y'],
             
             # optimization parameter
             'per_label': True,
@@ -43,10 +47,10 @@ class SegmentationBatch(object):
             'maxiter'   : 2e3,
             }
         
-        # laplacian_type = 'std_b50'
+        laplacian_type = 'std_b50'
         #laplacian_type = 'inv_b100o1'
         # laplacian_type = 'pdiff_r1b10'
-        laplacian_type = 'pdiff_r2b10'
+        # laplacian_type = 'pdiff_r2b10'
         logger.info('laplacian type is: {}'.format(laplacian_type))
         
         self.weight_functions = {
@@ -89,20 +93,20 @@ class SegmentationBatch(object):
             .format(self.model_type, anchor_weight))
     
     def process_sample(self,test):
-        outdir = config.dir_work + \
-            'segmentation/{}/{}'.format(self.model_type,test)
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
-        
+
         ## get prior
         prior, mask = load_or_compute_prior_and_mask(
             test,force_recompute=self.force_recompute_prior)
-        
-        ## segment image
-        file_name = config.dir_reg + test + 'gray.hdr'        
-        print 'segmenting data: {}'.format(file_name)
-        im      = io_analyze.load(file_name)
         seeds   = (-1)*mask
+        
+        ## load image
+        file_name = config.dir_reg + test + 'gray.hdr'        
+        logger.info('segmenting data: {}'.format(file_name))
+        im      = io_analyze.load(file_name)
+        file_gt = config.dir_reg + test + 'seg.hdr'
+        seg     = io_analyze.load(file_gt)
+        seg.flat[~np.in1d(seg, self.labelset)] = self.labelset[0]
+        
            
         ## normalize image
         nim = im/np.std(im)
@@ -115,8 +119,8 @@ class SegmentationBatch(object):
             )
             
         ## start segmenting
-	#import ipdb; ipdb.set_trace()
-        sol = rwsegment.segment(
+        #import ipdb; ipdb.set_trace()
+        sol,y = rwsegment.segment(
             nim, 
             anchor_api,
             seeds=seeds, 
@@ -124,22 +128,51 @@ class SegmentationBatch(object):
             weight_function=self.weight_function,
             **self.params
             )
-            
-        io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32))    
+
+        ## compute losses
+        z = seg.ravel()==np.c_[self.labelset]
+        flatmask = mask.ravel()*np.ones((len(self.labelset),1))
         
-        ## compute Dice coefficient
-        file_gt = config.dir_reg + test + 'seg.hdr'
-        seg     = io_analyze.load(file_gt)
+        ## loss 0 : 1 - Dice(y,z)
+        loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
+        logger.info('loss0 (Dice) = {}'.format(loss0))
+        
+        ## loss2: squared difference with ztilde
+        loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
+        logger.info('loss1 (anchor) = {}'.format(loss1))
+        
+        ## loss3: laplacian loss
+        loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
+        logger.info('loss2 (laplacian) = {}'.format(loss2))
+        
+        ## compute Dice coefficient per label
         dice    = compute_dice_coef(sol, seg,labelset=self.labelset)
-        np.savetxt(
-            outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
+        logger.info('Dice: {}'.format(dice))
+        
+        if not config.debug:
+            outdir = config.dir_seg + \
+                '/{}/{}'.format(self.model_type,test)
+            logger.info('saving data in: {}'.format(outdir))
+            if not os.path.isdir(outdir):
+                os.makedirs(outdir)
+        
+            io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32))
+            np.save(outdir + 'y.npy', y)
+        
+            f = open(outdir + 'losses.txt', 'w')
+            f.write('ideal_loss\t{}\n'.format(loss0))
+            f.write('anchor_loss\t{}\n'.format(loss1))
+            f.write('laplacian_loss\t{}\n'.format(loss2))
+            f.close()
+            
+            np.savetxt(
+                outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
         
     def process_all_samples(self,sample_list):
         for test in sample_list:
             self.process_sample(test)
             
-from rwsegment import utils_logging
-logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
+
             
             
 if __name__=='__main__':

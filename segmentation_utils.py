@@ -4,7 +4,9 @@ from scipy import ndimage
 
 from rwsegment import io_analyze
 from rwsegment import rwsegment_prior
+from rwsegment import loss_functions
 reload(rwsegment_prior)
+reload(loss_functions)
 
 import config
 reload(config)
@@ -12,6 +14,23 @@ reload(config)
 from rwsegment import utils_logging
 logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 
+
+def compute_losses(z,y,mask):
+    ## loss 0 : 1 - Dice(y,z)
+    loss0 = loss_functions.ideal_loss(z,y,mask=mask)
+    logger.info('loss0 (Dice) = {}'.format(loss1))
+    
+    ## loss2: squared difference with ztilde
+    loss1 = loss_functions.anchor_loss(z,y,mask=mask)
+    logger.info('loss1 (anchor) = {}'.format(loss1))
+    
+    ## loss3: laplacian loss
+    loss2 = loss_functions.laplacian_loss(z,y,mask=mask)
+    logger.info('loss2 (laplacian) = {}'.format(loss2))
+    
+    return loss0, loss1, loss2
+    
+    
 
 def compute_objective(test, y, w):
     im = io_analyze.load(config.dir_reg + test + 'gray.hdr')
@@ -101,6 +120,7 @@ def compute_objective(test, y, w):
     obj = en_rw + en_anchor
     return obj
 
+    
 def load_or_compute_prior_and_mask(test, force_recompute=False):
 
     labelset = np.asarray(config.labelset)
