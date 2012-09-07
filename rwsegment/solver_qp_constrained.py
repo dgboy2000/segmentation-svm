@@ -86,7 +86,7 @@ class ConstrainedSolver(object):
         epsilon = self.epsilon
         mu      = self.mu
         t0      = self.t0
-        newt_epsilon = kwargs.pop('epsilon', None)
+        # newt_epsilon = kwargs.pop('epsilon', None)
 
         x = x0
         t = t0
@@ -95,6 +95,9 @@ class ConstrainedSolver(object):
         self.nconst = (G*x0).shape[0]
         
         nvar = min(self.nvar, x0.size)
+        
+        ## non frozen indices
+        self.alive = np.arange(x0.size)
         
         ## test inequality constraints
         inconst = np.min(G*x0 - h)
@@ -116,26 +119,25 @@ class ConstrainedSolver(object):
                
             ## Newton's method
             # increase epsilon with t
-            if newt_epsilon is None:
+            # if newt_epsilon is None:
                 #eps = np.maximum(1e-3,t*1e-6)
-                eps = 1e-6
-            else:
-                eps = newt_epsilon
-            logger.debug(
-                'calling Newton solver with tol={:.2}'.format(eps))
+                # eps = 1e-6
+            # else:
+                # eps = newt_epsilon
+            # logger.debug(
+                # 'calling Newton solver with tol={:.2}'.format(newt_epsilon))
             
             # instanciate solver
             solver = NewtonMethod(
                 modf_objective, 
                 modf_gradient, 
                 modf_hessian,
-                epsilon=eps,
+                # epsilon=newt_epsilon,
                 **kwargs)
                 
             # solve with Newton' method
             u0 = np.asmatrix(np.zeros(nvar)).T
             u = solver.solve(u0)
-            #import ipdb; ipdb.set_trace() ## to check ...
             
             F = self.F
             x = F*u + x
@@ -148,7 +150,6 @@ class ConstrainedSolver(object):
             t = mu * t
 
         return y
-
         
     def barrier_objective_eqc(self,u,x0,t):
         objective = self.objective
@@ -159,7 +160,7 @@ class ConstrainedSolver(object):
         if np.min(cond)<= 0:
             ## in case of negative values, return infinity
             return np.infty
-        #return t * objective(x) - np.sum(np.log(cond))
+        logger.debug('min cond ={}'.format(np.min(cond)))
         return objective(x) - 1./t * np.sum(np.log(cond))
     
     def barrier_gradient_eqc(self,u,x0,t):
@@ -213,8 +214,10 @@ class NewtonMethod(object):
         u = u0
         nvar = len(u0)
         
+        logger.debug(
+                'starting Newton solver with tol={:.2}'.format(epsilon))
+                
         for iter in range(self.maxiter):
-            
             ## compute gradient and Hessian
             gradu = self.gradient(u)
             Hu = self.hessian(u)

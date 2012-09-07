@@ -305,8 +305,8 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
     
     ## log barrier solver
-    t0 = kwargs.pop('logbarrier_initial_t',1.0)
-    mu = kwargs.pop('logbarrier_mu',20.0)
+    t0      = kwargs.pop('logbarrier_initial_t',1.0)
+    mu      = kwargs.pop('logbarrier_mu',20.0)
     epsilon = kwargs.pop('logbarrier_epsilon',1e-3)
     solver = solver.ConstrainedSolver(
         objective,
@@ -314,8 +314,21 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         mu=mu,
         epsilon=epsilon,
         )
+    
+    ## internal solver is newton's method
+    newton_a       = kwargs.pop('newton_a', 0.4)
+    newton_b       = kwargs.pop('newton_b', 0.8)
+    newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
+    newton_maxiter = kwargs.pop('newton_maxiter', 100)
+    
+    x = solver.solve(
+        xinit, 
+        a=newton_a,
+        b=newton_b,
+        epsilon=newton_epsilon,
+        maxiter=newton_maxiter,
+        )
         
-    x = solver.solve(xinit, **kwargs)
     return x
 
     
