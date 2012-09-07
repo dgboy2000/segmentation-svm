@@ -442,7 +442,11 @@ class StructSVM(object):
        
         ## compute psis of ground truth
         logger.debug('compute psis of ground truth')
-        list(self.compute_all_psi())
+        gtpsis = list(self.compute_all_psi())
+        
+        ## log psis
+        strpsi = [' '.join('{:.3}'.format(val) for val in psi) for psi in gtpsis]
+        logger.debug('ground truth psis: {}'.format(strpsi))
  
         ## initialize w
         if self.wsize is None:
@@ -486,15 +490,20 @@ class StructSVM(object):
                     ys.append(y_)
                     if np.std(np.sum(y_.data,axis=0)) > 1e-5:
                         import ipdb; ipdb.set_trace()
-                    # compute loss of solution
-                    loss_y_ = self.loss(z,y_)
-                    logger.debug('loss = {:.2}'.format(loss_y_))
-            # logger.debug("ys={}".format(ys))
+                    ## compute loss of solution
+                    #loss_y_ = self.loss(z,y_)
+                    #logger.debug('loss = {:.2}'.format(loss_y_))
             
             ## compute psis and losses:
             logger.debug('compute psis and losses for added constraints')
             psis = list(self.compute_all_psi(ys))
             losses = [self.loss(self.S[i][1], y_) for i,y_ in enumerate(ys)]
+            
+            ## log psis and losses
+            strpsi = [' '.join('{:.3}'.format(val) for val in psi) for psi in psis]
+            logger.debug('new psis: {}'.format(strpsi))
+            strloss = ' '.join('{:.3}'.format(val) for val in losses)
+            logger.debug('new losses: {}'.format(strloss))
             
             ## add to test set
             W.append({'psis': psis, 'losses': losses})

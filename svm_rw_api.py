@@ -189,7 +189,7 @@ class SVMRWMeanAPI(object):
                 )/normalize)
             
         strpsi = ' '.join('{:.3}'.format(val) for val in v)
-        logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
+        # logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
         
         if v[0]==0:
             import ipdb; ipdb.set_trace()
