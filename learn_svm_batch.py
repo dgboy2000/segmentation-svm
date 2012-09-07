@@ -83,7 +83,7 @@ class SVMSegmenter(object):
         self.retrain = kwargs.pop('retrain', True)
         self.nomosek = kwargs.pop('nomosek',False)
         C = kwargs.pop('C',1.0)
-	self.minimal_svm = kwargs.pop('minimal_svm', False)
+        self.minimal_svm = kwargs.pop('minimal', False)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -503,6 +503,12 @@ if __name__=='__main__':
         help='retrain svm ?',
         )  
  
+    opt.add_option( # minimal svm
+        '--minimal', dest='minimal', 
+        default=False, action="store_true",
+        help='minimal svm: one laplacian, one prior ?',
+        )  
+ 
     opt.add_option( # C
         '-C', dest='C', 
         default=1.0, type=float,
@@ -523,6 +529,7 @@ if __name__=='__main__':
     debug = options.debug
     nomosek = options.nomosek
     retrain = 1 - options.noretrain
+    minimal = options.minimal
     C = options.C
 
     folder = options.folder #unused
@@ -537,6 +544,7 @@ if __name__=='__main__':
         debug=debug,
         retrain=retrain,
         nomosek=nomosek,
+        minimal=minimal,
         )
         
         

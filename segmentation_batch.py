@@ -177,15 +177,23 @@ class SegmentationBatch(object):
             
 if __name__=='__main__':
     ''' start script '''
+    sample_list = ['01/']
+    # sample_list = config.vols
+    
     segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
+    segmenter.process_all_samples(sample_list)
+    
     # segmenter = SegmentationBatch(anchor_weight=1e-1,    model_type='uniform')
     # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
     segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
+    segmenter.process_all_samples(sample_list)
+    
     segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    segmenter.process_all_samples(sample_list)
+    
     # segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='combined')
     
-    sample_list = ['01/']
-    # sample_list = config.vols
-    segmenter.process_all_samples(sample_list)
+    
+    
     
     
