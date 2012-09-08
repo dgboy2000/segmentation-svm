@@ -221,7 +221,12 @@ class NewtonMethod(object):
             ## compute gradient and Hessian
             gradu = self.gradient(u)
             Hu = self.hessian(u)
-                        
+ 
+            ## normalization
+            norm = np.max(np.abs(Hu.data))
+            Hu = 1./norm * Hu
+            gradu = 1./norm * gradu            
+        
             ## Newton step
             if self.use_diagonal_hessian:
                 ## Modified gradient descent
