@@ -160,7 +160,7 @@ class ConstrainedSolver(object):
         if np.min(cond)<= 0:
             ## in case of negative values, return infinity
             return np.infty
-        logger.debug('min cond ={}'.format(np.min(cond)))
+        #logger.debug('min cond ={}'.format(np.min(cond)))
         return objective(x) - 1./t * np.sum(np.log(cond))
     
     def barrier_gradient_eqc(self,u,x0,t):
@@ -223,9 +223,12 @@ class NewtonMethod(object):
             Hu = self.hessian(u)
  
             ## normalization
-            norm = np.max(np.abs(Hu.data))
-            Hu = 1./norm * Hu
-            gradu = 1./norm * gradu            
+            if hasattr(Hu,'nnz'):
+                norm = np.max(np.abs(Hu.data))
+            else:
+                norm = np.max(np.abs(Hu))
+            #Hu = 1./norm * Hu
+            #gradu = 1./norm * gradu            
         
             ## Newton step
             if self.use_diagonal_hessian:
