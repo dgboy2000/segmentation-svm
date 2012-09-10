@@ -31,14 +31,14 @@ class LatentSVM(object):
         
         self.svm_params = kwargs
             
-    def psi(self,x,y):
-        return self.user_psi(x,y)
+    def psi(self,x,y, **kwargs):
+        return self.user_psi(x,y, **kwargs)
     
-    def loss_function(self,z,y):
-        return self.user_loss(z,y)    
+    def loss_function(self,z,y, **kwargs):
+        return self.user_loss(z,y, **kwargs)    
     
-    def most_violated_constraint(self,w,x,z):
-        return self.user_mvc(w,x,z)
+    def most_violated_constraint(self,w,x,z, **kwargs):
+        return self.user_mvc(w,x,z, **kwargs)
     
     def _sequential_all_aci(self,w,xs,zs,y0s):
         ys = []
@@ -77,7 +77,7 @@ class LatentSVM(object):
             
     def svm_objective(self,w,xi):
         ## TODO: check average cutting place is valid for latent
-        obj = 0.5 * np.dot(w,w) + self.latent_C * xi
+        obj = 0.5 * np.sum(np.square(w)) + self.latent_C * xi
         return obj
         
     def train(self, training_set):
@@ -109,13 +109,13 @@ class LatentSVM(object):
         ## initial objective
         obj = 0
         
-        for iter in range(self.niter_max):
+        for niter in range(1,self.niter_max+1):
             logger.debug('iteration #{}'.format(iter))
             
             ## annotation consistent inference
             logger.debug('annotation consistent inference')
             ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
-            import ipdb; ipdb.set_trace() 
+            
             ## build updated training set for struct svm
             struct_training_set = [(x,y) for x,y in zip(images,ys)]
             
@@ -127,19 +127,21 @@ class LatentSVM(object):
                 self.psi,
                 self.most_violated_constraint
                 )
-            w,xi = struct_svm.train()
+            w,xi,info = struct_svm.train()
+
                
             ## Stop condition
-            # TODO: check it does the right thing
-            if (self.svm_objective(w,x) - obj) < self.epsilon:
-                strw = ' '.join('{:.3}'.format(val) for val in w)
+            ## TODO: check it does the right thing
+            if (self.svm_objective(w,xi) - obj) < self.epsilon:
+                strw = ' '.join('{:.3}'.format(float(val)) for val in w)
                 logger.debug('latent svm stopping with: w=[{}],xi={}'\
-                    .format(strw,xi))
+                    .format(strw,float(xi)))
                 return w,xi
             else:
-                strw = ' '.join('{:.3}'.format(val) for val in w)
+                strw = ' '.join('{:.3}'.format(float(val)) for val in w)
                 logger.debug('done iteration #{}, with: w=[{}],xi={}'\
-                    .format(iter, strw,xi))
-                obj = self.svm_objective(w,x)
+                    .format(niter, strw,float(xi)))
+                obj = self.svm_objective(w,xi)
+
             
             
