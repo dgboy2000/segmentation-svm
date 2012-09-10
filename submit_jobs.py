@@ -7,9 +7,6 @@ header = \
 # shell
 #PBS -S /bin/bash
 
-# name of the job
-#PBS -N learnbatch
-
 # standard error output
 #PBS -j oe
 
@@ -53,6 +50,13 @@ def icetestq():
 NP=6
 '''
 
+def set_jobname(name):
+    return '''
+# name of the job
+#PBS -N learnbatch
+'''
+
+
 def output(job_name):
      return '''
 # output
@@ -68,6 +72,7 @@ def make_job(job_name, command, queue='icepar156q'):
 
     f = open(job_file, 'w')
     f.write(header)
+    f.write(set_jobname(job_name))
     f.write(output(job_name))
     f.write(eval(queue)())
     f.write(folder())
@@ -80,13 +85,43 @@ def make_job(job_name, command, queue='icepar156q'):
     os.system('qsub -k oe {}'.format(job_file))
 
 if __name__=='__main__':
+     
 
-     ## jobs
+     # jobs
+
+     ## weighted loss (100)
      make_job(
-         '2012.09.07.segmentation_all',
-         'python segmentation_batch.py',
-         queue='icemem48gbq',
+         '2012.09.10.baseline_C10_loss1e4',
+         'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
          )
+
+     make_job(
+         '2012.09.10.baseline_C10_laplacian_loss1e4',
+         'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
+         )
+     
+     #make_job(
+     #    '2012.09.10.segmentation_all',
+     #    'python segmentation_batch.py',
+     #    queue='icemem48gbq',
+     #    )
+
+     ## rerun baseline using ideal/true loss function (except in the inference)
+     #make_job(
+     #    '2012.09.10.baseline_C10',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
+     #    )
+
+     #make_job(
+     #    '2012.09.10.baseline_C10_laplacian',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
+     #    )
+
+     #make_job(
+     #    '2012.09.07.segmentation_all',
+     #    'python segmentation_batch.py',
+     #    queue='icemem48gbq',
+     #    )
 
      #make_job(
      #    '2012.09.07.baseline_C10',

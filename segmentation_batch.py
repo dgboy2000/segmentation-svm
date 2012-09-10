@@ -8,6 +8,7 @@ from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment_prior_models as prior_models
 from rwsegment import loss_functions
 from rwsegment.rwsegment import  BaseAnchorAPI
+from svm_rw_api import MetaAnchor
 reload(rwsegment)
 reload(loss_functions)
 reload(prior_models)
@@ -27,13 +28,12 @@ logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
 
 class SegmentationBatch(object):
     
-    def __init__(self, anchor_weight=1., model_type='constant'):
-        ''' 
-            model_type in 'constant', 'entropy', 'variance', 'cmap'
-        '''
+    #def __init__(self, anchor_weight=1., model_type='constant'):
+    def __init__(self, prior_weights=[1.,0,0], name='constant1'):
         
         self.labelset  = np.asarray(config.labelset)
-        self.model_type = model_type
+        #self.model_type = model_type
+        self.model_name = name
         self.force_recompute_prior = False
         
         self.params  = {
@@ -63,34 +63,41 @@ class SegmentationBatch(object):
             'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
             }
         self.weight_function = self.weight_functions[laplacian_type]
-            
-        self.anchor_weight = anchor_weight
-        
-        if self.model_type=='constant': 
-            self.Model = prior_models.Constant
-        elif self.model_type=='uniform': 
-            self.Model = prior_models.Uniform
-        elif self.model_type=='entropy': 
-            self.Model = prior_models.Entropy
-        elif self.model_type=='entropy_no_D': 
-            self.Model = prior_models.Entropy_no_D
-        elif self.model_type=='variance': 
-            self.Model = prior_models.Variance
-        elif self.model_type=='variance_no_D': 
-            self.Model = prior_models.Variance_no_D
-        elif self.model_type=='confidence_map': 
-            self.Model = prior_models.Confidence_map
-        elif self.model_type=='confidence_map_no_D': 
-            self.Model = prior_models.Confidence_map_no_D
-        elif self.model_type=='intensity': 
-            self.Model = prior_models.Intensity
-        elif self.model_type=='combined': 
-            self.Model = prior_models.CombinedConstantIntensity
-        else:
-            raise Exception('Did not recognize prior model type: {}'\
-                .format(self.model_type))
-        logger.info('using prior model: {}, with weight={}'\
-            .format(self.model_type, anchor_weight))
+       
+        self.prior_models = [
+            prior_models.Constant,
+            prior_models.Entropy_no_D,
+            prior_models.Intensity,
+            ]
+        self.prior_weights = prior_weights
+
+        #self.anchor_weight = anchor_weight
+        #if self.model_type=='constant': 
+        #    self.Model = prior_models.Constant
+        #elif self.model_type=='uniform': 
+        #    self.Model = prior_models.Uniform
+        #elif self.model_type=='entropy': 
+        #    self.Model = prior_models.Entropy
+        #elif self.model_type=='entropy_no_D': 
+        #    self.Model = prior_models.Entropy_no_D
+        #elif self.model_type=='variance': 
+        #    self.Model = prior_models.Variance
+        #elif self.model_type=='variance_no_D': 
+        #    self.Model = prior_models.Variance_no_D
+        #elif self.model_type=='confidence_map': 
+        #    self.Model = prior_models.Confidence_map
+        #elif self.model_type=='confidence_map_no_D': 
+        #    self.Model = prior_models.Confidence_map_no_D
+        #elif self.model_type=='intensity': 
+        #    self.Model = prior_models.Intensity
+        #elif self.model_type=='combined': 
+        #    self.Model = prior_models.CombinedConstantIntensity
+        #else:
+        #    raise Exception('Did not recognize prior model type: {}'\
+        #        .format(self.model_type))
+
+        logger.info('Model name = {}, using prior weights={}'\
+            .format(self.model_name, self.prior_weights))
     
     def process_sample(self,test):
 
@@ -112,11 +119,17 @@ class SegmentationBatch(object):
         nim = im/np.std(im)
             
         ## init anchor_api
-        anchor_api = self.Model(
-            prior,
-            anchor_weight=self.anchor_weight,
+        anchor_api = MetaAnchor(
+            prior=prior,
+            prior_models=self.prior_models,
+            prior_weights=self.prior_weights,
             image=im,
             )
+         #anchor_api = self.Model(
+         #   prior,
+         #   anchor_weight=self.anchor_weight,
+         #   image=im,
+         #   )
             
         ## start segmenting
         # import ipdb; ipdb.set_trace()
@@ -150,8 +163,10 @@ class SegmentationBatch(object):
         logger.info('Dice: {}'.format(dice))
         
         if not config.debug:
+            #outdir = config.dir_seg + \
+            #    '/{}/{}'.format(self.model_type,test)
             outdir = config.dir_seg + \
-                '/{}/{}'.format(self.model_type,test)
+                '/{}/{}'.format(self.model_name,test)
             logger.info('saving data in: {}'.format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
@@ -177,21 +192,38 @@ class SegmentationBatch(object):
             
 if __name__=='__main__':
     ''' start script '''
-    sample_list = ['01/']
-    # sample_list = config.vols
-    
-    segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
+    #sample_list = ['01/']
+    #sample_list = ['02/']
+    sample_list = config.vols
+   
+    # constant prior
+    #segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
+    segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0], name='constant1e-2')
     segmenter.process_all_samples(sample_list)
     
-    # segmenter = SegmentationBatch(anchor_weight=1e-1,    model_type='uniform')
-    # segmenter = SegmentationBatch(anchor_weight=0.5,  model_type='entropy')
-    segmenter = SegmentationBatch(anchor_weight=1e-2, model_type='entropy_no_D')
+    # entropy prior
+    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0], name='entropy1e-2')
     segmenter.process_all_samples(sample_list)
     
-    segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    # entropy prior
+    segmenter = SegmentationBatch(prior_weights=[0, 1e-1, 0], name='entropy1e-1')
     segmenter.process_all_samples(sample_list)
     
-    # segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='combined')
+
+    # intensity prior
+    #segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    #segmenter.process_all_samples(sample_list)
+    
+
+    # combine entropy / intensity
+    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 1e-2], name='entropy1e-2_intensity1e-2')
+    segmenter.process_all_samples(sample_list)
+    
+     # combine entropy / intensity
+    segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 1e-2], name='entropy1e-3_intensity1e-2')
+    segmenter.process_all_samples(sample_list)
+    
+
     
     
     

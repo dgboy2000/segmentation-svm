@@ -43,17 +43,15 @@ class StructSVM(object):
         
         self.user_loss = loss_function
         self.user_psi  = psi
-        self.user_mvc  = most_violated_constraint
-        
+        self.user_mvc  = most_violated_constraint 
+       
         self.psi_cache  = {}
         self.psis_cache = {}
         self.loss_cache = {}
-        self.mvc_cache  = {}
-        
+        self.mvc_cache  = {}      
+  
         self.psi_scale = kwargs.pop('psi_scale', 1.0)
-        
         self.use_parallel = kwargs.pop('use_parallel', False)
-        
         nomosek = kwargs.pop('nomosek',False)
 
         try:

@@ -1,7 +1,9 @@
 import numpy as np
 from rwsegment import rwsegment
 from rwsegment.rwsegment import BaseAnchorAPI
+from rwsegment import loss_functions
 reload(rwsegment)
+reload(loss_functions)
 
 from rwsegment import utils_logging
 logger = utils_logging.get_logger('svm_rw_api',utils_logging.DEBUG)
@@ -115,12 +117,19 @@ class SVMRWMeanAPI(object):
         self.seeds = seeds
         self.rwparams = rwparams
         self.mask = np.asarray([seeds.ravel()<0 for i in range(self.nlabel)])
-
+       
+        #temp
+        self.loss_factor = float(kwargs.pop('loss_factor', 1e4))
+        logger.warning('loss is scaled by {:.3}'.format(self.loss_factor))
+        
     def compute_loss(self,z,y_):
         if np.sum(y_<-1e-6) > 0:
             logger.warning('negative (<1e-6) values in y_')
 
-        if self.loss_type == 'anchor':
+        self.use_ideal_loss = True
+        if self.use_ideal_loss:
+            loss = loss_functions.ideal_loss(z,y_,mask=self.mask)
+        elif self.loss_type == 'anchor':
             #''' 1 - (z.y_)/nnode '''
             #nnode = z.size/float(self.nlabel)
             #return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
@@ -149,7 +158,7 @@ class SVMRWMeanAPI(object):
            raise Exception('wrong loss type')
            sys.exit(1)
         #logger.debug('loss={:.2}'.format( loss))
-        return loss
+        return loss*self.loss_factor
 
     ## psi  
     def compute_psi(self, x,y):
@@ -229,7 +238,7 @@ class SVMRWMeanAPI(object):
             prior_models=self.prior_models,
             prior_weights=np.asarray(w)[self.indices_priors],
             loss=loss,
-            loss_weight=loss_weight,
+            loss_weight=loss_weight*self.loss_factor,
             image=x,
             )
         
