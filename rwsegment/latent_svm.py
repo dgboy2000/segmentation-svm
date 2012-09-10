@@ -115,7 +115,7 @@ class LatentSVM(object):
             ## annotation consistent inference
             logger.debug('annotation consistent inference')
             ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
-            
+            import ipdb; ipdb.set_trace() 
             ## build updated training set for struct svm
             struct_training_set = [(x,y) for x,y in zip(images,ys)]
             
