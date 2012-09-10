@@ -227,8 +227,8 @@ class NewtonMethod(object):
                 norm = np.max(np.abs(Hu.data))
             else:
                 norm = np.max(np.abs(Hu))
-            #Hu = 1./norm * Hu
-            #gradu = 1./norm * gradu            
+            Hu = 1./norm * Hu
+            gradu = 1./norm * gradu            
         
             ## Newton step
             if self.use_diagonal_hessian:

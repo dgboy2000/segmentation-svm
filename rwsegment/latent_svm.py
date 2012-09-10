@@ -127,7 +127,7 @@ class LatentSVM(object):
                 self.psi,
                 self.most_violated_constraint
                 )
-            w,xi = train()
+            w,xi = struct_svm.train()
                
             ## Stop condition
             # TODO: check it does the right thing
