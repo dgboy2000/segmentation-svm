@@ -84,6 +84,7 @@ class SVMSegmenter(object):
         self.nomosek = kwargs.pop('nomosek',False)
         C = kwargs.pop('C',1.0)
         self.minimal_svm = kwargs.pop('minimal', False)
+        self.one_iteration = kwargs.pop('one_iteration', False)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -212,13 +213,14 @@ class SVMSegmenter(object):
             logger.info('don\'t use mosek ?: {}'.format(self.nomosek))
             logger.info('using loss type: {}'.format(loss_type))
             logger.info('SVM parameters: {}'.format(self.svmparams))
+            logger.info('Computing one iteration at a time ?: {}'.format(self.one_iteration))
             if self.debug:
                 logger.info('debug mode, no saving')
             else:
                 logger.info('writing svm output to: {}'.format(self.dir_svm))
         
         
-    def train_svm(self,test):
+    def train_svm(self,test,outdir=''):
 
         ## training images and segmentations
         self.training_set = []
@@ -264,9 +266,43 @@ class SVMSegmenter(object):
                         self.svm_rwmean_api.compute_psi,
                         self.svm_rwmean_api.compute_mvc,
                         self.svm_rwmean_api.compute_aci,
+                        one_iteration=self.one_iteration,
                         **self.svmparams
                         )
-                    w,xi,info = self.svm.train(self.training_set)
+                    if self.one_iteration:
+                        # if we're computing one iteration at a time
+                        if os.path.isfile(outdir + 'niter.txt'):
+                            niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
+                            ys = np.load(outdir + 'ys.npy')
+                            w = np.loadtxt(outdir + 'w_{}.txt'.format(niter))
+                            
+                            curr_iter = niter + 1
+                            logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
+                            w,xi,info = self.svm.train(self.training_set, niter0=curr_iter, w0=w, ys=ys)
+                        else:
+                            logger.info('latent svm: iteration 0')
+                            w,xi,info = self.svm.train(self.training_set)
+
+                        # save output for next iteration
+                        if not self.debug and not info['stopped']:
+                            niter = info['niter']
+                            np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
+                            np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
+                            np.save(outdir + 'ys.npy', info['ys'])
+                            
+                            ## submit job to continue
+                            logger.warning('Exiting program. Run script again to continue.')
+                            if self.use_parallel:
+                                for n in range(1, self.MPI_size):
+                                    #logger.debug('sending kill signal to worker #{}'.format(n))
+                                    self.comm.send(('stop',None),dest=n)
+                            os._exit(0)
+                        else:
+                            pass
+
+                    else:
+                        logger.info('latent svm: start all iterations')
+                        w,xi,info = self.svm.train(self.training_set)
                 
                 else:
                     self.svm = struct_svm.StructSVM(
@@ -427,14 +463,15 @@ class SVMSegmenter(object):
         ## training
         if self.retrain:
             
-            w,xi,info = self.train_svm(test)
+            outdir = self.dir_svm + test
+            if not self.debug and not os.path.isdir(outdir):
+                os.makedirs(outdir)
+                
+            w,xi,info = self.train_svm(test,outdir=outdir)
             
             if self.debug:
                 pass
             elif self.isroot:
-                outdir = self.dir_svm + test
-                if not os.path.isdir(outdir):
-                    os.makedirs(outdir)
                 np.savetxt(outdir + 'w',w)
                 np.savetxt(outdir + 'xi',[xi])     
         else:
@@ -509,6 +546,12 @@ if __name__=='__main__':
         help='minimal svm: one laplacian, one prior ?',
         )  
  
+    opt.add_option( # one iteration at a time
+        '--one_iter', dest='one_iter', 
+        default=False, action="store_true",
+        help='compute one iteration at a time (latent only)',
+        )  
+ 
     opt.add_option( # C
         '-C', dest='C', 
         default=1.0, type=float,
@@ -530,6 +573,7 @@ if __name__=='__main__':
     nomosek = options.nomosek
     retrain = 1 - options.noretrain
     minimal = options.minimal
+    one_iteration = options.one_iter
     C = options.C
 
     folder = options.folder #unused
@@ -545,6 +589,7 @@ if __name__=='__main__':
         retrain=retrain,
         nomosek=nomosek,
         minimal=minimal,
+        one_iteration=one_iteration,
         )
         
         

@@ -67,7 +67,7 @@ def output(job_name):
 def folder():
     return '\ncd $HOME/segmentation-svm/\n'
 
-def make_job(job_name, command, queue='icepar156q'):
+def make_job(job_name, command, queue='icepar156q', nrun=1):
     job_file = job_name + '.sh'
 
     f = open(job_file, 'w')
@@ -77,28 +77,52 @@ def make_job(job_name, command, queue='icepar156q'):
     f.write(eval(queue)())
     f.write(folder())
     f.write('\n#command:\n')
-    f.write(command)
-    f.write(' --folder {}'.format(job_name))
-    f.write('\n')
+
+    for irun in range(nrun):
+        f.write(command)
+        f.write(' --folder {}'.format(job_name))
+        f.write('\n')
     f.close()
     
     os.system('qsub -k oe {}'.format(job_file))
 
 if __name__=='__main__':
-     
-
+    
      # jobs
-
-     ## weighted loss (100)
      make_job(
-         '2012.09.10.baseline_C10_loss1e4',
-         'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
-         )
-
-     make_job(
-         '2012.09.10.baseline_C10_laplacian_loss1e4',
+         '2012.09.11.baseline_C10_laplacian_loss1e4',
          'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
          )
+    
+     #make_job(
+     #    '2012.09.11.latent_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+     #    nrun=10,
+     #    )
+
+
+     #make_job(
+     #    '2012.09.11.test_latent',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --latent --minimal -t 1 --one_iter',
+     #    queue='icetestq',
+     #    nrun=3,
+     #    )
+
+    #make_job(
+     #    '2012.09.11.latent_C10_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --latent',
+     #    )
+
+     ## weighted loss (100)
+     #make_job(
+     #    '2012.09.10.baseline_C10_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10',
+     #    )
+
+     #make_job(
+     #    '2012.09.10.baseline_C10_laplacian_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
+     #    )
      
      #make_job(
      #    '2012.09.10.segmentation_all',

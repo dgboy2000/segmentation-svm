@@ -14,7 +14,7 @@ class SVMWorker(object):
         # self.comm = MPI.COMM_WORLD
         self.comm = mpi.COMM
         self.rank = mpi.RANK
-        
+        logger.info('Starting worker {}'.format(self.rank))
         self.cache_psi = {}
         
         
@@ -67,7 +67,7 @@ class SVMWorker(object):
                 .format(self.rank, ind))
             
             y_ = self.api.compute_aci(w,x,z,y0)
-            ys.append((ind, DataContainer(y_)))
+            ys.append((ind, y_))
             
         ## send data
         for i, y_ in ys:

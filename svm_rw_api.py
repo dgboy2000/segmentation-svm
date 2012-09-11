@@ -223,11 +223,12 @@ class SVMRWMeanAPI(object):
             ztilde = (1. - np.asarray(z)) / (nlabel - 1.0)
             loss = {'data': ztilde}
             loss_weight = (self.nlabel - 1.0) / float(nlabel*nnode)
+            loss_weight *= self.loss_factor
             L_loss = None
         elif self.loss_type=='laplacian':
             loss = None
             loss_weight = None
-            L_loss = (-1.0)*laplacian_loss(z, mask=self.mask)
+            L_loss = (-self.loss_factor)*laplacian_loss(z, mask=self.mask)
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
@@ -238,7 +239,7 @@ class SVMRWMeanAPI(object):
             prior_models=self.prior_models,
             prior_weights=np.asarray(w)[self.indices_priors],
             loss=loss,
-            loss_weight=loss_weight*self.loss_factor,
+            loss_weight=loss_weight,
             image=x,
             )
         

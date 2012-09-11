@@ -452,7 +452,7 @@ class StructSVM(object):
         
         niter = 1
         while 1:
-            logger.info("iteration #{}".format(niter))
+            logger.info("iteration (struct) #{}".format(niter))
             
             # garbage collect to save memory on each iteration
             import gc

@@ -21,15 +21,15 @@ class LatentSVM(object):
         self.user_mvc = most_violated_constraint
         self.user_aci = annotation_consistent_inference
         
-        self.w0     = kwargs.pop('latent_w0',None)
         
         self.niter_max = kwargs.pop('latent_niter_max',100)
         self.latent_C = kwargs.pop('latent_C',10)
         self.epsilon = kwargs.pop('latent_epsilon',1e-3)
         
-        self.use_parallel = kwargs.pop('latent_use_parallel',False)
-        
+        self.use_parallel = kwargs.pop('latent_use_parallel',False) 
         self.svm_params = kwargs
+
+        self.one_iteration = kwargs.pop('one_iteration',False)
             
     def psi(self,x,y, **kwargs):
         return self.user_psi(x,y, **kwargs)
@@ -80,7 +80,7 @@ class LatentSVM(object):
         obj = 0.5 * np.sum(np.square(w)) + self.latent_C * xi
         return obj
         
-    def train(self, training_set):
+    def train(self, training_set, **kwargs):
     
         ## load images
         ntrain = len(training_set)
@@ -90,11 +90,9 @@ class LatentSVM(object):
             images.append(x)
             hard_seg.append(z)
             
-        # self.images = images
-        # self.hard_seg = hard_seg
-        
         ## initial w
-        if self.w0 is None:
+        w0 = kwargs.pop('w0',None)
+        if w0 is None:
             logger.info("compute length of psi")
             nparam = len(self.psi(images[0], hard_seg[0]))
             w0 = np.ones(nparam)
@@ -103,18 +101,20 @@ class LatentSVM(object):
         nparam = len(w)
         
         ## initial y
-        # ys = [None for i in range(ntrain)]
-        ys = hard_seg
-        
+        ys = kwargs.pop('ys', hard_seg)
+       
+        ## current iteration
+        niter0 = kwargs.pop('niter0', 1)
+ 
         ## initial objective
         obj = 0
         
-        for niter in range(1,self.niter_max+1):
-            logger.debug('iteration #{}'.format(iter))
+        for niter in range(niter0, self.niter_max+1):
+            logger.debug('iteration (latent) #{}'.format(niter))
             
             ## annotation consistent inference
             logger.debug('annotation consistent inference')
-            ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
+            #ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
             
             ## build updated training set for struct svm
             struct_training_set = [(x,y) for x,y in zip(images,ys)]
@@ -127,21 +127,27 @@ class LatentSVM(object):
                 self.psi,
                 self.most_violated_constraint
                 )
-            w,xi,info = struct_svm.train()
+            w,xi,struct_info = struct_svm.train()
 
-               
+            info = {'ys': ys, 'niter': niter}
+ 
             ## Stop condition
             ## TODO: check it does the right thing
             if (self.svm_objective(w,xi) - obj) < self.epsilon:
                 strw = ' '.join('{:.3}'.format(float(val)) for val in w)
                 logger.debug('latent svm stopping with: w=[{}],xi={}'\
                     .format(strw,float(xi)))
-                return w,xi
+                info['stopped'] = True
+                return w,xi,info
             else:
                 strw = ' '.join('{:.3}'.format(float(val)) for val in w)
                 logger.debug('done iteration #{}, with: w=[{}],xi={}'\
                     .format(niter, strw,float(xi)))
                 obj = self.svm_objective(w,xi)
-
+                info['stopped'] = False
+                if self.one_iteration:
+                    return w,xi,info
+                
+     ## end LatentSVM
             
             
