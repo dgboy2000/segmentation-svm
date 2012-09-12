@@ -28,8 +28,8 @@ class LatentSVM(object):
         
         self.use_parallel = kwargs.pop('latent_use_parallel',False) 
         self.svm_params = kwargs
-
         self.one_iteration = kwargs.pop('one_iteration',False)
+        self.struct_params = kwargs
             
     def psi(self,x,y, **kwargs):
         return self.user_psi(x,y, **kwargs)
@@ -125,7 +125,8 @@ class LatentSVM(object):
                 struct_training_set,
                 self.loss_function,
                 self.psi,
-                self.most_violated_constraint
+                self.most_violated_constraint,
+                **self.struct_params
                 )
             w,xi,struct_info = struct_svm.train()
 

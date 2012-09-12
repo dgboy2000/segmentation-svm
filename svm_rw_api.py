@@ -217,6 +217,11 @@ class SVMRWMeanAPI(object):
             )
                 
         ## loss type
+        addlin      = None
+        loss        = None
+        loss_weight = None
+        L_loss      = None
+        
         if self.loss_type=='anchor':
             nlabel = self.nlabel
             nnode = len(z[0])
@@ -224,11 +229,11 @@ class SVMRWMeanAPI(object):
             loss = {'data': ztilde}
             loss_weight = (self.nlabel - 1.0) / float(nlabel*nnode)
             loss_weight *= self.loss_factor
-            L_loss = None
         elif self.loss_type=='laplacian':
-            loss = None
-            loss_weight = None
             L_loss = (-self.loss_factor)*laplacian_loss(z, mask=self.mask)
+        elif self.loss_type=='approx':
+            nnode = len(z[0])
+            addlin = 1./float(nnode)*z
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
@@ -243,7 +248,6 @@ class SVMRWMeanAPI(object):
             image=x,
             )
         
-        
         ## best y_ most different from y
         y_ = rwsegment.segment(
             x, 
@@ -252,6 +256,7 @@ class SVMRWMeanAPI(object):
             weight_function=weight_function,
             return_arguments=['y'],
             additional_laplacian=L_loss,
+            additional_linear=addlin,
             **self.rwparams
             )
             

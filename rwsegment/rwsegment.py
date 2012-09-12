@@ -131,12 +131,24 @@ def segment(
             logger.warning('additional lapacian is not None, using "solve at once"')
             per_label = False
 
+    ## if additional linear term
+    addlin = kwargs.pop('additional_linear',None)
+    if addlin is not None:
+        addq = np.mat(np.asarray(addlin)[:,unknown].ravel()).T
+        if per_label is True:
+            logger.warning('additional linear is not None, using "solve at once"')
+            per_label = False
+    else:
+        addq = None
+
     ## solve RW system
     if ground_truth is not None or not per_label:
         x = solve_at_once(
             Lu,B,list_xm,list_Omega,list_x0, 
             list_GT=list_GT, list_GT_init=list_GT_init, 
-            additional_laplacian=addL,**kwargs)
+            additional_laplacian=addL,
+            additional_linear=addq,
+            **kwargs)
     else:
         x = solve_per_label(
             Lu,B,list_xm,list_Omega,list_x0,**kwargs)
@@ -174,39 +186,53 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     addL = kwargs.pop('additional_laplacian',None)
     if addL is None:
         addL = sparse.csr_matrix(LL.shape)
-    
+
+    addlin = kwargs.pop('additional_linear', None)
+    if addlin is None:
+        addq = 0 
+    else:
+        addq = addlin
+
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
-    logger.debug(
-        'solve RW at once with solver="{}"'.format(optim_solver))
-    #import ipdb; ipdb.set_trace()    
+    
     P = LL + Omega + addL
-    q = BB*xm - Omega*x0
+    q = BB*xm - Omega*x0 + addq
     # c = x0.T*Omega*x0
     c = 0
-
-    
-    ## compute tolerance depending on the Laplacian
-    rtol = kwargs.pop('rtol', 1e-6)
-    tol = np.max(P.data)*rtol
-    logger.debug('absolute CG tolerance = {}'.format(tol))
     
     if P.nnz==0:
         # if no laplacian 
         logger.warning('in QP, P=0. Returning 1-(q>0)') 
-        x = (1 - (q>0))/(nlabel - 1)
+        x = (1 - (q>0))/float(nlabel - 1)
     elif np.sqrt(np.dot(q.T,q)) < 1e-10:
         # if no linear term: x is constant and has to remain a probability
         x = 1./nlabel * np.mat(np.ones(q.shape))
     else:
+        ## compute tolerance depending on the Laplacian
+        rtol = kwargs.pop('rtol', 1e-6)
+        tol = np.max(P.data)*rtol
+        logger.debug('absolute CG tolerance = {}'.format(tol))
+
         if list_GT!=[]:
             ## ground truth constrained
-            x = solve_qp_ground_truth(P,q,list_GT,nlabel,c=c,**kwargs) ## TODO 
+            logger.debug(
+                'solve RW at once with ground-truth constrained solver')
+            x = solve_qp_ground_truth(P,q,list_GT,nlabel,c=c,**kwargs) 
+        elif addlin is not None:
+            ## added linear term: use contrained optim
+            logger.debug(
+                'solve RW at once with constrained solver (added linear term)')
+            x = solve_qp_constrained(P,q,nlabel,x0,c=c,**kwargs)
         elif optim_solver=='constrained':
             ## probability distribution constrained
+            logger.debug(
+                'solve RW at once with constrained solver')
             x = solve_qp_constrained(P,q,nlabel,x0,c=c,**kwargs)
         elif optim_solver=='unconstrained':
             ## unconstrained
+            logger.debug(
+                'solve RW at once with unconstrained solver')
             x = solve_qp(P, q, tol=tol,**kwargs)
         else:
             raise Exception('Did not recognize solver: {}'.format(optim_solver))
