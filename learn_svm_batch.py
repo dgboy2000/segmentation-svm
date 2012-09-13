@@ -85,6 +85,7 @@ class SVMSegmenter(object):
         C = kwargs.pop('C',1.0)
         self.minimal_svm = kwargs.pop('minimal', False)
         self.one_iteration = kwargs.pop('one_iteration', False)
+        switch_loss = kwargs.pop('switch_loss', False)
         
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -134,6 +135,7 @@ class SVMSegmenter(object):
             'nitermax': 100,
             'nomosek': self.nomosek,
             'epsilon': 1e-5,
+            'do_switch_loss': switch_loss,
 
             # latent
             'latent_niter_max': 100,
@@ -224,9 +226,12 @@ class SVMSegmenter(object):
 
         ## training images and segmentations
         self.training_set = []
+        ntrain = len(self.training_vols)
+        if test in self.training_vols:
+            ntrain = ntrain - 1
         if self.isroot:
             logger.info('Learning with {} training examples'\
-            .format(len(self.training_vols)))
+                .format(ntrain))
             for train in self.training_vols:
                 if test==train: continue
                 if self.isroot:  
@@ -280,7 +285,7 @@ class SVMSegmenter(object):
                             logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
                             w,xi,info = self.svm.train(self.training_set, niter0=curr_iter, w0=w, ys=ys)
                         else:
-                            logger.info('latent svm: iteration 0')
+                            logger.info('latent svm: iteration 1')
                             w,xi,info = self.svm.train(self.training_set)
 
                         # save output for next iteration
@@ -295,14 +300,15 @@ class SVMSegmenter(object):
                             if self.use_parallel:
                                 for n in range(1, self.MPI_size):
                                     #logger.debug('sending kill signal to worker #{}'.format(n))
-                                    self.comm.send(('stop',None),dest=n)
+                                    self.comm.send(('stop',1, {}),dest=n)
                             os._exit(0)
                         else:
                             pass
 
                     else:
+                        nvar = len(self.indices_laplacians) + len(self.indices_priors)
                         logger.info('latent svm: start all iterations')
-                        w,xi,info = self.svm.train(self.training_set)
+                        w,xi,info = self.svm.train(self.training_set, w0=np.ones(nvar))
                 
                 else:
                     self.svm = struct_svm.StructSVM(
@@ -327,7 +333,7 @@ class SVMSegmenter(object):
                         .format(test))
                     for n in range(1, self.MPI_size):
                         logger.debug('sending kill signal to worker #{}'.format(n))
-                        self.comm.send(('stop',None),dest=n)
+                        self.comm.send(('stop',None,{}),dest=n)
                 return w,xi,info
                 
         else:
@@ -550,8 +556,15 @@ if __name__=='__main__':
         '--one_iter', dest='one_iter', 
         default=False, action="store_true",
         help='compute one iteration at a time (latent only)',
+        )
+  
+    opt.add_option(
+        '--switch_loss', dest='switch_loss', 
+        default=False, action="store_true",
+        help='use approx loss in the end',
         )  
  
+
     opt.add_option( # C
         '-C', dest='C', 
         default=1.0, type=float,
@@ -574,6 +587,7 @@ if __name__=='__main__':
     retrain = 1 - options.noretrain
     minimal = options.minimal
     one_iteration = options.one_iter
+    switch_loss = options.switch_loss
     C = options.C
 
     folder = options.folder #unused
@@ -590,6 +604,7 @@ if __name__=='__main__':
         nomosek=nomosek,
         minimal=minimal,
         one_iteration=one_iteration,
+        switch_loss=switch_loss,
         )
         
         

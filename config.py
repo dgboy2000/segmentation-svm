@@ -120,12 +120,13 @@ if sys.argv[0]=='learn_svm_batch.py':
     dir_log = dir_work + 'learning/{}'.format(folder)
     dir_inf = dir_log  + '/inference/'.format(folder)
     dir_svm = dir_log  + '/svm/'.format(folder)
+    if not debug:
+        utils_logging.LOG_OUTPUT_DIR = dir_log
 elif sys.argv[0]=='segmentation_batch.py':
     dir_log = dir_work + 'segmentation/{}'.format(folder)
-    dir_seg = dir_log
-    
-if not debug:
-    utils_logging.LOG_OUTPUT_DIR = dir_log
+    dir_seg = dir_log    
+    if not debug:
+        utils_logging.LOG_OUTPUT_DIR = dir_log
 
 #logger = utils_logging.get_logger('config', utils_logging.DEBUG)
 #logger.info('current code version: {}'.format(current_code_version))

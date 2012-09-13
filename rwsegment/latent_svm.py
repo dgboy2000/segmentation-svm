@@ -51,12 +51,14 @@ class LatentSVM(object):
         # comm = MPI.COMM_WORLD
         comm = mpi.COMM
         size = mpi.SIZE
+        logger.debug('MPI size={}'.format(size)) 
+        opts = {}
         
         ntrain = len(xs)
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
-            comm.send(('aci',len(inds)), dest=n)
+            comm.send(('aci',len(inds), opts), dest=n)
             for i in inds:
                 comm.send((i,w,xs[i],y0s[i],zs[i]), dest=n)
                 

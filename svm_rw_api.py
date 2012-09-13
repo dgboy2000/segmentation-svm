@@ -124,7 +124,8 @@ class SVMRWMeanAPI(object):
         
     def compute_loss(self,z,y_):
         if np.sum(y_<-1e-6) > 0:
-            logger.warning('negative (<1e-6) values in y_')
+            miny = np.min(y_)
+            logger.warning('negative (<-1e-6) values in y_. min = {:.3}'.format(miny))
 
         self.use_ideal_loss = True
         if self.use_ideal_loss:
@@ -206,7 +207,7 @@ class SVMRWMeanAPI(object):
 
 
 
-    def full_lai(self, w,x,z):
+    def full_lai(self, w,x,z, switch_loss=False):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
             
@@ -222,16 +223,21 @@ class SVMRWMeanAPI(object):
         loss_weight = None
         L_loss      = None
         
-        if self.loss_type=='anchor':
+        if switch_loss:
+            loss_type = 'approx'
+        else:
+            loss_type = self.loss_type
+
+        if loss_type=='anchor':
             nlabel = self.nlabel
             nnode = len(z[0])
             ztilde = (1. - np.asarray(z)) / (nlabel - 1.0)
             loss = {'data': ztilde}
             loss_weight = (self.nlabel - 1.0) / float(nlabel*nnode)
             loss_weight *= self.loss_factor
-        elif self.loss_type=='laplacian':
+        elif loss_type=='laplacian':
             L_loss = (-self.loss_factor)*laplacian_loss(z, mask=self.mask)
-        elif self.loss_type=='approx':
+        elif loss_type=='approx':
             nnode = len(z[0])
             addlin = 1./float(nnode)*z
         else:
@@ -294,9 +300,9 @@ class SVMRWMeanAPI(object):
             )
         return y_
     
-    def compute_mvc(self,w,x,z,exact=True):
+    def compute_mvc(self,w,x,z,exact=True, switch_loss=False):
         if exact:
-            return self.full_lai(w,x,z)
+            return self.full_lai(w,x,z, switch_loss=switch_loss)
         else:
             y_loss = self.worst_loss_inference(x,z)
             y_seg  = self.best_segmentation_inference(w,x)

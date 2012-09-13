@@ -18,15 +18,15 @@ class SVMWorker(object):
         self.cache_psi = {}
         
         
-    def do_mvc(self,data):
+    def do_mvc(self, ndata, **kwargs):
         # Receive the specified number of tuples
-        mvc_data = self.receive_n_items(data)
+        mvc_data = self.receive_n_items(ndata)
         ys = []
         for ind,w,x,z in mvc_data:
             logger.debug('worker #{}: MVC on sample #{}'\
                 .format(self.rank, ind))
 
-            y_ = self.api.compute_mvc(w,x.data,z.data, exact=True)
+            y_ = self.api.compute_mvc(w,x.data,z.data, exact=True, **kwargs)
             ys.append((ind, DataContainer(y_)))
             
         ## send data
@@ -37,9 +37,9 @@ class SVMWorker(object):
             
         gc.collect()
             
-    def do_psi(self,data):
+    def do_psi(self,ndata, **kwargs):
         # Receive the specified number of tuples
-        psi_data = self.receive_n_items(data)
+        psi_data = self.receive_n_items(ndata)
         psis = []
         
         for ind, x, y in psi_data:
@@ -57,9 +57,9 @@ class SVMWorker(object):
         
         gc.collect()
         
-    def do_aci(self, data):        
+    def do_aci(self, ndata, **kwargs):        
         # Receive the specified number of tuples
-        aci_data = self.receive_n_items(data)
+        aci_data = self.receive_n_items(ndata)
         ys = []
         
         for ind,w,x,y0,z in aci_data:        
@@ -90,16 +90,16 @@ class SVMWorker(object):
     def work(self,):
         while True:
             logger.debug('worker #{} about to receive next task'.format(self.rank))
-            task,data = self.comm.recv(None,source=0)
+            task,ndata,opts = self.comm.recv(None,source=0)
             
             nproc = self.comm.Get_size()
             
             if task=='mvc':
-                self.do_mvc(data)
+                self.do_mvc(ndata, **opts)
             elif task=='psi':
-                self.do_psi(data)
+                self.do_psi(ndata, **opts)
             elif task=='aci':
-                self.do_aci(data)
+                self.do_aci(ndata, **opts)
             elif task=='stop':
                 logger.info('worker #{} received kill signal. Stopping.'\
                     .format(self.rank))

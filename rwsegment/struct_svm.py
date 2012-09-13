@@ -54,6 +54,8 @@ class StructSVM(object):
         self.use_parallel = kwargs.pop('use_parallel', False)
         nomosek = kwargs.pop('nomosek',False)
 
+        self.do_switch_loss = kwargs.pop('do_switch_loss', False)
+
         try:
             if nomosek:
                  self._current_solution = self.no_mosek_current_solution
@@ -65,17 +67,19 @@ class StructSVM(object):
             self._current_solution = self.no_mosek_current_solution
         
         
-    def parallel_mvc(self,w):
+    def parallel_mvc(self,w, **kwargs):
         # from mpi4py import MPI
         # comm = MPI.COMM_WORLD
         comm = mpi.COMM
         size = mpi.SIZE
         
+        opts = kwargs         
+
         ntrain = len(self.S)
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
-            comm.send(('mvc',len(inds)), dest=n)
+            comm.send(('mvc',len(inds),opts), dest=n)
             for i in inds:
                 x,z = self.S[i]
                 comm.send((i,w,x,z), dest=n)
@@ -95,13 +99,15 @@ class StructSVM(object):
         # comm = MPI.COMM_WORLD
         comm = mpi.COMM
         size = mpi.SIZE
-        
+       
+        opts = {}
+  
         ## send training data and cutting plane
         ntrain = len(self.S)
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
-            comm.send(('psi',len(inds)), dest=n)
+            comm.send(('psi',len(inds), opts), dest=n)
             for ind in inds:
                 x,z = self.S[ind]
                 if ys is None:                
@@ -449,7 +455,8 @@ class StructSVM(object):
         if self.wsize is None:
             logger.info("compute length of psi")
             self.wsize = len(self.psi(*self.S[0]))
-        
+       
+        switch_loss = False 
         niter = 1
         while 1:
             logger.info("iteration (struct) #{}".format(niter))
@@ -479,17 +486,14 @@ class StructSVM(object):
             ys = []
             
             if self.use_parallel:
-                ys = self.parallel_mvc(w)
+                ys = self.parallel_mvc(w, switch_loss=switch_loss)
             else:
                 for s in self.S:
                     x,z = s
-                    y_ = self.mvc(w, x, z, exact=True)
+                    y_ = self.mvc(w, x, z, exact=True, switch_loss=switch_loss)
                     ys.append(y_)
                     if np.std(np.sum(y_.data,axis=0)) > 1e-5:
                         import ipdb; ipdb.set_trace()
-                    ## compute loss of solution
-                    #loss_y_ = self.loss(z,y_)
-                    #logger.debug('loss = {:.2}'.format(loss_y_))
             
             ## compute psis and losses:
             logger.debug('compute psis and losses for added constraints')
@@ -507,13 +511,20 @@ class StructSVM(object):
             
             ## stop condition
             logger.debug('compute stop condition')
-            if self.stop_condition(w,xi,ys): 
-                logger.info("stop condition reached")
-                break
+            if self.stop_condition(w,xi,ys):
+                if self.do_switch_loss:
+                    logger.info("stop condition reached, switching loss")
+                    self.do_switch_loss = False
+                    switch_loss = True
+                else:     
+                    logger.info("stop condition reached, stopping")
+                    break
             elif niter >= self.nitermax:
                 logger.info("max number of iterations reached")
                 break
-            else: niter+= 1
+
+            ## continuing
+            niter+= 1
 
         
         ## return values

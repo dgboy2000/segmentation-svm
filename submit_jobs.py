@@ -89,13 +89,18 @@ def make_job(job_name, command, queue='icepar156q', nrun=1):
 if __name__=='__main__':
     
      # jobs
-     
      make_job(
-         '2012.09.12.test_baseline',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --minimal -t 1',
-         queue='icetestq',
-         nrun=3,
+         '2012.09.12.baseline_approx_loss1e4',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --switch_loss',
          )
+    
+
+     # make_job(
+     #     '2012.09.12.test_baseline',
+     #     'mpirun -np $NP python learn_svm_batch.py --parallel --minimal -t 1 --switch_loss',
+     #     queue='icetestq',
+     #     nrun=3,
+     #     )
 
 
      #make_job(
@@ -103,16 +108,16 @@ if __name__=='__main__':
      #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
      #    )
     
-     # make_job(
-     #     '2012.09.12.latent_loss1e4',
-     #     'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
-     #     nrun=10,
-     #     )
+     #make_job(
+     #    '2012.09.12.latent_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+     #    nrun=10,
+     #    )
 
 
      #make_job(
      #    '2012.09.12.test_latent',
-     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --minimal -t 1 --one_iter',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --minimal --one_iter',
      #    queue='icetestq',
      #    nrun=3,
      #    )
