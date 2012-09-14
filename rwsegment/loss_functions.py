@@ -12,7 +12,8 @@ def ideal_loss(z,y,mask=None):
         nvar = np.sum(mask[0])
     
     biny = np.argmax(y,axis=0)==np.c_[np.arange(nlabel)]
-    loss = 1 - np.sum(mask*biny*z)/float(nvar)
+    binz = np.argmax(z,axis=0)==np.c_[np.arange(nlabel)]
+    loss = 1 - np.sum(mask*biny*binz)/float(nvar)
     return loss
     
 ##------------------------------------------------------------------------------
@@ -28,6 +29,7 @@ def anchor_loss(z, y, mask=None):
     anchor, anchor_weight = compute_loss_anchor(z,mask=mask)
     
     loss = 1 - anchor_weight*np.sum(mask*(anchor-y)**2)
+    #loss = 1 - np.sum(anchor_weight * mask * (anchor-y)**2)
     return loss
 
 def compute_loss_anchor(z, mask=None):
@@ -37,11 +39,14 @@ def compute_loss_anchor(z, mask=None):
         nvar = npix
     else:
         nvar = np.sum(mask[0])
-    
-    ztilde = (1.0 - z)/(nlabel - 1.0)
+
+    binz = np.argmax(z,axis=0)==np.c_[np.arange(nlabel)]
+    ztilde = (1.0 - binz)/(nlabel - 1.0)
+    #ztilde = (1.0 - z)/(nlabel - 1.0)
     
     anchor = ztilde
     anchor_weight = (nlabel - 1.)/float(nlabel*nvar)
+    #anchor_weight = 1./float(nvar) * (nlabel-1)**2/(nlabel**2*np.sum(z**2,axis=0) - 2*nlabel*np.sum(z,axis=0) + nlabel)
     return anchor, anchor_weight
 
 ##------------------------------------------------------------------------------    
@@ -51,18 +56,20 @@ def laplacian_loss(z, y, mask=None):
     loss = 1. + float(yy.T*L*yy)
     return loss
 
-def compute_loss_laplacian(ground_truth, mask=None):
+def compute_loss_laplacian(z, mask=None):
     ''' mask and ground_truth have shape: (nlabel x npixel)'''
     
-    size = ground_truth[0].size
+    nlabel = len(z)
+    binz = np.argmax(z,axis=0)==np.c_[np.arange(nlabel)]
+    #binz = z
+
+    size = z[0].size
     if mask is None:
-        gt = ground_truth
+        gt = binz
         npix = size
     else:
         npix = np.sum(mask[0])
-        gt = ground_truth*mask
-
-    nlabel = len(ground_truth)
+        gt = binz*mask
 
     weight = 1.0/float((nlabel-1)*npix)
 

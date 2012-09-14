@@ -118,8 +118,8 @@ class SVMRWMeanAPI(object):
         self.rwparams = rwparams
         self.mask = np.asarray([seeds.ravel()<0 for i in range(self.nlabel)])
        
-        #temp
-        self.loss_factor = float(kwargs.pop('loss_factor', 1e4))
+        # rescale loss 
+        self.loss_factor = float(kwargs.pop('loss_factor', 1.0))
         logger.warning('loss is scaled by {:.3}'.format(self.loss_factor))
         
     def compute_loss(self,z,y_):
@@ -240,6 +240,7 @@ class SVMRWMeanAPI(object):
         elif loss_type=='approx':
             nnode = len(z[0])
             addlin = 1./float(nnode)*z
+            addlin *= self.loss_factor
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)

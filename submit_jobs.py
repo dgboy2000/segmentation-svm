@@ -67,7 +67,7 @@ def output(job_name):
 def folder():
     return '\ncd $HOME/segmentation-svm/\n'
 
-def make_job(job_name, command, queue='icepar156q', nrun=1):
+def make_job(job_name, command, queue='icepar156q'):
     job_file = job_name + '.sh'
 
     f = open(job_file, 'w')
@@ -78,10 +78,10 @@ def make_job(job_name, command, queue='icepar156q', nrun=1):
     f.write(folder())
     f.write('\n#command:\n')
 
-    for irun in range(nrun):
-        f.write(command)
-        f.write(' --folder {}'.format(job_name))
-        f.write('\n')
+    f.write(command)
+    f.write(' --folder {}'.format(job_name))
+    f.write(' --script {}'.format(job_file))
+    f.write('\n')
     f.close()
     
     os.system('qsub -k oe {}'.format(job_file))
@@ -89,37 +89,32 @@ def make_job(job_name, command, queue='icepar156q', nrun=1):
 if __name__=='__main__':
     
      # jobs
-     make_job(
-         '2012.09.12.baseline_approx_loss1e4',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --switch_loss',
-         )
+     #make_job(
+     #    '2012.09.13.baseline_approx_loss1e4',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --switch_loss',
+     #    )
     
 
      # make_job(
      #     '2012.09.12.test_baseline',
      #     'mpirun -np $NP python learn_svm_batch.py --parallel --minimal -t 1 --switch_loss',
      #     queue='icetestq',
-     #     nrun=3,
      #     )
-
 
      #make_job(
      #    '2012.09.11.baseline_C10_laplacian_loss1e4',
      #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
      #    )
     
-     #make_job(
-     #    '2012.09.12.latent_loss1e4',
-     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
-     #    nrun=10,
-     #    )
-
+     make_job(
+         '2012.09.13.latent',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+         )
 
      #make_job(
-     #    '2012.09.12.test_latent',
+     #    '2012.09.13.test_latent',
      #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --minimal --one_iter',
      #    queue='icetestq',
-     #    nrun=3,
      #    )
 
      #make_job(

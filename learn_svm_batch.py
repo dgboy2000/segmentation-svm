@@ -86,7 +86,8 @@ class SVMSegmenter(object):
         self.minimal_svm = kwargs.pop('minimal', False)
         self.one_iteration = kwargs.pop('one_iteration', False)
         switch_loss = kwargs.pop('switch_loss', False)
-        
+        self.start_script = kwargs.pop('start_script', '')       
+ 
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
         slices = [slice(None),slice(None),slice(None)]
@@ -287,6 +288,7 @@ class SVMSegmenter(object):
                         else:
                             logger.info('latent svm: iteration 1')
                             w,xi,info = self.svm.train(self.training_set)
+                           
 
                         # save output for next iteration
                         if not self.debug and not info['stopped']:
@@ -301,7 +303,11 @@ class SVMSegmenter(object):
                                 for n in range(1, self.MPI_size):
                                     #logger.debug('sending kill signal to worker #{}'.format(n))
                                     self.comm.send(('stop',1, {}),dest=n)
-                            os._exit(0)
+                            #os._exit(0)
+                            ## re-run script
+                            logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
+                            #if os.path.isfile(self.start_script):
+                            #    os.system('qsub -k oe {}'.format(self.start_script))
                         else:
                             pass
 
@@ -576,6 +582,14 @@ if __name__=='__main__':
         default='', type=str,
         help='set folder name',
         ) 
+    
+    opt.add_option(
+        '--script', dest='script', 
+        default="", type=str,
+        help='script file to run this module',
+        )  
+ 
+
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -589,6 +603,7 @@ if __name__=='__main__':
     one_iteration = options.one_iter
     switch_loss = options.switch_loss
     C = options.C
+    script = options.script
 
     folder = options.folder #unused
 
@@ -605,6 +620,7 @@ if __name__=='__main__':
         minimal=minimal,
         one_iteration=one_iteration,
         switch_loss=switch_loss,
+        start_script=script,
         )
         
         

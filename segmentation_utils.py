@@ -18,7 +18,7 @@ logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 def compute_losses(z,y,mask):
     ## loss 0 : 1 - Dice(y,z)
     loss0 = loss_functions.ideal_loss(z,y,mask=mask)
-    logger.info('loss0 (Dice) = {}'.format(loss1))
+    logger.info('loss0 (Dice) = {}'.format(loss0))
     
     ## loss2: squared difference with ztilde
     loss1 = loss_functions.anchor_loss(z,y,mask=mask)
