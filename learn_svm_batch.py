@@ -286,8 +286,9 @@ class SVMSegmenter(object):
                             logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
                             w,xi,info = self.svm.train(self.training_set, niter0=curr_iter, w0=w, ys=ys)
                         else:
-                            logger.info('latent svm: iteration 1')
-                            w,xi,info = self.svm.train(self.training_set)
+                            w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
+                            logger.info('latent svm: first iteration. w0 = {}'.format(w0))
+                            w,xi,info = self.svm.train(self.training_set, w0=w0)
                            
 
                         # save output for next iteration
@@ -391,7 +392,7 @@ class SVMSegmenter(object):
             self.prior,
             self.prior_functions,
             weights_priors,
-            image=im,
+            image=nim,
             )
     
         sol,y = rwsegment.segment(

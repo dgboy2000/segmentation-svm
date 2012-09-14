@@ -3,6 +3,17 @@ TODO SVM RW
 ===========
 
 ______________________________________________________________________________
+09.13.2012
+- in latent framework: look a the values of psi (including for the ACI)
+
+- for baseline (SDLoss, LLoss, ApproxLoss) and latent:
+-- loss of the test data ?
+-- loss of the training data ?
+
+- in latent framework: do LAI without the loss !
+
+
+______________________________________________________________________________
 09.07.2012
 Q. big bug in rwsegment per label: need to rerun baseline
 

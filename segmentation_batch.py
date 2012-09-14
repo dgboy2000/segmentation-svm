@@ -123,14 +123,9 @@ class SegmentationBatch(object):
             prior=prior,
             prior_models=self.prior_models,
             prior_weights=self.prior_weights,
-            image=im,
+            image=nim,
             )
-         #anchor_api = self.Model(
-         #   prior,
-         #   anchor_weight=self.anchor_weight,
-         #   image=im,
-         #   )
-            
+           
         ## start segmenting
         # import ipdb; ipdb.set_trace()
         sol,y = rwsegment.segment(

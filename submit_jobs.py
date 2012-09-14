@@ -107,9 +107,15 @@ if __name__=='__main__':
      #    )
     
      make_job(
-         '2012.09.13.latent',
+         '2012.09.14.latent',
          'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
          )
+
+
+     #make_job(
+     #    '2012.09.13.latent',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+     #    )
 
      #make_job(
      #    '2012.09.13.test_latent',

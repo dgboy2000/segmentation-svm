@@ -30,7 +30,81 @@ def compute_losses(z,y,mask):
     
     return loss0, loss1, loss2
     
+def compute_features(test, train, y):
+    im = io_analyze.load(config.dir_reg + test + train + 'reggray.hdr')
+    nim = im/np.std(im)
+     
+    prior,mask = load_or_compute_prior_and_mask(
+        test, force_recompute=False)
+    seeds = (-1)*mask.astype(int)
+
+    from rwsegment import rwsegment_prior_models as models
+    from rwsegment import weight_functions as wflib
+    rwparams = {
+            'labelset': np.asarray([0,13,14,15,16]),
+        }
+
+    weight_functions = {
+        'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
+        'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
+        'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
+        'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
+        # 'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
+        # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
+        # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
+        }
+
+    prior_models = {
+        'constant': models.Constant,
+        'entropy': models.Entropy_no_D,
+        'intensity': models.Intensity,
+        }
     
+    ## indices of w
+    nlaplacian = len(weight_functions)
+    nprior = len(prior_models)
+    indices_laplacians = np.arange(nlaplacian)
+    indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
+  
+    laplacian_functions = weight_functions.values()
+    laplacian_names     = weight_functions.keys()
+    prior_functions     = prior_models.values()
+    prior_names         = prior_models.keys()
+    
+
+    #from svm_rw_api import MetaAnchor 
+    #anchor_api = MetaAnchor(
+    #    prior,
+    #    prior_functions,
+    #    weights_priors,
+    #    image=im,
+    #    )
+
+    from rwsegment import rwsegment
+    for fname in weight_functions:
+        wf = weight_functions[fname]
+        en_rw = rwsegment.energy_rw(
+            nim,
+            y,
+            seeds=seeds,
+            weight_function=wf,
+            **rwparams
+            )
+        print fname, en_rw
+
+    for mname in prior_models:
+        pm = prior_models[mname](prior,1., image=nim)
+        en_anchor = rwsegment.energy_anchor(
+            nim,
+            y,
+            pm,
+            seeds=seeds,
+            **rwparams
+            )
+        print mname, en_anchor
+
+
+   
 
 def compute_objective(test, y, w):
     im = io_analyze.load(config.dir_reg + test + 'gray.hdr')
@@ -98,7 +172,7 @@ def compute_objective(test, y, w):
         prior,
         prior_functions,
         weights_priors,
-        image=im,
+        image=nim,
         )
 
     from rwsegment import rwsegment
