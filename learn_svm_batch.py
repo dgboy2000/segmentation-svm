@@ -423,15 +423,20 @@ class SVMSegmenter(object):
         
         ## loss 0 : 1 - Dice(y,z)
         loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
-        logger.info('loss0 (Dice) = {}'.format(loss0))
+        logger.info('Tloss = {}'.format(loss0))
         
         ## loss2: squared difference with ztilde
         loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
-        logger.info('loss1 (anchor) = {}'.format(loss1))
+        logger.info('SDloss = {}'.format(loss1))
         
         ## loss3: laplacian loss
         loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
-        logger.info('loss2 (laplacian) = {}'.format(loss2))
+        logger.info('LAPloss = {}'.format(loss2))
+
+        ## loss4: linear loss
+        loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
+        logger.info('LINloss = {}'.format(loss3))
+
 
         
         ## saving

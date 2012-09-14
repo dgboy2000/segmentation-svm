@@ -130,6 +130,7 @@ class SVMRWMeanAPI(object):
         self.use_ideal_loss = True
         if self.use_ideal_loss:
             loss = loss_functions.ideal_loss(z,y_,mask=self.mask)
+
         elif self.loss_type == 'anchor':
             #''' 1 - (z.y_)/nnode '''
             #nnode = z.size/float(self.nlabel)
@@ -228,7 +229,9 @@ class SVMRWMeanAPI(object):
         else:
             loss_type = self.loss_type
 
-        if loss_type=='anchor':
+        if loss_type=='none':
+            pass
+        elif loss_type=='anchor':
             nlabel = self.nlabel
             nnode = len(z[0])
             ztilde = (1. - np.asarray(z)) / (nlabel - 1.0)

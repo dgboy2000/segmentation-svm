@@ -2,6 +2,8 @@ import numpy as np
 from scipy import sparse
 
 
+
+
 def ideal_loss(z,y,mask=None):
     nlabel = len(z)
     npix   = len(z[0])
@@ -15,6 +17,27 @@ def ideal_loss(z,y,mask=None):
     binz = np.argmax(z,axis=0)==np.c_[np.arange(nlabel)]
     loss = 1 - np.sum(mask*biny*binz)/float(nvar)
     return loss
+
+
+def linear_loss(z,y,mask=None):
+    lin, loss_weight = compute_loss_linear(z,mask=None)
+    
+    loss = 1.0 - loss_weight * np.sum(lin*y)
+    return loss
+
+def compute_loss_linear(z,mask):
+    nlabel = len(z)
+    npix   = len(z[0])
+    if mask is None:
+        mask = 1.
+        nvar = npix
+    else:
+        nvar = np.sum(mask[0])
+
+    binz = np.argmax(z,axis=0)==np.c_[np.arange(nlabel)]
+    loss_weight = 1./float(nvar)
+    return binz, loss_weight
+
     
 ##------------------------------------------------------------------------------
 def anchor_loss(z, y, mask=None):

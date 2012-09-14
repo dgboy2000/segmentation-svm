@@ -344,7 +344,8 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     ## internal solver is newton's method
     newton_a       = kwargs.pop('newton_a', 0.4)
     newton_b       = kwargs.pop('newton_b', 0.8)
-    newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
+    #newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
+    newton_epsilon = kwargs.pop('newton_epsilon', 1e-4)
     newton_maxiter = kwargs.pop('newton_maxiter', 100)
     
     x = solver.solve(

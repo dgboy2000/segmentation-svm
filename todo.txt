@@ -8,7 +8,7 @@ ______________________________________________________________________________
 
 - for baseline (SDLoss, LLoss, ApproxLoss) and latent:
 -- loss of the test data ?
--- loss of the training data ?
+-- !!  loss of the training data ? -> resegment the training data using the computed w
 
 - in latent framework: do LAI without the loss !
 

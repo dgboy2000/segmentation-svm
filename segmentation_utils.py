@@ -18,17 +18,21 @@ logger = utils_logging.get_logger('segmentation_utils',utils_logging.DEBUG)
 def compute_losses(z,y,mask):
     ## loss 0 : 1 - Dice(y,z)
     loss0 = loss_functions.ideal_loss(z,y,mask=mask)
-    logger.info('loss0 (Dice) = {}'.format(loss0))
+    logger.info('Tloss = {}'.format(loss0))
     
     ## loss2: squared difference with ztilde
     loss1 = loss_functions.anchor_loss(z,y,mask=mask)
-    logger.info('loss1 (anchor) = {}'.format(loss1))
+    logger.info('SDloss = {}'.format(loss1))
     
     ## loss3: laplacian loss
     loss2 = loss_functions.laplacian_loss(z,y,mask=mask)
-    logger.info('loss2 (laplacian) = {}'.format(loss2))
+    logger.info('LAPloss = {}'.format(loss2))
+
+    ## loss4: linear loss
+    loss3 = loss_functions.linear_loss(z,y,mask=mask)
+    logger.info('LINloss = {}'.format(loss3))
     
-    return loss0, loss1, loss2
+    return loss0, loss1, loss2, loss3
     
 def compute_features(test, train, y):
     im = io_analyze.load(config.dir_reg + test + train + 'reggray.hdr')
