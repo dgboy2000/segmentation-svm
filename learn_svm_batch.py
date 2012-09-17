@@ -92,7 +92,7 @@ class SVMSegmenter(object):
         # slices = [slice(20,40),slice(None),slice(None)]
         slices = [slice(None),slice(None),slice(None)]
         
-        self.labelset = np.asarray([0,13,14,15,16])
+        self.labelset = np.asarray(config.labelset)
         
         if ntrain in ['all']:
             self.training_vols = config.vols
@@ -575,7 +575,11 @@ if __name__=='__main__':
         default=False, action="store_true",
         help='use approx loss in the end',
         )  
- 
+    opt.add_option(
+        '--basis', dest='basis',
+        default='default', type=str,
+        help='',
+        ) 
 
     opt.add_option( # C
         '-C', dest='C', 

@@ -45,7 +45,7 @@ def compute_features(test, train, y):
     from rwsegment import rwsegment_prior_models as models
     from rwsegment import weight_functions as wflib
     rwparams = {
-            'labelset': np.asarray([0,13,14,15,16]),
+            'labelset': np.asarray(config.labelset),
         }
 
     weight_functions = {
@@ -121,7 +121,7 @@ def compute_objective(test, y, w):
     from rwsegment import rwsegment_prior_models as models
     from rwsegment import weight_functions as wflib
     rwparams = {
-            'labelset': np.asarray([0,13,14,15,16]),
+            'labelset': np.asarray(config.labelset),
 
             # optimization
             'rtol': 1e-6,
@@ -202,7 +202,7 @@ def compute_objective(test, y, w):
 def load_or_compute_prior_and_mask(test, force_recompute=False):
 
     labelset = np.asarray(config.labelset)
-    outdir = config.dir_work+'/prior/' + test
+    outdir = config.dir_prior + test
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     

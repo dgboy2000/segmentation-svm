@@ -89,6 +89,13 @@ def make_job(job_name, command, queue='icepar156q'):
 if __name__=='__main__':
     
      # jobs
+
+     make_job(
+         '2012.09.17.segmentation_allmuscles',
+         'python segmentation_batch.py --basis allmuscles',
+         queue='icemem48gbq',
+         )
+
      #make_job(
      #    '2012.09.13.baseline_approx_loss1e4',
      #    'mpirun -np $NP python learn_svm_batch.py --parallel --switch_loss',
@@ -106,10 +113,10 @@ if __name__=='__main__':
      #    'mpirun -np $NP python learn_svm_batch.py --parallel -C 10 --loss laplacian',
      #    )
     
-     make_job(
-         '2012.09.14.latent_LAInone',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
-         )
+     #make_job(
+     #    '2012.09.14.latent_LAInone',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
+     #    )
 
 
      #make_job(

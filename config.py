@@ -130,6 +130,80 @@ elif sys.argv[0]=='segmentation_batch.py':
 
 #logger = utils_logging.get_logger('config', utils_logging.DEBUG)
 #logger.info('current code version: {}'.format(current_code_version))
+basis = 'default'
+if '--basis' in sys.argv:
+    ind = sys.argv.index('--basis')
+    basis = sys.argv[ind+1]
+print 'using basis = {}'.format(basis)
+
+if basis=='default':
+    dir_prior = dir_work + '/prior/'
+    vols = {
+        '01/': {'AB':39},
+        '02/': {'AB':41},
+        '03/': {'AB':42},
+        '04/': {'AB':40},
+        '05/': {'AB':42},
+        '06/': {'AB':44},
+        '07/': {'AB':45},
+        '08/': {'AB':44},
+        '09/': {'AB':40},
+        '10/': {'AB':44},
+        '11/': {'AB':46},
+        '12/': {'AB':44},
+        '13/': {'AB':44},
+        #'14/': {'AB':49},
+        '15/': {'AB':40},
+        '16/': {'AB':49},
+        '17/': {'AB':46},
+        '18/': {'AB':44},
+        'F23/': {'AB':39},
+        'F26/': {'AB':32},
+        'F27_2/': {'AB':32},
+        'F32/': {'AB':29},
+        'F37/': {'AB':31},
+        'F42/': {'AB':29},
+        'F60/': {'AB':33},
+        'M23/': {'AB':23},
+        'M26/': {'AB':41},
+        'M26_2/': {'AB':32},
+        'M28/': {'AB':31},
+        'M29/': {'AB':31},
+        'M44/': {'AB':28},
+        }
+        
+    labelset = [0,13,14,15,16]
+elif basis=='allmuscles':
+    dir_prior = dir_work + '/prior_allm/'
+    vols = {
+        'F23/': {'AB':39},
+        'F26/': {'AB':32},
+        'F27_2/': {'AB':32},
+        'F32/': {'AB':29},
+        'F37/': {'AB':31},
+        'F42/': {'AB':29},
+        'F60/': {'AB':33},
+        'M23/': {'AB':23},
+        'M26/': {'AB':41},
+        'M26_2/': {'AB':32},
+        'M28/': {'AB':31},
+        'M29/': {'AB':31},
+        'M44/': {'AB':28},
+        }
+    labelset = [0,1,3,4,5,7,8,10,11,12,13,14,15,16]
+else:
+    raise Exception('unknown basis {}'.format(basis))
+    sys.exit(1)
+
+gray = 'gray.hdr'
+seg = 'seg.hdr'
+water = 'water.hdr'
+
+
+
+gray = 'gray.hdr'
+seg = 'seg.hdr'
+water = 'water.hdr'
 
 
 
