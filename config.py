@@ -138,6 +138,7 @@ print 'using basis = {}'.format(basis)
 
 if basis=='default':
     dir_prior = dir_work + '/prior/'
+    dir_prior_edges = dir_work + '/prior_edges/'
     vols = {
         '01/': {'AB':39},
         '02/': {'AB':41},
@@ -175,6 +176,7 @@ if basis=='default':
     labelset = [0,13,14,15,16]
 elif basis=='allmuscles':
     dir_prior = dir_work + '/prior_allm/'
+    dir_prior_edges = dir_work + '/prior_edges_allm/'
     vols = {
         'F23/': {'AB':39},
         'F26/': {'AB':32},

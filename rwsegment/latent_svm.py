@@ -101,7 +101,7 @@ class LatentSVM(object):
             
         w = w0
         nparam = len(w)
-        
+       
         ## initial y
         ys = kwargs.pop('ys', hard_seg)
        
@@ -115,7 +115,8 @@ class LatentSVM(object):
             logger.debug('iteration (latent) #{}'.format(niter))
             
             ## annotation consistent inference
-            logger.debug('annotation consistent inference')
+            strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
+            logger.debug('annotation consistent inference (with w = [{}])'.format(strw))
             ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
             
             ## build updated training set for struct svm

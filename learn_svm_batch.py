@@ -264,6 +264,8 @@ class SVMSegmenter(object):
         
         if self.isroot:
             try:
+                import time                
+
                 ## learn struct svm
                 logger.debug('started root learning')
                 if self.use_latent:
@@ -276,6 +278,7 @@ class SVMSegmenter(object):
                         **self.svmparams
                         )
                     if self.one_iteration:
+
                         # if we're computing one iteration at a time
                         if os.path.isfile(outdir + 'niter.txt'):
                             niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
@@ -286,11 +289,14 @@ class SVMSegmenter(object):
                             logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
                             w,xi,info = self.svm.train(self.training_set, niter0=curr_iter, w0=w, ys=ys)
                         else:
-                            w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
+                            niter = 1
+                            if self.minimal_svm:
+                                w0 = [1.0, 1e-2]
+                            else:
+                                w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
                             logger.info('latent svm: first iteration. w0 = {}'.format(w0))
                             w,xi,info = self.svm.train(self.training_set, w0=w0)
                            
-
                         # save output for next iteration
                         if not self.debug and not info['stopped']:
                             niter = info['niter']
@@ -298,19 +304,22 @@ class SVMSegmenter(object):
                             np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
                             np.save(outdir + 'ys.npy', info['ys'])
                             
-                            ## submit job to continue
                             logger.warning('Exiting program. Run script again to continue.')
                             if self.use_parallel:
                                 for n in range(1, self.MPI_size):
                                     #logger.debug('sending kill signal to worker #{}'.format(n))
                                     self.comm.send(('stop',1, {}),dest=n)
-                            #os._exit(0)
+
                             ## re-run script
-                            logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
-                            #if os.path.isfile(self.start_script):
+                            curr_time = time.time()
+                            logger.info('elapsed time = {:.2} hours, with {} iterations'\
+                                .format((curr_time-self.start_time)*3600, niter))
+                            ## check if we have the time to run a new iteration
+                            #if (curr_time - self.start_time)/(niter) < (3.90 * 3600.0)/(niter + 1) and \
+                            #    os.path.isfile(self.start_script):
                             #    os.system('qsub -k oe {}'.format(self.start_script))
-                        else:
-                            pass
+                            #else:
+                            logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
 
                     else:
                         nvar = len(self.indices_laplacians) + len(self.indices_priors)

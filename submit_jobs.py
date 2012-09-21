@@ -91,10 +91,16 @@ if __name__=='__main__':
      # jobs
 
      make_job(
-         '2012.09.17.segmentation_allmuscles',
-         'python segmentation_batch.py --basis allmuscles',
-         queue='icemem48gbq',
+         '2012.09.20.test_latent_LAInone',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal',
+         queue='icetestq'
          )
+
+     #make_job(
+     #    '2012.09.17.segmentation_allmuscles',
+     #    'python segmentation_batch.py --basis allmuscles',
+     #    queue='icemem48gbq',
+     #    )
 
      #make_job(
      #    '2012.09.13.baseline_approx_loss1e4',

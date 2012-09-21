@@ -212,6 +212,8 @@ class NewtonMethod(object):
     def solve(self, u0):
         epsilon = self.epsilon
         u = u0
+        u_nt = np.mat(np.zeros((len(u),1)))
+        lmbda2 = 1e10
         nvar = len(u0)
         
         logger.debug(
@@ -219,6 +221,7 @@ class NewtonMethod(object):
                 
         for iter in range(self.maxiter):
             ## compute gradient and Hessian
+            logger.debug('Newton: compute direction')
             gradu = self.gradient(u)
             Hu = self.hessian(u)
  
@@ -234,18 +237,28 @@ class NewtonMethod(object):
             if self.use_diagonal_hessian:
                 ## Modified gradient descent
                 invH = sparse.spdiags(1.0 / self.extract_diag(Hu),0,nvar,nvar)
+                info = 0
                 u_nt  = -invH * gradu
             else:
                 ## standard Newton's Method
                 import gc
-                #u_nt,info = splinalg.cg(Hu,-gradu, tol=1e-3, maxiter=1000)
-                u_nt,info = splinalg.cg(Hu,-gradu, tol=epsilon, maxiter=1000)
+                ## starting scheme
+                l0 = np.dot(gradu.T, u_nt) 
+                if l0 < 0:
+                    #import ipdb; ipdb.set_trace()
+                    u_nt0 = float(-1.0/(u_nt.T*Hu*u_nt) * l0) * u_nt
+                else: 
+                    u_nt0 = np.mat(np.zeros((len(u),1)))
+                tol = np.minimum(1e-1, np.sqrt(np.sqrt(float(np.dot(gradu.T, gradu)))))
+                u_nt,info = splinalg.cg(Hu, -gradu, x0=u_nt0, tol=tol, maxiter=1000)
                 u_nt = np.asmatrix(u_nt).T
                 gc.collect()
             
             
             ## Newton increment
-            lmbda2 = - np.dot(gradu.T, u_nt)
+            lmbda2_ = - np.dot(gradu.T, u_nt)
+            if lmbda2_ > lmbda2: self.b  = np.sqrt(self.b)
+            else: lmbda2 = lmbda2_
 
             ## stopping conditions
             if (0.5*lmbda2 <= epsilon): 
@@ -254,6 +267,7 @@ class NewtonMethod(object):
                 return u
 
             ## line search 
+            logger.debug('Newton: (cg info = {}), b={:.3}, line search'.format(info, float(self.b)))
             step = self.line_search(u,u_nt,gradu)
             
             logger.debug(
@@ -282,8 +296,9 @@ class NewtonMethod(object):
     def line_search(self,u,du,gradu):
         t = 1.0
         objective = self.objective
+        b = float(self.b)
         while objective(u + t*du) > objective(u) + self.a * t * gradu.T * du:
-            t = self.b * t
+            t = b * t
         return t
         
         
