@@ -84,17 +84,39 @@ def make_job(job_name, command, queue='icepar156q'):
     f.write('\n')
     f.close()
     
-    os.system('qsub -k oe {}'.format(job_file))
+    email = 'pierre-yves.baudin@ecp.fr'
+    os.system('qsub -k oe -m ae -M {} {}'.format(email,job_file))
 
 if __name__=='__main__':
     
      # jobs
 
      make_job(
-         '2012.09.20.test_latent_LAInone',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal',
-         queue='icetestq'
+         '2012.09.24.latent_LAInone',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
          )
+
+     make_job(
+         '2012.09.24.latent_LAISDloss',
+         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+         )
+
+
+     # make_job(
+     #     '2012.09.20.latent_LAISDloss',
+     #     'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+     #     )
+
+     # make_job(
+     #     '2012.09.20.latent_LAInone',
+     #     'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
+     #     )
+ 
+     #make_job(
+     #    '2012.09.20.test_latent_LAInone',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal',
+     #    queue='icetestq'
+     #    )
 
      #make_job(
      #    '2012.09.17.segmentation_allmuscles',

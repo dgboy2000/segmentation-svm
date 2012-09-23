@@ -320,6 +320,16 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         )
     h = kwargs.pop('ground_truth_margin',0.0)
 
+    n = q.size
+    G = sparse.bmat([[G], [sparse.eye(n,n)]])
+    
+    npixel = n/nlabel
+    F = sparse.bmat([
+        [sparse.bmat([[-sparse.eye(npixel,npixel) for i in range(nlabel-1)]])],
+        [sparse.eye(npixel*(nlabel-1),npixel*(nlabel-1))],
+        ])
+    
+
     ## initial guess
     list_GT_init = kwargs.pop('list_GT_init',None)
     if list_GT_init is None:
@@ -328,7 +338,8 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         xinit = np.asmatrix(np.asarray(list_GT_init).ravel()).T
     
     ## quadratic objective
-    objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
+    #objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
+    objective = solver.ObjectiveAPI(P, q, G=G, h=h,F=F,**kwargs)
     
     ## log barrier solver
     t0      = kwargs.pop('logbarrier_initial_t',1.0)
@@ -347,7 +358,10 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     #newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
     newton_epsilon = kwargs.pop('newton_epsilon', 1e-4)
     newton_maxiter = kwargs.pop('newton_maxiter', 100)
-    
+   
+    p = xinit.A.reshape((nlabel,-1)) + 1e-8
+    xinit = np.mat((p/np.sum(p,axis=0)).reshape(xinit.shape))
+ 
     x = solver.solve(
         xinit, 
         a=newton_a,
@@ -355,8 +369,15 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         epsilon=newton_epsilon,
         maxiter=newton_maxiter,
         )
-        
-    return x
+    
+    minx = np.min(x)
+    maxx = np.max(x)
+    logger.info('Done solver ground truth constrained: x in [{:.3}, {:.3}]'.format(minx,maxx))
+    logger.info('clipping x in [0,1]')
+    prob = np.clip(x.reshape((nlabel,-1)), 0,1)
+    prob = prob / np.sum(prob,axis=0)
+    nx = prob.reshape(x.shape)
+    return nx
 
     
 ##------------------------------------------------------------------------------

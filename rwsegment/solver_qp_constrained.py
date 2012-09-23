@@ -106,6 +106,7 @@ class ConstrainedSolver(object):
         except:
             import sys
             logger.error('Inequality constraint not satisfied, by {:.3}'.format(inconst))
+            import ipdb; ipdb.set_trace()
             sys.exit(1)
         
         for iter in range(self.maxiter):
@@ -225,14 +226,6 @@ class NewtonMethod(object):
             gradu = self.gradient(u)
             Hu = self.hessian(u)
  
-            ## normalization
-            if hasattr(Hu,'nnz'):
-                norm = np.max(np.abs(Hu.data))
-            else:
-                norm = np.max(np.abs(Hu))
-            Hu = 1./norm * Hu
-            gradu = 1./norm * gradu            
-        
             ## Newton step
             if self.use_diagonal_hessian:
                 ## Modified gradient descent
@@ -243,31 +236,39 @@ class NewtonMethod(object):
                 ## standard Newton's Method
                 import gc
                 ## starting scheme
-                l0 = np.dot(gradu.T, u_nt) 
-                if l0 < 0:
-                    #import ipdb; ipdb.set_trace()
+                l0 = float(np.dot(gradu.T, u_nt))
+                if l0 < -1e-8:
                     u_nt0 = float(-1.0/(u_nt.T*Hu*u_nt) * l0) * u_nt
                 else: 
                     u_nt0 = np.mat(np.zeros((len(u),1)))
                 tol = np.minimum(1e-1, np.sqrt(np.sqrt(float(np.dot(gradu.T, gradu)))))
+                #M = sparse.spdiags(self.extract_diag(Hu), 0, *Hu.shape)
+                #Hu = (Hu + sparse.spdiags(np.sqrt(np.sum(gradu.A**2)), 0, *Hu.shape)).tocsr() ## regularized newton method
                 u_nt,info = splinalg.cg(Hu, -gradu, x0=u_nt0, tol=tol, maxiter=1000)
                 u_nt = np.asmatrix(u_nt).T
+                if info > 0:
+                    invH = sparse.spdiags(1.0 / self.extract_diag(Hu),0,nvar,nvar)
+                    u_nt = -invH * gradu
                 gc.collect()
             
             
             ## Newton increment
-            lmbda2_ = - np.dot(gradu.T, u_nt)
-            if lmbda2_ > lmbda2: self.b  = np.sqrt(self.b)
-            else: lmbda2 = lmbda2_
+            lmbda2 = - np.dot(gradu.T, u_nt)
+            #if lmbda2_ > lmbda2: self.b  = np.sqrt(self.b)
+            #else: lmbda2 = lmbda2_
+            #if lmbda2_ > lmbda2: self.a  = 0.9 * self.a
+            #else: lmbda2 = lmbda2_
+
 
             ## stopping conditions
             if (0.5*lmbda2 <= epsilon): 
                 logger.debug(
                     'Newt: return, lambda2={:.02}'.format(float(lmbda2)))
+                #import ipdb; ipdb.set_trace()
                 return u
 
             ## line search 
-            logger.debug('Newton: (cg info = {}), b={:.3}, line search'.format(info, float(self.b)))
+            logger.debug('Newton: (cg info = {}), a={:.3}, b={:.3}, line search'.format(info, float(self.a), float(self.b)))
             step = self.line_search(u,u_nt,gradu)
             
             logger.debug(

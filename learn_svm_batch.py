@@ -110,7 +110,8 @@ class SVMSegmenter(object):
             'per_label':True,
             # 'per_label':False,
             'optim_solver':'unconstrained',
-            # 'optim_solver':'constrained',
+            'logbarrier_mu': 10,
+            'logbarrier_initial_t': 1e-2,
             }
         
         ## parameters for svm api
@@ -311,9 +312,9 @@ class SVMSegmenter(object):
                                     self.comm.send(('stop',1, {}),dest=n)
 
                             ## re-run script
-                            curr_time = time.time()
-                            logger.info('elapsed time = {:.2} hours, with {} iterations'\
-                                .format((curr_time-self.start_time)*3600, niter))
+                            #curr_time = time.time()
+                            #logger.info('elapsed time = {:.2} hours, with {} iterations'\
+                            #    .format((curr_time-self.start_time)*3600, niter))
                             ## check if we have the time to run a new iteration
                             #if (curr_time - self.start_time)/(niter) < (3.90 * 3600.0)/(niter + 1) and \
                             #    os.path.isfile(self.start_script):
