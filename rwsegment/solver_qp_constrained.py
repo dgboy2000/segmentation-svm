@@ -51,6 +51,11 @@ class ConstrainedSolver(object):
         self.mu = kwargs.pop('mu',20)
         self.maxiter = kwargs.pop('maxiter',100)
         
+        #self.modified = kwargs.pop('modified', True)
+        self.modified = False
+        if self.modified: logger.info('using modified log-barrier method')       
+        else: logger.info('using standard log-barrier method')       
+ 
         ## inequality constraints
         G, h = objective.iconst
         if not hasattr(G,'T'):
@@ -86,21 +91,19 @@ class ConstrainedSolver(object):
         epsilon = self.epsilon
         mu      = self.mu
         t0      = self.t0
-        # newt_epsilon = kwargs.pop('epsilon', None)
+        newt_epsilon = kwargs.pop('epsilon', 1e-5)
 
         x = x0
         t = t0
 
         G,h = self.G, self.h
-        self.nconst = (G*x0).shape[0]
-        
+        self.nconst = (G*x0).shape[0] 
         nvar = min(self.nvar, x0.size)
-        
-        ## non frozen indices
-        self.alive = np.arange(x0.size)
-        
+       
+        self.lmbda = np.mat(np.ones((self.nconst,1)))
+ 
         ## test inequality constraints
-        inconst = np.min(G*x0 - h)
+        inconst = np.min(self.get_cond(x0).A)
         try:
             assert inconst > 0
         except:
@@ -113,35 +116,33 @@ class ConstrainedSolver(object):
             ## solve with currant t
             logger.debug(
                 'calling constrained solver with t={}'.format(t))
-                
-            modf_objective = lambda u: self.barrier_objective_eqc(u,x,t)
-            modf_gradient  = lambda u: self.barrier_gradient_eqc(u,x,t)
-            modf_hessian   = lambda u: self.barrier_hessian_eqc(u,x,t)
+            
+            if self.modified:
+                modf_objective = lambda u: self.barrier_objective_modified(u,x,t)
+                modf_gradient  = lambda u: self.barrier_gradient_modified(u,x,t)
+                modf_hessian   = lambda u: self.barrier_hessian_modified(u,x,t)
+            else:
+                modf_objective = lambda u: self.barrier_objective(u,x,t)
+                modf_gradient  = lambda u: self.barrier_gradient(u,x,t)
+                modf_hessian   = lambda u: self.barrier_hessian(u,x,t)
                
             ## Newton's method
-            # increase epsilon with t
-            # if newt_epsilon is None:
-                #eps = np.maximum(1e-3,t*1e-6)
-                # eps = 1e-6
-            # else:
-                # eps = newt_epsilon
-            # logger.debug(
-                # 'calling Newton solver with tol={:.2}'.format(newt_epsilon))
-            
+            #eps = np.maximum(newt_epsilon, np.power(10.0,-iter-1))
+            eps = np.maximum(newt_epsilon, np.power(10.0,- np.log(t/t0)/np.log(mu) - 1))
+
             # instanciate solver
             solver = NewtonMethod(
                 modf_objective, 
                 modf_gradient, 
                 modf_hessian,
-                # epsilon=newt_epsilon,
+                epsilon=eps,
                 **kwargs)
                 
             # solve with Newton' method
             u0 = np.asmatrix(np.zeros(nvar)).T
             u = solver.solve(u0)
-            
-            F = self.F
-            x = F*u + x
+           
+            x = self.get_x(u,x) 
             
             ## stopping conditions
             if (self.nconst/float(t)) < epsilon:
@@ -150,49 +151,88 @@ class ConstrainedSolver(object):
             ## update t
             t = mu * t
 
+            ## (modified NM)
+            if self.modified:
+                cond = self.get_cond(x)
+                tthresh = np.max(-1.01*cond.A)
+                if 1./t < tthresh: 
+                    t /= np.sqrt(mu)
+                if 1./t < tthresh:
+                    t /= np.sqrt(mu)
+                self.lmbda = self.dlog(t*cond + 1, self.lmbda)
+
         return y
         
-    def barrier_objective_eqc(self,u,x0,t):
-        objective = self.objective
-        F   = self.F
-        G,h = self.G, self.h
+    def get_x(self,u,x0):
+        F = self.F
         x = F*u + x0
+        return x
+
+    def get_cond(self,x): 
+        G,h  = self.G, self.h
         cond = G*x - h
+        return cond
+
+    def barrier_objective(self,u,x0,t):
+        objective = self.objective
+        x         = self.get_x(u,x0)
+        cond      = self.get_cond(x)
         if np.min(cond)<= 0:
             ## in case of negative values, return infinity
             return np.infty
-        #logger.debug('min cond ={}'.format(np.min(cond)))
         return objective(x) - 1./t * np.sum(np.log(cond))
+   
+    def barrier_objective_modified(self, u, x0, t): 
+        objective = self.objective
+        x         = self.get_x(u,x0)
+        cond      = self.get_cond(x)
+        if np.min(t*cond.A + 1)<= 0:
+            ## in case of negative values, return infinity
+            return np.infty
+        return objective(x) - 1./t * np.dot(self.lmbda.T, np.log(t*cond + 1))
     
-    def barrier_gradient_eqc(self,u,x0,t):
+    def barrier_gradient(self,u,x0,t):
         gradient = self.objective.gradient
-        F   = self.F
-        G,GT,h = self.G, self.GT, self.h
-        FT = self.FT
-        x = F*u + x0
-        cond = G*x - h
-        #return FT * (t * gradient(x) + GT * self.barrier_gradient(cond))
-        return FT * ( gradient(x) + 1.0/t * GT * self.barrier_gradient(cond))
-        
-    def barrier_gradient(self,cond):
-        return np.matrix(-1.0/np.asarray(cond).ravel()).T
-        
+        x        = self.get_x(u,x0)
+        cond     = self.get_cond(x)
+        GT,FT    = self.GT, self.FT
+        return FT * ( gradient(x) - 1./t * GT * self.dlog(cond))
+
+    def barrier_gradient_modified(self,u,x0,t):
+        gradient = self.objective.gradient
+        x        = self.get_x(u,x0)
+        cond     = self.get_cond(x)
+        GT,FT    = self.GT, self.FT
+        return FT * ( gradient(x) - GT * self.dlog(t*cond + 1.0, self.lmbda))
+         
+    def dlog(self,cond, lmbda=None):
+        if lmbda is not None:
+            return np.matrix(lmbda.A.ravel() / cond.A.ravel()).T 
+        else:
+            return np.matrix(1.0/cond.A.ravel()).T 
     
-    def barrier_hessian_eqc(self,u,x0,t):
+    def barrier_hessian(self,u,x0,t):
         hessian = self.objective.hessian
-        F   = self.F
-        G,GT,h = self.G, self.GT, self.h
-        FT = self.FT
-        x = F*u + x0
-        cond = G*x - h
-        #return FT * (t * hessian(x) + \
-        #              GT * self.barrier_hessian(cond) * G) * F
-        return FT * (hessian(x) + \
-                      1./t * GT * self.barrier_hessian(cond) * G) * F
+        x       = self.get_x(u,x0)
+        cond    = self.get_cond(x)
+        G,GT,F,FT = self.G, self.GT, self.F, self.FT
+        return FT * (hessian(x) - \
+                     1./t * GT * self.d2log(cond) * G) * F
  
-    def barrier_hessian(self,cond):
+    def barrier_hessian_modified(self,u,x0,t):
+        hessian = self.objective.hessian
+        x       = self.get_x(u,x0)
+        cond    = self.get_cond(x)
+        G,GT,F,FT = self.G, self.GT, self.F, self.FT
+        return FT * (hessian(x) - \
+                     t * GT * self.d2log(t*cond + 1.0, self.lmbda) * G) * F
+ 
+    def d2log(self,cond, lmbda=None):
         n = cond.size
-        return sparse.spdiags(1.0/np.asarray(cond).ravel()**2,0,n,n)
+        if lmbda is not None:
+            return sparse.spdiags(-lmbda.A.ravel() / cond.A.ravel()**2,0,n,n)
+        else:
+            return sparse.spdiags(-1.0 / cond.A.ravel()**2,0,n,n)
     
         
 class NewtonMethod(object):
@@ -242,8 +282,9 @@ class NewtonMethod(object):
                 else: 
                     u_nt0 = np.mat(np.zeros((len(u),1)))
                 tol = np.minimum(1e-1, np.sqrt(np.sqrt(float(np.dot(gradu.T, gradu)))))
-                #M = sparse.spdiags(self.extract_diag(Hu), 0, *Hu.shape)
-                #Hu = (Hu + sparse.spdiags(np.sqrt(np.sum(gradu.A**2)), 0, *Hu.shape)).tocsr() ## regularized newton method
+                #M = sparse.spdiags(1./self.extract_diag(Hu), 0, *Hu.shape)
+                #u_nt,info = splinalg.cg(Hu, -gradu, x0=u_nt0, tol=tol, maxiter=1000, M=M)
+                Hu = (Hu + sparse.spdiags(np.sqrt(np.sum(gradu.A**2)), 0, *Hu.shape)).tocsr() ## regularized newton method
                 u_nt,info = splinalg.cg(Hu, -gradu, x0=u_nt0, tol=tol, maxiter=1000)
                 u_nt = np.asmatrix(u_nt).T
                 if info > 0:
@@ -254,17 +295,14 @@ class NewtonMethod(object):
             
             ## Newton increment
             lmbda2 = - np.dot(gradu.T, u_nt)
-            #if lmbda2_ > lmbda2: self.b  = np.sqrt(self.b)
-            #else: lmbda2 = lmbda2_
-            #if lmbda2_ > lmbda2: self.a  = 0.9 * self.a
-            #else: lmbda2 = lmbda2_
 
 
             ## stopping conditions
             if (0.5*lmbda2 <= epsilon): 
+            #if (0.5*lmbda2 <= epsilon) or ( np.dot(u_nt.T, u_nt) <= epsilon): 
+            #if (0.5*lmbda2 <= epsilon) or ( np.dot(u_nt.T, u_nt) <= epsilon): 
                 logger.debug(
                     'Newt: return, lambda2={:.02}'.format(float(lmbda2)))
-                #import ipdb; ipdb.set_trace()
                 return u
 
             ## line search 

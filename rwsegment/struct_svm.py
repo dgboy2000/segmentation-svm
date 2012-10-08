@@ -139,7 +139,7 @@ class StructSVM(object):
         ncons = len(W)
         
         if ncons == 0:
-            w = np.zeros(n,dtype=float)
+            w = [1.0 for i in range(n)]
             xi = 0.0
             return w,xi
         
@@ -216,7 +216,7 @@ class StructSVM(object):
         ''' 
         
         if len(W)==0:
-            w = [0.0 for i in range(self.wsize)]
+            w = [1.0 for i in range(self.wsize)]
             xi = 0.0
             return w,xi
         
@@ -489,6 +489,7 @@ class StructSVM(object):
                 ys = self.parallel_mvc(w, switch_loss=switch_loss)
             else:
                 for s in self.S:
+                    import ipdb; ipdb.set_trace()
                     x,z = s
                     y_ = self.mvc(w, x, z, exact=True, switch_loss=switch_loss)
                     ys.append(y_)

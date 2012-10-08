@@ -27,10 +27,14 @@ class BaseAnchorAPI(object):
     def get_labelset(self):
         return self.labelset
     
-    def get_anchor_and_weights(self,D):
+    def get_anchor_and_weights(self, D, indices):
         nlabel = len(self.labelset)
-        weights = self.anchor_weight * np.ones((nlabel,D.size)) * D
-        return self.anchor, weights
+        N = np.maximum(np.max(self.imask), np.max(indices))+ 1
+        data = 1./nlabel * np.ones((nlabel,N))
+        data[:,self.imask] = self.anchor['data']
+        data = data[:,indices]
+        weights = self.anchor_weight * np.ones((nlabel,len(indices))) * D
+        return data, weights
         
 ##------------------------------------------------------------------------------
 def segment(
@@ -74,7 +78,12 @@ def segment(
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
     nunknown    = unknown.size
-        
+   
+    if len(unknown)==0:
+        logger.error('no unknown pixels in image')
+        sys.exit()
+
+     
     ## parameters
     beta    = kwargs.pop('beta', 1.)
     wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function
@@ -92,8 +101,7 @@ def segment(
         )
 
     ## anchor function:
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
-    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D, unknown)
         
     ## ground truth
     ground_truth = kwargs.pop('ground_truth',None)
@@ -102,18 +110,12 @@ def segment(
     ## per label lists of vectors
     list_x0, list_Omega, list_xm, list_GT, list_GT_init = [],[],[],[],[]
     for l in range(nlabel):
-        x0 = 1/float(nlabel) * np.ones(npixel)
-        x0[anchor['imask']] = anchor['data'][l]
-        list_x0.append(x0[unknown])
+        list_x0.append(anchor[l])
+        list_Omega.append(wanchor * anchor_weights[l])
         if seeds!=[]:
             list_xm.append(seeds.ravel()[border]==labelset[l])
         else:
             list_xm.append(0)
-        
-        Omega = np.ones(npixel)
-        if anchor_weights is not None:
-            Omega[anchor['imask']] = anchor_weights[l]
-        list_Omega.append(wanchor * Omega[unknown])
         
         ## ground truth
         if ground_truth is not None:
@@ -297,9 +299,7 @@ def solve_qp(P,q,**kwargs):
     return solver.solve_qp(P,q,**kwargs)
     
 def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
-    import solver_qp_constrained as solver
-    reload(solver)
-    
+   
     GT = np.asarray(list_GT).T
     
     ''' Ax >= b '''
@@ -336,6 +336,36 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         xinit = np.asmatrix(np.asarray(list_GT).ravel()).T
     else:
         xinit = np.asmatrix(np.asarray(list_GT_init).ravel()).T
+ 
+    use_mosek = False
+    if use_mosek:
+        import solver_mosek as solver         
+        reload(solver)
+ 
+        logger.info('use mosek')
+        objective = solver.ObjectiveAPI(P, q, G=G, h=h,F=F,**kwargs)
+        constsolver = solver.ConstrainedSolver(
+            objective,
+            )
+
+        p = xinit.A.reshape((nlabel,-1)) + 1e-8
+        xinit = np.mat((p/np.sum(p,axis=0)).reshape(xinit.shape))
+ 
+        x = constsolver.solve(xinit) 
+
+        minx = np.min(x)
+        maxx = np.max(x)
+        logger.info('Done solver ground truth constrained: x in [{:.3}, {:.3}]'.format(minx,maxx))
+        logger.info('clipping x in [0,1]')
+        prob = np.clip(x.reshape((nlabel,-1)), 0,1)
+        prob = prob / np.sum(prob,axis=0)
+        nx = prob.reshape(x.shape)
+        return nx
+
+
+    ## else: log barrier    
+    import solver_qp_constrained as solver
+    reload(solver)
     
     ## quadratic objective
     #objective = solver.ObjectiveAPI(P, q, G=G, h=h,**kwargs)
@@ -344,19 +374,21 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     ## log barrier solver
     t0      = kwargs.pop('logbarrier_initial_t',1.0)
     mu      = kwargs.pop('logbarrier_mu',20.0)
-    epsilon = kwargs.pop('logbarrier_epsilon',1e-3)
+    epsilon = kwargs.pop('logbarrier_epsilon',1e-4)
+    modified = kwargs.pop('logbarrier_modified',False)
     solver = solver.ConstrainedSolver(
         objective,
         t0=t0,
         mu=mu,
         epsilon=epsilon,
+        modified=modified,
         )
     
     ## internal solver is newton's method
     newton_a       = kwargs.pop('newton_a', 0.4)
     newton_b       = kwargs.pop('newton_b', 0.8)
     #newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
-    newton_epsilon = kwargs.pop('newton_epsilon', 1e-4)
+    newton_epsilon = kwargs.pop('newton_epsilon', 1e-5)
     newton_maxiter = kwargs.pop('newton_maxiter', 100)
    
     p = xinit.A.reshape((nlabel,-1)) + 1e-8
@@ -445,19 +477,13 @@ def energy_anchor(
             # weight_function=weight_function,
             # beta=beta)
     # anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(1)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(1, unknown)
     
     ## per label lists of vectors
     list_x0, list_Omega, list_xm = [],[],[]
     for l in range(nlabel):
-        x0 = 1/float(nlabel) * np.ones(npixel)
-        x0[anchor['imask']] = anchor['data'][l]
-        list_x0.append(x0[unknown])
-        
-        Omega = np.ones(npixel)
-        if anchor_weights is not None:
-            Omega[anchor['imask']] = anchor_weights[l]
-        list_Omega.append(Omega[unknown])
+        list_x0.append(anchor[l])
+        list_Omega.append(anchor_weights[l])
     
     
     en = 0

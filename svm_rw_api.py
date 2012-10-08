@@ -30,7 +30,7 @@ class MetaAnchor():
     def get_labelset(self):
         return self.labelset
         
-    def get_anchor_and_weights(self,D):
+    def get_anchor_and_weights(self, D, indices):
         all_anchor = 0
         all_weights = 0
         
@@ -41,16 +41,14 @@ class MetaAnchor():
                 anchor_weight=self.prior_weights[imodel],
                 image=self.image,
                 )
-            anchor, weights = api.get_anchor_and_weights(D)
-            # anchor, weights = api.get_anchor_and_weights(1)
-            all_anchor  = all_anchor  + weights * anchor['data']
+            anchor, weights = api.get_anchor_and_weights(D, indices)
+            all_anchor  = all_anchor  + weights * anchor
             all_weights = all_weights + weights
            
         ## loss
-        imask = self.prior['imask']
         if self.loss is not None:
             all_anchor  = all_anchor + \
-                self.loss_weight * self.loss['data'][:,imask]
+                self.loss_weight * self.loss[:,indices]
             all_weights += self.loss_weight
        
         if np.max(all_weights) < 1e-10:
@@ -58,9 +56,7 @@ class MetaAnchor():
              all_weights = np.zeros(all_weights.shape)
         else: 
              all_anchor = all_anchor / all_weights
-        labelset = self.prior['labelset']
-        all_anchor_dict = {'data':all_anchor, 'imask':imask, 'labelset':labelset}
-        return all_anchor_dict, all_weights 
+        return all_anchor, all_weights 
 
 
 
@@ -116,57 +112,62 @@ class SVMRWMeanAPI(object):
         
         self.seeds = seeds
         self.rwparams = rwparams
-        self.mask = np.asarray([seeds.ravel()<0 for i in range(self.nlabel)])
+        self.immask = seeds<0
+        self.mask = np.asarray([self.immask.ravel() for i in range(self.nlabel)])
+        self.prior_mask = np.zeros(seeds.shape, dtype=bool)
+        self.prior_mask.flat[self.prior['imask']] = 1
+       
        
         # rescale loss 
         self.loss_factor = float(kwargs.pop('loss_factor', 1.0))
         logger.warning('loss is scaled by {:.3}'.format(self.loss_factor))
         
     def compute_loss(self,z,y_):
+
+        if hasattr(z, 'islices'):
+            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+        else:
+            mask = self.mask
+
         if np.sum(y_<-1e-6) > 0:
             miny = np.min(y_)
             logger.warning('negative (<-1e-6) values in y_. min = {:.3}'.format(miny))
 
         self.use_ideal_loss = True
-        if self.use_ideal_loss:
-            loss = loss_functions.ideal_loss(z,y_,mask=self.mask)
 
-        elif self.loss_type == 'anchor':
-            #''' 1 - (z.y_)/nnode '''
-            #nnode = z.size/float(self.nlabel)
-            #return 1.0 - 1.0/nnode * np.dot(z.ravel(),y_.ravel())
-            '''- |y - tilde(z)|^2'''
-            nlabel = self.nlabel
-            mask = self.mask
-            if mask is None:
-                 nnode  = len(z[0])
-                 mask = 1.0
-            else:
-                nnode = np.sum(self.mask[0])
-            ztilde = (1. - np.asarray(z))/(nlabel - 1.)
-            loss = 1 - np.sum(mask*(ztilde - y_)**2) * (nlabel - 1.)/float(nlabel*nnode)
-        elif self.loss_type == 'laplacian':
-            L = laplacian_loss(z,mask=self.mask)
-            yy = np.asmatrix(np.asarray(y_).ravel()).T
-            loss = 1. + float(yy.T*L*yy)
-	    #if self.mask is not None:
-            #    dice = 1 - np.sum(self.mask*np.abs(y_-z))\
-            #        /float(np.sum(self.mask[0]))/2.0
-            #else:
-            #    dice = 1 - np.sum(np.abs(y_-z))/float(z.shape[1])/2.0
-            #logger.debug('for dice={:.2}, loss={:.2}'.format(dice, loss))
-            #import ipdb; ipdb.set_trace()
+        if self.use_ideal_loss:
+            loss = loss_functions.ideal_loss(z,y_,mask=mask)
+        elif self.loss_type=='anchor':
+            loss = loss_functions.anchor_loss(z,y,mask=mask)
+        elif self.loss_type=='laplacian':
+            loss = loss_functions.laplacian_loss(z,y,mask=mask)
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
-        #logger.debug('loss={:.2}'.format( loss))
         return loss*self.loss_factor
 
     ## psi  
     def compute_psi(self, x,y):
         ''' - sum(a){Ea(x,y)} '''
-        nnode = x.size
-        
+
+        if hasattr(x, 'islices'):
+            im = x
+            seeds = self.seeds[x.islices]
+            prior = {
+                'data': np.asarray(self.prior['data'])[:,x.iimask],
+                'imask': self.prior['imask'][x.iimask],
+                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'labelset': self.labelset,
+                } 
+            if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
+            seg = y 
+        else:
+            im = x
+            seeds = self.seeds
+            prior = self.prior
+            seg = y
+
+       
         ## normalizing by the approximate mask size
         # normalize = float(nnode)/100.0
         normalize = 1.0
@@ -177,8 +178,8 @@ class SVMRWMeanAPI(object):
             
             v.append( 
                 rwsegment.energy_rw(
-                    x,y,
-                    seeds=self.seeds,
+                    im, seg,
+                    seeds=seeds,
                     weight_function=wf,
                     **self.rwparams
                 )/normalize)
@@ -186,22 +187,19 @@ class SVMRWMeanAPI(object):
         ## energy for each prior models
         for model in self.prior_models:
             anchor_api = model( 
-                self.prior, 
+                prior, 
                 anchor_weight=1.0,
-                image=x, # intensity prior needs an image
+                image=im, # intensity prior needs an image
                 )
             
             v.append(
                 rwsegment.energy_anchor(
-                    x,y,anchor_api,
-                    seeds=self.seeds,
+                    im, seg, anchor_api,
+                    seeds=seeds,
                     weight_function=wf,
                     **self.rwparams
                 )/normalize)
             
-        strpsi = ' '.join('{:.3}'.format(val) for val in v)
-        # logger.debug('psi=[{}], normalize={:.2}'.format(strpsi,normalize))
-        
         if v[0]==0:
             import ipdb; ipdb.set_trace()
         return v
@@ -211,7 +209,27 @@ class SVMRWMeanAPI(object):
     def full_lai(self, w,x,z, switch_loss=False):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
-            
+
+        if hasattr(x, 'islices'):
+            im = x
+            seeds = self.seeds[x.islices]
+            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+            prior = {
+                'data': np.asarray(self.prior['data'])[:,x.iimask],
+                'imask': self.prior['imask'][x.iimask],
+                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'labelset': self.labelset,
+                }
+            if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
+            seg = z
+        else:
+            im = x
+            mask = self.mask
+            seeds = self.seeds
+            prior = self.prior
+            seg = z
+ 
+           
         ## combine all weight functions
         weight_function = MetaLaplacianFunction(
             np.asarray(w)[self.indices_laplacians],
@@ -232,14 +250,9 @@ class SVMRWMeanAPI(object):
         if loss_type=='none':
             pass
         elif loss_type=='anchor':
-            nlabel = self.nlabel
-            nnode = len(z[0])
-            ztilde = (1. - np.asarray(z)) / (nlabel - 1.0)
-            loss = {'data': ztilde}
-            loss_weight = (self.nlabel - 1.0) / float(nlabel*nnode)
-            loss_weight *= self.loss_factor
+            loss, loss_weight = loss_functions.compute_loss_anchor(seg, mask=mask)
         elif loss_type=='laplacian':
-            L_loss = (-self.loss_factor)*laplacian_loss(z, mask=self.mask)
+            L_loss = loss_functions.compute_loss_laplacian(seg, mask=mask)
         elif loss_type=='approx':
             nnode = len(z[0])
             addlin = 1./float(nnode)*z
@@ -250,19 +263,19 @@ class SVMRWMeanAPI(object):
         
         ## loss function        
         anchor_api = MetaAnchor(
-            prior=self.prior,
+            prior=prior,
             prior_models=self.prior_models,
             prior_weights=np.asarray(w)[self.indices_priors],
             loss=loss,
             loss_weight=loss_weight,
-            image=x,
+            image=im,
             )
         
         ## best y_ most different from y
         y_ = rwsegment.segment(
-            x, 
+            im, 
             anchor_api,
-            seeds=self.seeds,
+            seeds=seeds,
             weight_function=weight_function,
             return_arguments=['y'],
             additional_laplacian=L_loss,
@@ -272,61 +285,28 @@ class SVMRWMeanAPI(object):
             
         return y_
         
-    def worst_loss_inference(self, x,z):
-        nlabel = len(self.labelset)
-        y_ = (1-z)/float(nlabel-1)
-        return y_
-        
-    def best_segmentation_inference(self, w,x):
-        anchor_api = MetaAnchor(
-            prior=self.prior,
-            prior_models=self.prior_models,
-            prior_weights=np.asarray(w)[self.indices_priors],
-            loss=None,
-            loss_weight=None,
-            image=x,
-            )
-    
-        ## combine all weight functions
-        weight_function = MetaLaplacianFunction(
-            np.asarray(w)[self.indices_laplacians],
-            self.laplacian_functions,
-            )
-            
-        ## best y_ most different from y
-        y_ = rwsegment.segment(
-            x, 
-            anchor_api,
-            seeds=self.seeds,
-            weight_function=weight_function,
-            return_arguments=['y'],
-            **self.rwparams
-            )
-        return y_
-    
+   
     def compute_mvc(self,w,x,z,exact=True, switch_loss=False):
-        if exact:
-            return self.full_lai(w,x,z, switch_loss=switch_loss)
-        else:
-            y_loss = self.worst_loss_inference(x,z)
-            y_seg  = self.best_segmentation_inference(w,x)
-            
-            score_loss = \
-                np.dot(w,self.compute_psi(x,y_loss)) - \
-                self.compute_loss(z,y_loss)
-                
-            score_seg = \
-                np.dot(w,self.compute_psi(x,y_seg)) - \
-                self.compute_loss(z,y_seg)
-            
-            if score_seg > score_loss:
-                return y_loss
-            else:
-                return y_seg
-
-                
+        return self.full_lai(w,x,z, switch_loss=switch_loss)
+                        
     def compute_aci(self,w,x,z,y0):
         ''' annotation consistent inference'''
+
+        if hasattr(x, 'islices'):           
+            seeds = self.seeds[x.islices]
+            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+            prior = {
+                'data': np.asarray(self.prior['data'])[:,x.iimask],
+                'imask': self.prior['imask'][x.iimask],
+                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'labelset': self.labelset,
+                }
+            if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
+            #logger.debug('cropped image {}'.format()
+        else:
+            mask = self.mask
+            seeds = self.seeds
+            prior = self.prior
         
         weight_function = MetaLaplacianFunction(
             np.asarray(w)[self.indices_laplacians],
@@ -335,7 +315,7 @@ class SVMRWMeanAPI(object):
         
         ## combine all prior models
         anchor_api = MetaAnchor(
-            prior=self.prior,
+            prior=prior,
             prior_models=self.prior_models,
             prior_weights=np.asarray(w)[self.indices_priors],
             image=x,
@@ -345,18 +325,18 @@ class SVMRWMeanAPI(object):
         y = rwsegment.segment(
             x, 
             anchor_api,
-            seeds=self.seeds,
+            seeds=seeds,
             weight_function=weight_function,
             return_arguments=['y'],
             ground_truth=z,
             ground_truth_init=y0,
             **self.rwparams
             )
-        
         return y 
                 
 #-------------------------------------------------------------------------------
 ##------------------------------------------------------------------------------
+'''
 def laplacian_loss(ground_truth, mask=None):
     from scipy import sparse
     
@@ -397,3 +377,5 @@ def laplacian_loss(ground_truth, mask=None):
     L_loss = sparse.spdiags(D_loss,0,*A_loss.shape) - A_loss
 
     return -weight*L_loss.tocsr()
+'''
+

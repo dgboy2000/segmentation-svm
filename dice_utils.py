@@ -67,11 +67,23 @@ def compute_dice_coef(seg1, seg2, labelset=None):
 
 if __name__=='__main__':
     import config
-    dir_seg = config.dir_work + 'segmentation/2012.09.10.segmentation_all/' 
+    dir_seg1 = config.dir_work + 'segmentation/2012.09.10.segmentation_all/' 
+    dir_seg2 = config.dir_work + 'segmentation/2012.09.25.segmentation_variance_allm/' 
+    dir_seg3 = config.dir_work + 'segmentation/2012.09.26.segmentation_variance_allm/' 
+
     folder_list = [
-        dir_seg + 'constant1e-2',
-        dir_seg + 'entropy1e-2',
-        dir_seg + 'entropy1e-1',
-        dir_seg + 'entropy1e-2_intensity1e-2',
+        dir_seg3 + 'mean',
+        #dir_seg1 + 'constant1e-2',
+        #dir_seg1 + 'entropy1e-2',
+        #dir_seg1 + 'entropy1e-1',
+        #dir_seg1 + 'entropy1e-2_intensity1e-2',
+        dir_seg2 + 'variance1e-0',
+        dir_seg2 + 'variance1e-1',
+        dir_seg2 + 'variancecmap1e-0',
+        dir_seg2 + 'variancecmap1e-1',
+        #dir_seg2 + 'variancecmap1e-2',
         ]
+
     batch_compute_dice(folder_list, labelset=[13,14,15,16])
+
+

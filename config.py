@@ -127,6 +127,12 @@ elif sys.argv[0]=='segmentation_batch.py':
     dir_seg = dir_log    
     if not debug:
         utils_logging.LOG_OUTPUT_DIR = dir_log
+elif sys.argv[0]=='batch_rwpca.py':
+    dir_log = dir_work + 'segmentation_pca/{}'.format(folder)
+    dir_seg = dir_log    
+    if not debug:
+        utils_logging.LOG_OUTPUT_DIR = dir_log
+
 
 #logger = utils_logging.get_logger('config', utils_logging.DEBUG)
 #logger.info('current code version: {}'.format(current_code_version))
@@ -138,6 +144,7 @@ print 'using basis = {}'.format(basis)
 
 if basis=='default':
     dir_prior = dir_work + '/prior/'
+    dir_pca_prior = dir_work + '/prior_pca/'
     dir_prior_edges = dir_work + '/prior_edges/'
     vols = {
         '01/': {'AB':39},
@@ -176,6 +183,7 @@ if basis=='default':
     labelset = [0,13,14,15,16]
 elif basis=='allmuscles':
     dir_prior = dir_work + '/prior_allm/'
+    dir_prior = dir_work + '/prior_pca_allm/'
     dir_prior_edges = dir_work + '/prior_edges_allm/'
     vols = {
         'F23/': {'AB':39},

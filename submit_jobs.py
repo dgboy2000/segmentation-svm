@@ -42,6 +42,15 @@ def icepar156q():
 NP=33
 '''
 
+def icepar156q_test():
+    return '''
+## Params for icepar156q
+#PBS -l select=1:ncpus=12:mpiprocs=3:mem=22gb
+#PBS -l walltime=03:59:00
+NP=33
+'''
+
+
 def icetestq():
     return '''
 # Params for icetestq
@@ -91,15 +100,69 @@ if __name__=='__main__':
     
      # jobs
 
-     make_job(
-         '2012.09.24.latent_LAInone',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
-         )
+     #make_job(
+     #    '2012.10.07.latent_LAInone',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
+     #    )
+
 
      make_job(
-         '2012.09.24.latent_LAISDloss',
-         'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
-         )
+        '2012.10.07.test_latent_LAInone',
+        'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal -t 1',
+        queue='icetestq',
+        )
+
+    #make_job(
+    #     '2012.09.28.pca_test',
+    #     'mpirun -np $NP python batch_rwpca.py -s',
+    #     queue='icemem48gbq'
+    #     )
+
+   
+     # make_job(
+     #     '2012.09.28.test_latent_LAInone_24h',
+     #     'mpirun -np $NP python learn_svm_batch.py --latent --one_iter --loss none --minimal -t 1',
+     #     queue='icemem48gbq'
+     #     )
+
+
+     #make_job(
+     #    '2012.09.28.test_latent_LAInone2',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal -t 1',
+     #    queue='icetestq',
+     #    )
+
+
+     # make_job(
+     #     '2012.09.26.test_latent_LAInone',
+     #     'mpirun -np $NP python learn_svm_batch.py --latent --one_iter --loss none --minimal -t 1',
+     #     queue='icemem48gbq'
+     #     )
+
+
+     # make_job(
+     #     '2012.09.25.segmentation_variance_allm',
+     #     'python segmentation_batch.py -s --basis allmuscles',
+     #     queue='icemem48gbq',
+     #     )
+
+
+     #make_job(
+     #    '2012.09.25.segmentation_variance',
+     #    'python segmentation_batch.py -s',
+     #    queue='icemem48gbq',
+     #    )
+
+
+     #make_job(
+     #    '2012.09.24.latent_LAInone',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
+     #    )
+
+     #make_job(
+     #    '2012.09.24.latent_LAISDloss',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter',
+     #    )
 
 
      # make_job(

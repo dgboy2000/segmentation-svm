@@ -18,20 +18,19 @@ def sample_points(im, step,  mask=None, maxiter=20):
     points = points0   
  
     ## move points
-    emap = np.sqrt(np.sum([ndimage.sobel(im, axis=d)**2 for d in range(im.ndim)], axis=0))
+    fim = ndimage.gaussian_filter(im.astype(float), sigma=1.0)
+    emap = np.sqrt(np.sum([ndimage.sobel(fim, axis=d)**2 for d in range(im.ndim)], axis=0))
     gradient = np.asarray(np.gradient(emap)).astype(float)
-    for i in range(np.min(steps)/2):
+    for i in range(np.max(steps)/2):
+	axes = i < (steps/2)
         if i >= maxiter: break
         dp = gradient[(slice(None),) + tuple(points.T)].T
         dp = dp/np.c_[np.maximum(np.max(np.abs(dp), axis=1),1e-10)]
-        dp = (dp + 0.5).astype(int)
+        dp = (dp + 0.5*(-1)**(dp<0)).astype(int)
         
-        points = points - dp
-        points = np.c_[
-            np.clip(points[:,0],0, shape[0]-1),
-            np.clip(points[:,1],0, shape[1]-1),
-            np.clip(points[:,2],0, shape[2]-1),
-            ]
+        for axe in np.where(axes)[0]:
+            points[:,axe] = (points - dp)[:,axe]
+        points = points[np.all(points>0, axis=1)&np.all(points<shape,axis=1)]
 
     return points
 
@@ -78,7 +77,7 @@ def get_profiles(im, points, edges, rad=0):
              par2  = np.array([vec[0]*vec[2], vec[1]*vec[2], -(vec[0]**2 + vec[1]**2)])
              par2 /= np.sqrt(np.sum(par2**2))
          
-         dist = dists[i]
+         dist = int(dists[i] + 1)
          line = np.asarray([(1-t)*pt0 + t*pt1 for t in np.linspace(0,1,dist)])
          
          disk = (np.argwhere(np.ones((2*rad+1, 2*rad+1))) - rad)/float(rad + 1*(rad==0))
@@ -96,9 +95,9 @@ def get_profiles(im, points, edges, rad=0):
         # profiles[e[1]].append([e[0],profile])
 
 
-    return profiles, emap
+    return profiles, emap, dists
 
-def make_features(profiles,size=None):
+def make_features(profiles,size=None, additional=None):
     from scipy import interpolate  
     if size is None:
         size = 0
@@ -107,7 +106,7 @@ def make_features(profiles,size=None):
         size = int(size + 1)
     sizes = [size/4, size/2, size]
     x = []
-    for profile in profiles:
+    for i,profile in enumerate(profiles):
         n = len(profile)
         feature = []
         if n<4:
@@ -119,6 +118,8 @@ def make_features(profiles,size=None):
             feature.extend(d.tolist())
         ## add features, including average, std, min, max, length
         x.append(feature + [np.mean(d), np.std(d), np.max(d), np.min(d),n])
+        if additional is not None:
+            x[-1].extend([ad[i] for ad in additional])
     return x
 
 def is_boundary(points, edges, seg):

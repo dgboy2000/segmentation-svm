@@ -4,8 +4,10 @@ from scipy import ndimage
 
 from rwsegment import io_analyze
 from rwsegment import rwsegment_prior
+from rwsegment import rwsegment_pca_prior
 from rwsegment import loss_functions
 reload(rwsegment_prior)
+reload(rwsegment_pca_prior)
 reload(loss_functions)
 
 import config
@@ -199,10 +201,13 @@ def compute_objective(test, y, w):
     return obj
 
     
-def load_or_compute_prior_and_mask(test, force_recompute=False):
+def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
 
     labelset = np.asarray(config.labelset)
-    outdir = config.dir_prior + test
+    if pca:
+        outdir = config.dir_pca_prior + test
+    else:
+        outdir = config.dir_prior + test
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     
@@ -213,12 +218,16 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
    
-    if (not force_recompute) and os.path.exists(file_prior):        # logger.info('load prior')
+    if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
         mask  = io_analyze.load(file_mask)
         prior = np.load(file_prior)
     else:
-        generator = rwsegment_prior.PriorGenerator(labelset)
-        
+        if pca:
+            generator = rwsegment_pca_prior.PriorGenerator(labelset)
+        else:
+            generator = rwsegment_prior.PriorGenerator(labelset)
+
+        ntrain = 0 
         for train in config.vols:
             if test==train: continue
             logger.debug('load training img: {}'.format(train))
@@ -232,6 +241,11 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
             im = io_analyze.load(file_im)
             
             generator.add_training_data(seg,image=im)
+            ntrain += 1
+            #if ntrain == 3:
+            #    logger.warning('temp break in pca prior')
+            #    break
+         
         
         from scipy import ndimage
         mask    = generator.get_mask()
@@ -240,6 +254,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False):
                 mask.astype(bool),
                 structure=struct,
                 )
+        
         prior = generator.get_prior(mask)
         
         nlabel = len(labelset)

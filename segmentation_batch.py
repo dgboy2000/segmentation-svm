@@ -48,6 +48,7 @@ class SegmentationBatch(object):
             }
         
         laplacian_type = 'std_b50'
+        #laplacian_type = 'std_b100'
         #laplacian_type = 'inv_b100o1'
         # laplacian_type = 'pdiff_r1b10'
         # laplacian_type = 'pdiff_r2b10'
@@ -68,33 +69,10 @@ class SegmentationBatch(object):
             prior_models.Constant,
             prior_models.Entropy_no_D,
             prior_models.Intensity,
+            prior_models.Variance_no_D,
+            prior_models.Variance_no_D_Cmap,
             ]
         self.prior_weights = prior_weights
-
-        #self.anchor_weight = anchor_weight
-        #if self.model_type=='constant': 
-        #    self.Model = prior_models.Constant
-        #elif self.model_type=='uniform': 
-        #    self.Model = prior_models.Uniform
-        #elif self.model_type=='entropy': 
-        #    self.Model = prior_models.Entropy
-        #elif self.model_type=='entropy_no_D': 
-        #    self.Model = prior_models.Entropy_no_D
-        #elif self.model_type=='variance': 
-        #    self.Model = prior_models.Variance
-        #elif self.model_type=='variance_no_D': 
-        #    self.Model = prior_models.Variance_no_D
-        #elif self.model_type=='confidence_map': 
-        #    self.Model = prior_models.Confidence_map
-        #elif self.model_type=='confidence_map_no_D': 
-        #    self.Model = prior_models.Confidence_map_no_D
-        #elif self.model_type=='intensity': 
-        #    self.Model = prior_models.Intensity
-        #elif self.model_type=='combined': 
-        #    self.Model = prior_models.CombinedConstantIntensity
-        #else:
-        #    raise Exception('Did not recognize prior model type: {}'\
-        #        .format(self.model_type))
 
         logger.info('Model name = {}, using prior weights={}'\
             .format(self.model_name, self.prior_weights))
@@ -127,7 +105,7 @@ class SegmentationBatch(object):
             )
            
         ## start segmenting
-        # import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         sol,y = rwsegment.segment(
             nim, 
             anchor_api,
@@ -170,8 +148,8 @@ class SegmentationBatch(object):
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
         
-            io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32))
-            np.save(outdir + 'y.npy', y)
+            #io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32))
+            #np.save(outdir + 'y.npy', y)
         
             f = open(outdir + 'losses.txt', 'w')
             f.write('ideal_loss\t{}\n'.format(loss0))
@@ -179,52 +157,137 @@ class SegmentationBatch(object):
             f.write('laplacian_loss\t{}\n'.format(loss2))
             f.close()
             
+            io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32)) 
             np.savetxt(
                 outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
         
+    def compute_mean_segmentation(self, list):
+        for test in list:
+            file_gt = config.dir_reg + test + 'seg.hdr'
+            seg     = io_analyze.load(file_gt)
+            seg.flat[~np.in1d(seg, self.labelset)] = self.labelset[0]
+           
+
+            ## get prior
+            prior, mask = load_or_compute_prior_and_mask(
+                test,force_recompute=self.force_recompute_prior)
+            mask = mask.astype(bool)            
+           
+
+            y = np.zeros((len(self.labelset),seg.size))
+            y[:,0] = 1
+            y.flat[prior['imask']] = prior['data']
+ 
+            sol = np.zeros(seg.shape,dtype=np.int32)
+            sol[mask] = self.labelset[np.argmax(prior['data'],axis=0)]
+
+            ## compute losses
+            z = seg.ravel()==np.c_[self.labelset]
+            flatmask = mask.ravel()*np.ones((len(self.labelset),1))
+ 
+            ## loss 0 : 1 - Dice(y,z)
+            loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
+            logger.info('Tloss = {}'.format(loss0))
+            
+            ## loss2: squared difference with ztilde
+            #loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
+            #logger.info('SDloss = {}'.format(loss1))
+            
+            ## loss3: laplacian loss
+            #loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
+            #logger.info('LAPloss = {}'.format(loss2))
+ 
+            ## loss4: linear loss
+            #loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
+            #logger.info('LINloss = {}'.format(loss3))
+            
+            ## compute Dice coefficient per label
+            dice    = compute_dice_coef(sol, seg,labelset=self.labelset)
+            logger.info('Dice: {}'.format(dice))
+            
+            if not config.debug:
+                outdir = config.dir_seg + \
+                    '/{}/{}'.format('mean',test)
+                logger.info('saving data in: {}'.format(outdir))
+                if not os.path.isdir(outdir):
+                    os.makedirs(outdir)
+            
+                #f = open(outdir + 'losses.txt', 'w')
+                #f.write('ideal_loss\t{}\n'.format(loss0))
+                #f.write('anchor_loss\t{}\n'.format(loss1))
+                #f.write('laplacian_loss\t{}\n'.format(loss2))
+                #f.close()
+                
+                io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32)) 
+
+                np.savetxt(
+                    outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
+ 
+
     def process_all_samples(self,sample_list):
         for test in sample_list:
             self.process_sample(test)
             
-
-            
             
 if __name__=='__main__':
     ''' start script '''
+    import sys
+    if not '-s' in sys.argv:
+        sys.exit()
+
     #sample_list = ['01/']
     #sample_list = ['02/']
     sample_list = config.vols
    
-    # constant prior
-    #segmenter = SegmentationBatch(anchor_weight=1e-2 ,model_type='constant')
-    segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0], name='constant1e-2')
-    segmenter.process_all_samples(sample_list)
-    
-    # entropy prior
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0], name='entropy1e-2')
-    segmenter.process_all_samples(sample_list)
-    
-    # entropy prior
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-1, 0], name='entropy1e-1')
-    segmenter.process_all_samples(sample_list)
-    
+    ## constant prior
+    #segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
+    #segmenter.process_all_samples(['01/'])
+    #
+    ## entropy prior
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0,0,0], name='entropy1e-2')
+    #segmenter.process_all_samples(['01/'])
+    #
+    ## entropy prior
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 0,0,0], name='entropy1e-3') 
+    #segmenter.process_all_samples(['01/'])
 
-    # intensity prior
-    #segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    ## intensity prior
+    ##segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
+    ##segmenter.process_all_samples(sample_list)
+    #
+
+    ## combine entropy / intensity
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 1e-2], name='entropy1e-2_intensity1e-2')
     #segmenter.process_all_samples(sample_list)
+    #
+    ## combine entropy / intensity
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 1e-2], name='entropy1e-3_intensity1e-2')
+    ##segmenter.process_all_samples(sample_list)
     
-
-    # combine entropy / intensity
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 1e-2], name='entropy1e-2_intensity1e-2')
+    
+    # variance+cmap
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-1], name='variancecmap1e-1')
+    #segmenter.compute_mean_segmentation(sample_list)
+    segmenter.process_all_samples(sample_list)
+ 
+    # variance
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 1e-1, 0], name='variance1e-1')
     segmenter.process_all_samples(sample_list)
     
-     # combine entropy / intensity
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 1e-2], name='entropy1e-3_intensity1e-2')
+    # variance+cmap
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-0], name='variancecmap1e-0')
     segmenter.process_all_samples(sample_list)
     
-
+    # variance
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-0, 0], name='variance1e-0')
+    segmenter.process_all_samples(sample_list)
     
+     # variance+cmap
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-2], name='variancecmap1e-2')
+    segmenter.process_all_samples(sample_list)
     
-    
+    # variance
+    segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-2, 0], name='variance1e-2')
+    segmenter.process_all_samples(sample_list)
     
     

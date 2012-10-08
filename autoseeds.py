@@ -1,3 +1,4 @@
+import sys
 import os
 import numpy as np
 from scipy import ndimage
@@ -59,6 +60,7 @@ class Autoseeds(object):
             logger.info('train classifier for test {}'.format(test))
             Z = []
             X = []
+            ntrain = 0
             for train in config.vols:
                 if train==test: continue
 
@@ -75,16 +77,19 @@ class Autoseeds(object):
                 points = boundary_utils.sample_points(im, self.step,  mask=mask)
                 logger.debug('number of sampled points = {}'.format(len(points)))
 
+                #impoints = np.zeros(im.shape,dtype=int)
+                #impoints[tuple(points.T)] = np.arange(len(points)) + 1
+
                 ## compute edges
                 edges,edgev,labels = boundary_utils.get_edges(im, points,  mask=mask)
                 logger.debug('number of edges = {}'.format(len(edges)))
 
                 ## extract profiles
-                profiles,emap = boundary_utils.get_profiles(nim, points, edges, rad=0)
+                profiles,emap,dists = boundary_utils.get_profiles(nim, points, edges, rad=0)
                 logger.debug('extracted profiles')
 
                 ## make features
-                x = boundary_utils.make_features(profiles, size=self.sizex)
+                x = boundary_utils.make_features(profiles, size=self.sizex, additional=[dists,edgev,edgev/dists])
                 logger.debug('features made, size = {}'.format(len(x[0])))
 
                 ## make annotations
@@ -93,7 +98,9 @@ class Autoseeds(object):
                 
                 X.extend(x)
                 Z.extend(z)
-                break
+
+                ntrain += 1
+                if ntrain==1: break 
 
             ## learn profiles
             logger.debug('training classifier')
@@ -104,9 +111,9 @@ class Autoseeds(object):
             logger.debug('testing classifier')
             cl, scores = classifier.classify(X)
 
-            logger.info('non boundary : {:.3}'.format( 
+            logger.info('non boundary correct rate: {:.3}'.format( 
                 np.sum((np.r_[cl]==0)&(np.r_[Z]==0))/np.sum(np.r_[Z]==0).astype(float)))
-            logger.info('boundary : {:.3}'.format( 
+            logger.info('boundary correct rate: {:.3}'.format( 
                 np.sum((np.r_[cl]==1)&(np.r_[Z]==1))/np.sum(np.r_[Z]==1).astype(float)))
             
             ## store classifier
@@ -136,17 +143,18 @@ class Autoseeds(object):
         ## normalize image
         nim = im/np.std(im)
        
-        if  not os.path.isfile(outdir + 'points.npy'):
+        if not os.path.isfile(outdir + 'points.npy'):
   
             from rwsegment import boundary_utils
             reload(boundary_utils)
             ## sample points
-            points = boundary_utils.sample_points(im, self.step,  mask=mask, maxiter=0)
-            np.save(outdir + 'points.npy', points)
+            points = boundary_utils.sample_points(im, self.step,  mask=mask)
 
             impoints = np.zeros(im.shape,dtype=int)
             impoints[tuple(points.T)] = np.arange(len(points)) + 1
             ipoints = np.where(impoints.ravel())[0]
+            points = np.argwhere(impoints) 
+            np.save(outdir + 'points.npy', points)
 
             ## set unary potentials from prior: array of unary costs
             nlabel = len(self.labelset)
@@ -165,18 +173,25 @@ class Autoseeds(object):
             np.save(outdir + 'edges.npy', edges)
 
             ## extract profiles
-            profiles,emap = boundary_utils.get_profiles(nim, points, edges, rad=0)
+            profiles,emap,dists = boundary_utils.get_profiles(nim, points, edges, rad=0)
 
             ## make features  
-            x = boundary_utils.make_features(profiles, size=self.sizex)
+            x = boundary_utils.make_features(
+                profiles, 
+                size=self.sizex, 
+                additional=[dists,edgev,edgev/dists],
+                )
             
             ## classify
             cl, scores = classifier.classify(x)
+
+            ## ground truth
             z = boundary_utils.is_boundary(points, edges, seg)
-            logger.info('err in no boundary classification: {}%'\
-                .format(np.sum((np.r_[z]==0)*(np.r_[cl]==1))/float(np.sum(np.r_[z]==0))*100))
-            logger.info('err in boundary classification: {}%'\
-                .format(np.sum((np.r_[z]==1)*(np.r_[cl]==0))/float(np.sum(np.r_[z]==1))*100))
+
+            logger.info('non boundary classification: {}%'\
+                .format(np.sum((np.r_[z]==0)*(np.r_[cl]==0))/float(np.sum(np.r_[z]==0))*100))
+            logger.info('boundary classification: {}%'\
+                .format(np.sum((np.r_[z]==1)*(np.r_[cl]==1))/float(np.sum(np.r_[z]==1))*100))
             np.save(outdir + 'classified.npy', cl) 
 
             ## probabilities
@@ -203,10 +218,10 @@ class Autoseeds(object):
             def __init__(self, binary):
                 self.binary = binary
             def __call__(self,e,l1,l2):
-                #return (l1!=l2)*(1-cl[e])*1
+                #return (l1!=l2)*(1-cl[e])*0.1
                 #return (l1!=l2)*self.binary[e,1]*0.1
                 y = l1!=l2
-                return self.binary[e, y]
+                return self.binary[e, y]*1
  
         sol, en = fastPD.fastPD_callback(unary, edges, cost_function(binary), debug=True)  
         
@@ -218,8 +233,10 @@ class Autoseeds(object):
         ## classify sol
         gtlabels    = seg[tuple(points.T)]
         priorlabels = self.labelset[np.argmin(unary,axis=1)]
+
         err_prior = 1 - np.sum(gtlabels==priorlabels)/float(len(points))
         err       = 1 - np.sum(gtlabels==labels)/float(len(points))
+
         logger.info('error in prior sol: {}%'.format(err_prior*100))
         logger.info('error in sol: {}%'.format(err*100))
 
@@ -257,8 +274,11 @@ if __name__=='__main__':
     #sample_list = config.vols
    
     # Autoseeds
-    segmenter = Autoseeds()
-    segmenter.process_all_samples(sample_list)
+    if '-s' in sys.argv:
+        segmenter = Autoseeds()
+        segmenter.process_all_samples(sample_list)
+    else:
+        print 'doing nothing'
     
 
     

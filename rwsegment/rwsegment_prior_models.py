@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import ndimage
 
 import rwsegment
 reload(rwsegment)
@@ -13,21 +14,23 @@ class PriorModel(BaseAnchorAPI):
         self.init_model()
     def init_model(self):
         pass
-    def get_anchor_and_weights(self, D):
+    def get_anchor_and_weights(self, D, indices):
         nlabel = len(self.labelset)
-        return self.anchor, np.zeros((nlabel,len(self.imask)))
+        N = np.maximum(np.max(self.imask), np.max(indices))+ 1
+        data = 1./nlabel * np.ones((nlabel,N))
+        data[:,self.imask] = self.anchor['data']
+        data = data[:,indices]
+        weights = self.anchor_weight * np.ones((nlabel,len(indices)))
+        return data, weights
+
 
 class Constant(PriorModel):
-    def get_anchor_and_weights(self, D):
-        nlabel = len(self.labelset)
-        weights = self.anchor_weight * np.ones((nlabel,len(self.imask)))
-        return self.anchor, weights
-    
+   pass
+ 
 class Uniform(PriorModel):
-    def get_anchor_and_weights(self, D):
-        nlabel = len(self.labelset)
-        weights = self.anchor_weight * D * np.ones((nlabel,len(self.imask)))
-        return self.anchor, weights
+    def get_anchor_and_weights(self, D, indices):
+        data, weights = super(Uniform, self).get_anchor_and_weights(D,indices)
+        return self.anchor, weights * D
     
 class Entropy(PriorModel):
     def init_model(self):
@@ -35,50 +38,80 @@ class Entropy(PriorModel):
         prior = np.asarray(self.anchor['data'])
         entropy = -np.sum(np.log(prior + 1e-10)*prior,axis=0)
         entropy[entropy<0] = 0
-        self.weights = \
+        self.entropy = \
             np.tile((np.log(nlabel) - entropy) / np.log(nlabel),(nlabel,1))
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * D * self.weights
-        return self.anchor, weights
+    def get_anchor_and_weights(self, D, indices):
+        data, weights = super(Entropy, self).get_anchor_and_weights(D,indices)
+        inds1 = np.in1d(indices, self.imask)
+        inds2 = np.in1d(self.imask, indices)
+        weights[:,inds1] *= self.entropy[:,inds2]
+        return data, weights * D
 
 class Entropy_no_D(Entropy):
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * self.weights
-        return self.anchor, weights
+    def get_anchor_and_weights(self, D, indices):
+        return super(Entropy_no_D, self).get_anchor_and_weights(1, indices)
     
 class Variance(PriorModel):
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * D * np.asarray(self.anchor['variance'])
-        return self.anchor, weights
-    
-class Variance_no_D(PriorModel):
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * np.asarray(self.anchor['variance'])
-        return self.anchor, weights
-    
+    def get_anchor_and_weights(self, D, indices):
+        data, weights = super(Variance, self).get_anchor_and_weights(D,indices)
+        inds1 = np.in1d(indices, self.imask)
+        inds2 = np.in1d(self.imask, indices)
+        wvar = 1./ (1 + np.asarary(self.anchor['variance'])[:,inds2])
+        wvar /= np.max(wvar)
+        weights[:,inds] *= wvar
+        return data, weights * D
+   
+class Variance_no_D(Variance):
+    def get_anchor_and_weights(self, D, indices):
+        return super(Variance_no_D, self).get_anchor_and_weights(1, indices)
+ 
+class Variance_no_D_Cmap(PriorModel):
+    def __init__(self, *args,**kwargs):
+        im = kwargs.pop('image')
+        super(Variance_no_D_Cmap,self).__init__(*args, **kwargs)
+        
+        fim = ndimage.gaussian_gradient_magnitude(im,2)
+        fim = fim/np.std(fim)
+        alpha = 1e0
+        self.cmap = np.exp(-fim.flat[self.anchor['imask']]*alpha) + 1e-10
+
+    def get_anchor_and_weights(self, D, indices):
+        data, weights = super(Uniform, self).get_anchor_and_weights(1,indices)
+        inds1 = np.in1d(indices, self.imask)
+        inds2 = np.in1d(self.imask, indices)
+        wvar = self.cmap[:,inds2] / (1 + np.asarary(self.anchor['variance'])[:,inds2])
+        wvar /= np.max(wvar)
+        weights[inds] *= wvar
+        return data, weights * D
+
+   
 class Intensity(PriorModel):
     ## TODO: spatially parameterized intensity prior
     def __init__(self, *args,**kwargs):
         self.image = kwargs.pop('image')
-        super(PriorModel,self).__init__(*args, **kwargs)
+        super(Intensity,self).__init__(*args, **kwargs)
         self.init_model()
         
     def init_model(self):
         ## classify image
         nlabel = len(self.labelset)
         avg,var = self.anchor['intensity']
-        diff = self.image.flat[self.imask] - np.c_[avg]
+        diff = self.image.flat - np.c_[avg]
         norm = 1./np.sqrt(2*np.pi*var)
         a = np.c_[norm] * np.exp( - diff**2 * np.c_[1./var] )
         A = np.sum(a, axis=0)
-        self.prior   = {
-            'imask': self.anchor['imask'],
-            'data': (1./A)*a,
-            }
-        self.weights = np.tile(A, (nlabel,1))
+        self.data = (1./A)*a
+        self.intensity = np.tile(A, (nlabel,1))
         
-    def get_anchor_and_weights(self, D):
-        return self.prior, self.anchor_weight * self.weights
+    def get_anchor_and_weights(self, D, indices):
+        nlabel = len(self.labelset)
+        data = 1./nlabel * np.ones((nlabel,len(indices)))
+        weights = self.anchor_weight * np.ones((nlabel,len(indices)))
+        inds1 = np.in1d(indices, self.imask)
+        inds2 = np.in1d(self.imask, indices)
+        data[:,inds1] = self.data[:,inds2]
+        weights[:,inds1] *= self.intensity[:,inds2]
+        return data, weights
 
         
 # class CombinedConstantIntensity(Intensity):
@@ -104,24 +137,3 @@ class Intensity(PriorModel):
             # }
         # self.weigths = weights
         
-        
-        
-class Confidence_map(PriorModel):
-    def __init__(self,image, *args, **kwargs):
-        self.image = kwargs.pop('image')
-        super(PriorModel,self).__init__(*args, **kwargs)
-
-        #...
-        #cmap = image
-        nlabel = len(self.anchor['mean'])
-        indices = np.asarray(self.anchor['indices'])
-        weights = np.tile(D*cmap.flat[indices],(nlabel,1))
-        self.weights = weights
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * D * self.weights
-        return self.anchor, weights
-        
-class Confidence_map_no_D(Confidence_map):
-    def get_anchor_and_weights(self, D):
-        weights = self.anchor_weight * self.weights
-        return self.anchor, weights

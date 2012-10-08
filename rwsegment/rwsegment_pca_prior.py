@@ -14,10 +14,9 @@ class PriorGenerator:
     
     def __init__(self, labelset):
         self.x0     = 0
-        #square(x) is useless on binary x...
-        # self.x02    = 0
         self.ntrain = 0
         self.mask   = 0
+        self.vec    = []
         
         ## intensity prior
         self.im_ntrain = None
@@ -44,8 +43,7 @@ class PriorGenerator:
         self.ntrain += 1
         
         ## compute covariance
-        self.cov = 
-
+        self.vec.append(x)
 
         ## if im is provided, compute average and std of intensity
         if image is not None:
@@ -75,6 +73,24 @@ class PriorGenerator:
         ## variance
         # x is binary, thus we have avg(x) = avg(x**2)
         var = mean  - mean**2
+         
+        ## covariance
+        vecs = np.asarray([v[:,imask].ravel() for v in self.vec]).T - np.c_[mean.ravel()]
+
+        nvec = len(self.vec)
+        neig = np.minimum(20, nvec-1)
+        nvar = self.vec[0].size
+        cov = np.zeros((nvec,nvec))
+        for i1, vec1 in enumerate(vecs.T):
+            for i2, vec2 in enumerate(vecs.T[:i1+1]):
+                cov[i1,i2] += 1/float(nvec)*np.dot(vec1, np.c_[vec2])
+        cov = cov + np.triu(cov.T,k=1)
+        w,v = np.linalg.eigh(cov)
+        order = np.argsort(w)[::-1]
+        w = w[order[:neig]]
+        v = v[:,order[:neig]]
+        U = np.dot(vecs, v)
+        U = U/np.sqrt(np.sum(U**2,axis=0))
 
         ## prior dict
         prior = {
@@ -82,6 +98,7 @@ class PriorGenerator:
             'imask': imask, 
             'data': mean, 
             'variance': var,
+            'eigenvectors': U,
             }
         
         ## if intensity prior

@@ -58,6 +58,24 @@ from rwsegment import mpi
 from rwsegment import utils_logging
 logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
 
+
+class ImageArray(np.ndarray):
+    def __new__(cls, input_array, islices=None, iimask=None):
+        # Input array is an already formed ndarray instance
+        # We first cast to be our class type
+        obj = np.asarray(input_array).view(cls)
+        # add the new attribute to the created instance
+        if islices is not None:
+            obj.islices = islices
+        if iimask is not None:
+            obj.iimask = iimask
+        # Finally, we must return the newly created object:
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None: return
+        self.info = getattr(obj, 'info', None)
+
 class SVMSegmenter(object):
 
     def __init__(self,
@@ -87,6 +105,13 @@ class SVMSegmenter(object):
         self.one_iteration = kwargs.pop('one_iteration', False)
         switch_loss = kwargs.pop('switch_loss', False)
         self.start_script = kwargs.pop('start_script', '')       
+        logbmod = True
+
+        self.crop = False
+        self.slice_size = 7
+        self.slice_step = 7
+
+
  
         ## params
         # slices = [slice(20,40),slice(None),slice(None)]
@@ -111,7 +136,8 @@ class SVMSegmenter(object):
             # 'per_label':False,
             'optim_solver':'unconstrained',
             'logbarrier_mu': 10,
-            'logbarrier_initial_t': 1e-2,
+            'logbarrier_initial_t': 10,
+            'logbarrier_modified': logbmod,
             }
         
         ## parameters for svm api
@@ -228,12 +254,7 @@ class SVMSegmenter(object):
 
         ## training images and segmentations
         self.training_set = []
-        ntrain = len(self.training_vols)
-        if test in self.training_vols:
-            ntrain = ntrain - 1
         if self.isroot:
-            logger.info('Learning with {} training examples'\
-                .format(ntrain))
             for train in self.training_vols:
                 if test==train: continue
                 if self.isroot:  
@@ -246,12 +267,38 @@ class SVMSegmenter(object):
                 
                 seg = io_analyze.load(file_seg).astype(int)
                 seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
-                z = (seg.ravel()==np.c_[self.labelset])# make bin vector z
-                
-                self.training_set.append((im, z))
+                if self.crop:
+                    pmask = -1 * np.ones(seg.shape, dtype=int)
+                    pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
 
-        ## instantiate functors
-        
+                    nslice = seg.shape[0]
+                    for i in range(nslice/self.slice_step):    
+                        istart = i*self.slice_step
+                        iend = np.minimum(nslice, i*self.slice_step + self.slice_size)
+                        islices = np.arange(istart, iend)
+                        if np.all(seg[islices]==self.labelset[0]) or \
+                           np.all(self.seeds[islices]>=0):
+                            continue
+                        logger.debug('slices: start end: {} {}'.format(istart, iend))
+                        bin = (seg[islices].ravel()==np.c_[self.labelset])
+                        iimask = pmask[islices]
+                        iimask = iimask[iimask>=0]
+                        self.training_set.append((
+                            ImageArray(im[islices], islices=islices, iimask=iimask), 
+                            ImageArray(bin, islices=islices), 
+                            ))
+                else:
+                    bin = (seg.ravel()==np.c_[self.labelset])# make bin vector z                
+                    self.training_set.append((im, bin))
+
+                    
+
+            ntrain = len(self.training_set)
+            logger.info('Learning with {} training examples'\
+                .format(ntrain))
+
+        #import ipdb; ipdb.set_trace()
+        ## instanciate functors
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
             self.laplacian_functions, 
