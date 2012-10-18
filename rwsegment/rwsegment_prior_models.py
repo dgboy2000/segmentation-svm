@@ -56,9 +56,9 @@ class Variance(PriorModel):
         data, weights = super(Variance, self).get_anchor_and_weights(D,indices)
         inds1 = np.in1d(indices, self.imask)
         inds2 = np.in1d(self.imask, indices)
-        wvar = 1./ (1 + np.asarary(self.anchor['variance'])[:,inds2])
+        wvar = 1./ (1 + np.asarray(self.anchor['variance'])[:,inds2])
         wvar /= np.max(wvar)
-        weights[:,inds] *= wvar
+        weights[:,inds1] *= wvar
         return data, weights * D
    
 class Variance_no_D(Variance):
@@ -76,12 +76,12 @@ class Variance_no_D_Cmap(PriorModel):
         self.cmap = np.exp(-fim.flat[self.anchor['imask']]*alpha) + 1e-10
 
     def get_anchor_and_weights(self, D, indices):
-        data, weights = super(Uniform, self).get_anchor_and_weights(1,indices)
+        data, weights = super(Variance_no_D_Cmap, self).get_anchor_and_weights(1,indices)
         inds1 = np.in1d(indices, self.imask)
         inds2 = np.in1d(self.imask, indices)
-        wvar = self.cmap[:,inds2] / (1 + np.asarary(self.anchor['variance'])[:,inds2])
+        wvar = self.cmap[:,inds2] / (1 + np.asarray(self.anchor['variance'])[:,inds2])
         wvar /= np.max(wvar)
-        weights[inds] *= wvar
+        weights[:,inds1] *= wvar
         return data, weights * D
 
    

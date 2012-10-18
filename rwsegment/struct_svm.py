@@ -75,6 +75,8 @@ class StructSVM(object):
         
         opts = kwargs         
 
+        metadata = [{'islices':x.data.slices,'iimask':x.data.iimask} for x,y in self.S]
+
         ntrain = len(self.S)
         indices = np.arange(ntrain)
         for n in range(1,size):       
@@ -82,7 +84,7 @@ class StructSVM(object):
             comm.send(('mvc',len(inds),opts), dest=n)
             for i in inds:
                 x,z = self.S[i]
-                comm.send((i,w,x,z), dest=n)
+                comm.send((i,w,x,z, metadata[i]), dest=n)
 
         ys = []
         ntrain = len(self.S)
@@ -102,6 +104,8 @@ class StructSVM(object):
        
         opts = {}
   
+        metadata = [{'islices':x.data.slices,'iimask':x.data.iimask} for x,y in self.S]
+
         ## send training data and cutting plane
         ntrain = len(self.S)
         indices = np.arange(ntrain)
@@ -111,9 +115,9 @@ class StructSVM(object):
             for ind in inds:
                 x,z = self.S[ind]
                 if ys is None:                
-                    comm.send((ind,x,z), dest=n)
+                    comm.send((ind,x,z,metadata[ind]), dest=n)
                 else:
-                    comm.send((ind,x,ys[ind]), dest=n)
+                    comm.send((ind,x,ys[ind], metadata[ind]), dest=n)
     
     
         ## get the psis back
@@ -216,14 +220,16 @@ class StructSVM(object):
         ''' 
         
         if len(W)==0:
-            w = [1.0 for i in range(self.wsize)]
+            w = kwargs.pop('w', None)
+            if w is None:
+                w = [0.0 for i in range(self.wsize)]
             xi = 0.0
             return w,xi
         
         import mosek
         import sys
         
-        mosek.iparam.log = 0
+        #mosek.iparam.log = 0
         
         def streamprinter(text): 
             sys.stdout.write(text) 
@@ -236,7 +242,7 @@ class StructSVM(object):
         env = mosek.Env () 
         
         # Attach a printer to the environment 
-        # env.set_Stream (mosek.streamtype.log, streamprinter) 
+        env.set_Stream (mosek.streamtype.log, streamprinter) 
         
         # Create a task 
         task = env.Task() 
@@ -368,21 +374,14 @@ class StructSVM(object):
         return w,xi
             
             
-    def stop_condition(self,w,xi,ys):
+    def stop_condition(self,w,xi,psis_gt,psis,losses):
         cond = 0
-        ntrain = len(self.S)
-        for i,psi_xz,psi_xy_ in zip(
-                range(ntrain),
-                self.compute_all_psi(),
-                self.compute_all_psi(ys)):
-            x,z = self.S[i]
-            y_ = ys[i]
-            cond += self.loss(z,y_)
+        ntrain = len(psis)
+        for i in range(ntrain):
+            cond += losses[i]
             for iw in range(len(w)):
-                cond -= w[iw]*(psi_xy_[iw] - psi_xz[iw])
-        
-        cond /= float(len(self.S))
-        
+                cond -= w[iw]*(psis[i][iw] - psis_gt[i][iw])
+        cond /= float(ntrain)
         if cond <= xi + self.epsilon:
             return True
         else:
@@ -393,7 +392,7 @@ class StructSVM(object):
         if (x,y) in self.psi_cache:
             return self.psi_cache[(x,y)]
         else:
-            v = self.user_psi(x.data,y.data)
+            v = self.user_psi(x.data,y.data, iimask=x.data.iimask, islices=x.data.islices)
             self.psi_cache[(x,y)] = v
             return v
             
@@ -424,13 +423,14 @@ class StructSVM(object):
                 self.psis_cache[hash(obj)].append(psi)
                 yield psi
             
-    def loss(self,z,y):
-        return self.user_loss(z.data,y.data)
+    def loss(self,z,y,**kwargs):
+        return self.user_loss(z.data,y.data, **kwargs)
         
     def mvc(self,w,x,z, **kwargs):
-        return DataContainer(self.user_mvc(w,x.data,z.data,**kwargs))
+        return DataContainer(self.user_mvc(
+            w,x.data,z.data,iimask=x.data.iimask,islices=x.data.islices,**kwargs))
             
-    def train(self):
+    def train(self, w=None):
         ''' optimize with algorithm:
         "Cutting-plane training of structural SVMs"
         Machine Learning 2009
@@ -441,7 +441,7 @@ class StructSVM(object):
         
         ## test set for qp
         W = [] 
-        w,xi = None,None
+        xi = None
        
         ## compute psis of ground truth
         logger.debug('compute psis of ground truth')
@@ -468,14 +468,14 @@ class StructSVM(object):
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
             w,xi = self._current_solution(W,w=w,xi=xi)
-            
+ 
             ## logging
-            wstr = ' '.join('{:.2}'.format(wval) for wval in w)
-            logger.debug("w=[{}], xi={:.2}".format(wstr,xi))
+            wstr = ' '.join('{:.4}'.format(wval) for wval in w)
+            logger.debug("w=[{}], xi={:.4}".format(wstr,xi))
             
-            wscaled = np.asarray(w)*self.psi_scale
-            wsstr = ' '.join('{:.2}'.format(wval) for wval in wscaled)
-            logger.debug("scaled w=[{}]".format(wsstr))
+            #wscaled = np.asarray(w)*self.psi_scale
+            #wsstr = ' '.join('{:.2}'.format(wval) for wval in wscaled)
+            #logger.debug("scaled w=[{}]".format(wsstr))
             
             objective = 0.5*np.dot(w,w) + self.C*xi
             logger.debug("objective={}".format(objective))
@@ -489,22 +489,24 @@ class StructSVM(object):
                 ys = self.parallel_mvc(w, switch_loss=switch_loss)
             else:
                 for s in self.S:
-                    import ipdb; ipdb.set_trace()
+                    #import ipdb; ipdb.set_trace()
                     x,z = s
                     y_ = self.mvc(w, x, z, exact=True, switch_loss=switch_loss)
                     ys.append(y_)
                     if np.std(np.sum(y_.data,axis=0)) > 1e-5:
+                        logger.error('y is not a probability vector everywhere')
                         import ipdb; ipdb.set_trace()
             
             ## compute psis and losses:
             logger.debug('compute psis and losses for added constraints')
             psis = list(self.compute_all_psi(ys))
-            losses = [self.loss(self.S[i][1], y_) for i,y_ in enumerate(ys)]
+            losses = [self.loss(self.S[i][1], y_, islices=self.S[i][0].data.islices) \
+                      for i,y_ in enumerate(ys)]
             
             ## log psis and losses
-            strpsi = [' '.join('{:.3}'.format(val) for val in psi) for psi in psis]
+            strpsi = [' '.join('{:.4}'.format(val) for val in psi) for psi in psis]
             logger.debug('new psis: {}'.format(strpsi))
-            strloss = ' '.join('{:.3}'.format(val) for val in losses)
+            strloss = ' '.join('{:.4}'.format(val) for val in losses)
             logger.debug('new losses: {}'.format(strloss))
             
             ## add to test set
@@ -512,7 +514,7 @@ class StructSVM(object):
             
             ## stop condition
             logger.debug('compute stop condition')
-            if self.stop_condition(w,xi,ys):
+            if self.stop_condition(w,xi,gtpsis,psis,losses):
                 if self.do_switch_loss:
                     logger.info("stop condition reached, switching loss")
                     self.do_switch_loss = False

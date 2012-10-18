@@ -65,10 +65,10 @@ class ImageArray(np.ndarray):
         # We first cast to be our class type
         obj = np.asarray(input_array).view(cls)
         # add the new attribute to the created instance
-        if islices is not None:
-            obj.islices = islices
-        if iimask is not None:
-            obj.iimask = iimask
+        #if islices is not None:
+        obj.islices = islices
+        #if iimask is not None:
+        obj.iimask = iimask
         # Finally, we must return the newly created object:
         return obj
 
@@ -107,9 +107,14 @@ class SVMSegmenter(object):
         self.start_script = kwargs.pop('start_script', '')       
         logbmod = True
 
-        self.crop = False
-        self.slice_size = 7
-        self.slice_step = 7
+        crop = kwargs.pop('crop','none')
+        if crop=='none':
+            self.crop = False
+        else:
+           self.crop = True
+           ncrop = int(crop)
+           self.slice_size = ncrop
+           self.slice_step = ncrop
 
 
  
@@ -120,11 +125,17 @@ class SVMSegmenter(object):
         self.labelset = np.asarray(config.labelset)
         
         if ntrain in ['all']:
-            self.training_vols = config.vols
+             self.select_vol = slice(None)
+        #    self.training_vols = config.vols
         elif ntrain.isdigit():
-            n = int(ntrain)
-            self.training_vols = config.vols.keys()[:n]
-        
+             n = int(ntrain)
+             self.select_vol = slice(n,n+1)
+        #    n = int(ntrain)
+        #    self.training_vols = config.vols.keys()[:n]
+        self.training_vols = config.vols
+               
+
+ 
         ## parameters for rw learning
         self.rwparams_svm = {
             'labelset':self.labelset,
@@ -143,6 +154,7 @@ class SVMSegmenter(object):
         ## parameters for svm api
         self.svm_api_params = {
             'loss_type': loss_type,#'laplacian',#'anchor',
+            'approx_aci': kwargs.pop('approx_aci', False),
             }
             
         ## parameters for rw inference
@@ -236,6 +248,7 @@ class SVMSegmenter(object):
             logger.info('passed these command line arguments: {}'.format(str(sys.argv)))
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(use_latent))
+            logger.info('train data: {}'.format(ntrain))
             strkeys = ', '.join(self.laplacian_names)
             logger.info('laplacian functions (in order): {}'.format(strkeys))
             strkeys = ', '.join(self.prior_names)
@@ -253,9 +266,12 @@ class SVMSegmenter(object):
     def train_svm(self,test,outdir=''):
 
         ## training images and segmentations
-        self.training_set = []
         if self.isroot:
+            self.training_set = []
+            slice_border = 20
+
             for train in self.training_vols:
+            #for train in ['13/']:
                 if test==train: continue
                 if self.isroot:  
                     logger.info('loading training data: {}'.format(train))
@@ -270,16 +286,17 @@ class SVMSegmenter(object):
                 if self.crop:
                     pmask = -1 * np.ones(seg.shape, dtype=int)
                     pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
-
-                    nslice = seg.shape[0]
+                    nslice = im.shape[0]
                     for i in range(nslice/self.slice_step):    
                         istart = i*self.slice_step
                         iend = np.minimum(nslice, i*self.slice_step + self.slice_size)
+                        if istart < slice_border or istart > (im.shape[0] - slice_border):
+                            continue
                         islices = np.arange(istart, iend)
                         if np.all(seg[islices]==self.labelset[0]) or \
                            np.all(self.seeds[islices]>=0):
                             continue
-                        logger.debug('slices: start end: {} {}'.format(istart, iend))
+                        logger.debug('ivol {}, slices: start end: {} {}'.format(len(self.training_set),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset])
                         iimask = pmask[islices]
                         iimask = iimask[iimask>=0]
@@ -289,15 +306,23 @@ class SVMSegmenter(object):
                             ))
                 else:
                     bin = (seg.ravel()==np.c_[self.labelset])# make bin vector z                
-                    self.training_set.append((im, bin))
-
-                    
+                    self.training_set.append((ImageArray(im), bin))
+      
+            ## random select 50 training images
+            self.training_set = self.training_set[self.select_vol]
+            iselect = np.random.randint(
+                0,
+                len(self.training_set),
+                np.minimum(50,len(self.training_set)),
+                )       
+            logger.info('selected training: {}'.format(iselect))
+            self.training_set = [self.training_set[i] for i in iselect]
 
             ntrain = len(self.training_set)
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
+  
 
-        #import ipdb; ipdb.set_trace()
         ## instanciate functors
         self.svm_rwmean_api = SVMRWMeanAPI(
             self.prior, 
@@ -372,7 +397,11 @@ class SVMSegmenter(object):
                     else:
                         nvar = len(self.indices_laplacians) + len(self.indices_priors)
                         logger.info('latent svm: start all iterations')
-                        w,xi,info = self.svm.train(self.training_set, w0=np.ones(nvar))
+                        if self.minimal_svm:
+                            w0 = [1.0, 1e-2]
+                        else:
+                            w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
+                        w,xi,info = self.svm.train(self.training_set, w0=w0)
                 
                 else:
                     self.svm = struct_svm.StructSVM(
@@ -383,7 +412,11 @@ class SVMSegmenter(object):
                         wsize=self.svm_rwmean_api.wsize,
                         **self.svmparams
                         )
-                    w,xi,info = self.svm.train()
+                    if self.minimal_svm:
+                        w0 = [1.0, 1e-2]
+                    else:
+                        w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
+                    w,xi,info = self.svm.train(w=w0)
                 
             except Exception as e:
                 import traceback
@@ -656,7 +689,17 @@ if __name__=='__main__':
         help='script file to run this module',
         )  
  
+    opt.add_option(
+        '--crop', dest='crop', 
+        default='none', type=str,
+        help='crop images (integer or none)',
+        )  
 
+    opt.add_option(
+        '--approx_aci', dest='approx_aci', 
+        default=False, action="store_true",
+        help='use approximate inference',
+        )  
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -688,6 +731,8 @@ if __name__=='__main__':
         one_iteration=one_iteration,
         switch_loss=switch_loss,
         start_script=script,
+        crop=options.crop,
+        approx_aci=options.approx_aci,
         )
         
         

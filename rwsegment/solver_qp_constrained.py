@@ -256,7 +256,9 @@ class NewtonMethod(object):
         u_nt = np.mat(np.zeros((len(u),1)))
         lmbda2 = 1e10
         nvar = len(u0)
-        
+        tol = -1        
+        obj0 = np.inf
+ 
         logger.debug(
                 'starting Newton solver with tol={:.2}'.format(epsilon))
                 
@@ -281,7 +283,7 @@ class NewtonMethod(object):
                     u_nt0 = float(-1.0/(u_nt.T*Hu*u_nt) * l0) * u_nt
                 else: 
                     u_nt0 = np.mat(np.zeros((len(u),1)))
-                tol = np.minimum(1e-1, np.sqrt(np.sqrt(float(np.dot(gradu.T, gradu)))))
+                tol = np.minimum(1e-2, np.sqrt(np.sqrt(float(np.dot(gradu.T, gradu)))))
                 #M = sparse.spdiags(1./self.extract_diag(Hu), 0, *Hu.shape)
                 #u_nt,info = splinalg.cg(Hu, -gradu, x0=u_nt0, tol=tol, maxiter=1000, M=M)
                 Hu = (Hu + sparse.spdiags(np.sqrt(np.sum(gradu.A**2)), 0, *Hu.shape)).tocsr() ## regularized newton method
@@ -296,9 +298,13 @@ class NewtonMethod(object):
             ## Newton increment
             lmbda2 = - np.dot(gradu.T, u_nt)
 
+            ## temp: objective
+            obj = float(self.objective(u))
+            diff = (obj0 - obj) / np.minimum(1,np.abs(obj))
 
             ## stopping conditions
-            if (0.5*lmbda2 <= epsilon): 
+            #if (0.5*lmbda2 <= epsilon): 
+            if (0.5*lmbda2 <= epsilon) or diff < epsilon: 
             #if (0.5*lmbda2 <= epsilon) or ( np.dot(u_nt.T, u_nt) <= epsilon): 
             #if (0.5*lmbda2 <= epsilon) or ( np.dot(u_nt.T, u_nt) <= epsilon): 
                 logger.debug(
@@ -310,13 +316,14 @@ class NewtonMethod(object):
             step = self.line_search(u,u_nt,gradu)
             
             logger.debug(
-                'Newt: iter={}, step size={:.02}, lambda2={:.02}, obj={:.02}'\
-                .format(iter,float(step),float(lmbda2),float(self.objective(u))),
+                'Newt: iter={}, step size={:.02}, lambda2={:.02}, obj={:.02}, diff={:.02}, tol={:.02}'\
+                .format(iter,float(step),float(lmbda2),obj, diff, tol),
                 )
             
             # import ipdb; ipdb.set_trace()
             
             ## update
+            obj0 = obj
             u = u + step*u_nt
             
         else:

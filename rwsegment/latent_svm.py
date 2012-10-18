@@ -32,18 +32,18 @@ class LatentSVM(object):
         self.struct_params = kwargs
             
     def psi(self,x,y, **kwargs):
-        return self.user_psi(x,y, **kwargs)
+        return self.user_psi(x,y,**kwargs)
     
     def loss_function(self,z,y, **kwargs):
         return self.user_loss(z,y, **kwargs)    
     
     def most_violated_constraint(self,w,x,z, **kwargs):
-        return self.user_mvc(w,x,z, **kwargs)
+        return self.user_mvc(w,x,z,**kwargs)
     
     def _sequential_all_aci(self,w,xs,zs,y0s):
         ys = []
         for x,z,y0 in zip(xs,zs,y0s):
-            ys.append(self.user_aci(w,x,z,y0))
+            ys.append(self.user_aci(w,x,z,y0, islices=x.islices, iimask=x.iimask))
         return ys
         
     def _parallel_all_aci(self,w,xs,zs,y0s):
@@ -53,14 +53,16 @@ class LatentSVM(object):
         size = mpi.SIZE
         logger.debug('MPI size={}'.format(size)) 
         opts = {}
-        
+                
+        metadata = [{'islices':x.islices,'iimask':x.iimask} for x in xs]
+
         ntrain = len(xs)
         indices = np.arange(ntrain)
         for n in range(1,size):       
             inds = indices[np.mod(indices,size-1) == (n-1)]
             comm.send(('aci',len(inds), opts), dest=n)
             for i in inds:
-                comm.send((i,w,xs[i],y0s[i],zs[i]), dest=n)
+                comm.send((i,w,xs[i],y0s[i],zs[i], metadata[i]), dest=n)
                 
 
         ys = []
@@ -118,10 +120,10 @@ class LatentSVM(object):
             strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
             logger.debug('annotation consistent inference (with w = [{}])'.format(strw))
             ys = self.all_annotation_consistent_inference(w, images, hard_seg, ys)
-            
+           
             ## build updated training set for struct svm
             struct_training_set = [(x,y) for x,y in zip(images,ys)]
-            
+ 
             ## convec struct svm
             logger.debug('struct svm')
             struct_svm = StructSVM(
@@ -131,7 +133,7 @@ class LatentSVM(object):
                 self.most_violated_constraint,
                 **self.struct_params
                 )
-            w,xi,struct_info = struct_svm.train()
+            w,xi,struct_info = struct_svm.train(w=w)
 
             info = {'ys': ys, 'niter': niter}
  

@@ -114,6 +114,8 @@ class SegmentationBatch(object):
         
             np.savetxt(
                 outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
+            np.savetxt(
+                outdir + 'dice_pca.txt', np.c_[dice.keys(),dice_pca.values()],fmt='%d %.8f')
         
     def process_all_samples(self,sample_list):
         for test in sample_list:
@@ -134,15 +136,15 @@ if __name__=='__main__':
     segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
     segmenter.process_all_samples(['01/'])
     ## constant prior
-    segmenter = SegmentationBatch(prior_weights=[1e-1, 0, 0, 0,0], name='constant1e-1')
-    segmenter.process_all_samples(['01/'])
+    #segmenter = SegmentationBatch(prior_weights=[1e-1, 0, 0, 0,0], name='constant1e-1')
+    #segmenter.process_all_samples(['01/'])
     ## constant prior
-    segmenter = SegmentationBatch(prior_weights=[1e-0, 0, 0, 0,0], name='constant1e0')
-    segmenter.process_all_samples(['01/'])
+    #segmenter = SegmentationBatch(prior_weights=[1e-0, 0, 0, 0,0], name='constant1e0')
+    #segmenter.process_all_samples(['01/'])
     #
     ## entropy prior
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0,0,0], name='entropy1e-2')
-    segmenter.process_all_samples(['01/'])
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0,0,0], name='entropy1e-2')
+    #segmenter.process_all_samples(['01/'])
      
     
     

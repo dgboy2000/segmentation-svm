@@ -2,6 +2,7 @@ import sys
 import numpy as np
 from scipy import sparse
 
+import utils_logging
 import mosek
 
 class ObjectiveAPI(object):
@@ -24,19 +25,19 @@ class ObjectiveAPI(object):
         ## constant term
         self.c = kwargs.pop('c',0)
 
-    def get_Qc(self):
+    def get_Qc(self,x0):
         if hasattr(self.F, 'shape'): 
             FT = self.F.T
         else:
             FT = self.F
         Q =  sparse.tril(FT * self.P * self.F)
-        c = FT*self.q
+        c = FT*(self.q + self.P*x0)
         return Q,c
 
-    def get_Ab(self):
+    def get_Ab(self, x0):
         G,h = self.iconst
         A = G*self.F
-        b = np.multiply(h, np.mat(np.ones((G.shape[0],1))))
+        b = np.multiply(h, np.mat(np.ones((G.shape[0],1)))) - G*x0
         return A,b
 
     def get_x(self, u, x0):
@@ -57,6 +58,7 @@ class ObjectiveAPI(object):
         return self.P
         
 
+import utils_logging
 class ConstrainedSolver(object):
     def __init__(self, objective, **kwargs):
         '''
@@ -83,22 +85,30 @@ class ConstrainedSolver(object):
 
     def solve(self, x0, **kwargs):
 
-        A,b = self.objective.get_Ab()
-        Q,c = self.objective.get_Qc()
-
+        A,b = self.objective.get_Ab(x0)
+        Q,c = self.objective.get_Qc(x0)
 
         #mosek.iparam.log = 1
-        
+       
         def streamprinter(text): 
             sys.stdout.write(text) 
             sys.stdout.flush()
+            dir = utils_logging.LOG_OUTPUT_DIR
+            rank = utils_logging.RANK
+            if dir is not None:
+                f = open('{}/output{}.log'.format(dir, rank),'a') 
+                f.write(text)
+                f.close()
         
         inf = 0
         
         # Open MOSEK and create an environment and task 
         # Make a MOSEK environment 
         env = mosek.Env () 
-        
+
+        ## turn off presolver
+        mosek.iparam.presolve_use = mosek.presolvemode.off
+ 
         # Attach a printer to the environment 
         env.set_Stream (mosek.streamtype.log, streamprinter) 
         
@@ -117,13 +127,13 @@ class ConstrainedSolver(object):
         task.append(mosek.accmode.var,NUMVAR)
 
         # Set up and input bounds and linear coefficients
-        #bkx = np.asarray([mosek.boundkey.up for i in range(NUMVAR)])
-        #blx = np.[ 0.0 for i in range(NUMVAR)]
-        #bux = [ +inf for i in range(s)]
+        bkx = [mosek.boundkey.fr for i in range(NUMVAR)]
+        blx = [ -inf for i in range(NUMVAR)]
+        bux = [ +inf for i in range(NUMVAR)]
 
         # Set the bounds on variable j 
         # blx[j] <= x_j <= bux[j] 
-        #task.putboundlist(mosek.accmode.var,range(NUMVAR),bkx,blx,bux)
+        task.putboundlist(mosek.accmode.var,range(NUMVAR),bkx,blx,bux)
  
         # quadratic term    
         qsubi, qsubj = Q.nonzero()
@@ -157,21 +167,21 @@ class ConstrainedSolver(object):
             task.putbound(
                 mosek.accmode.con,
                 iconst,
-                mosek.boundkey.up,
-                -inf,
+                mosek.boundkey.lo,
                 b.A[iconst],
+                +inf,
                 ) 
 
         # Input the objective sense (minimize/maximize) 
         task.putobjsense(mosek.objsense.minimize)
         
-        import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         # Optimize 
         task.optimize() 
         
         # Print a summary containing information 
         # about the solution for debugging purposes 
-        #task.solutionsummary(mosek.streamtype.msg)
+        task.solutionsummary(mosek.streamtype.msg)
         
         prosta = [] 
         solsta = [] 
@@ -181,6 +191,8 @@ class ConstrainedSolver(object):
         xx = [0 for i in range(NUMVAR)] 
         task.getsolutionslice(mosek.soltype.itr, mosek.solitem.xx, 0,NUMVAR, xx)
       
-        x = np.mat(xx).T 
+        u = np.mat(xx).T 
+        x = self.objective.F*u + x0
+        #import ipdb; ipdb.set_trace()
         return x
 

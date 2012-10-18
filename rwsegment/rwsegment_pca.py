@@ -76,25 +76,22 @@ def segment(
         )
 
     ## anchor function:
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
+    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D, unknown)
     pca = anchor_api.prior['eigenvectors'] 
  
         
     ## per label lists of vectors
     list_x0, list_Omega, list_xm = [],[],[]
     for l in range(nlabel):
-        x0 = 1/float(nlabel) * np.ones(npixel)
-        x0[anchor['imask']] = anchor['data'][l]
-        list_x0.append(x0[unknown])
+        list_x0.append(anchor[l])
         if seeds!=[]:
             list_xm.append(seeds.ravel()[border]==labelset[l])
         else:
             list_xm.append(0)
         
-        Omega = np.ones(npixel)
         if anchor_weights is not None:
-            Omega[anchor['imask']] = anchor_weights[l]
-        list_Omega.append(wanchor * Omega[unknown])
+            Omega = anchor_weights[l]
+        list_Omega.append(wanchor * Omega)
         
       
     ## solve RW system
@@ -287,6 +284,7 @@ def compute_laplacian(
     Lu = L[unknown,:][:,unknown]
     B  = L[unknown,:][:,border]
     
+    logger.debug('done Laplacian')
     if return_D:
         D = np.asarray(A.sum(axis=0)).flat[unknown]
         return Lu,border,B,D

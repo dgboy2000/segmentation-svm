@@ -106,13 +106,19 @@ def segment(
     ## ground truth
     ground_truth = kwargs.pop('ground_truth',None)
     ground_truth_init = kwargs.pop('ground_truth_init',None)
-        
+       
+    ## seeds values 
+    seeds_prob = kwargs.pop('seeds_prob', None)
+ 
     ## per label lists of vectors
     list_x0, list_Omega, list_xm, list_GT, list_GT_init = [],[],[],[],[]
     for l in range(nlabel):
         list_x0.append(anchor[l])
         list_Omega.append(wanchor * anchor_weights[l])
-        if seeds!=[]:
+        
+        if seeds_prob is not None:
+            list_xm.append(seeds_prob[l][border])
+        elif seeds!=[]:
             list_xm.append(seeds.ravel()[border]==labelset[l])
         else:
             list_xm.append(0)
@@ -298,6 +304,7 @@ def solve_qp(P,q,**kwargs):
     reload(solver)  ## TODO: tolerance bug ? (fails if tol < 1e-13)
     return solver.solve_qp(P,q,**kwargs)
     
+##------------------------------------------------------------------------------
 def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
    
     GT = np.asarray(list_GT).T
@@ -321,14 +328,15 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     h = kwargs.pop('ground_truth_margin',0.0)
 
     n = q.size
+    ## positivity constraint
     G = sparse.bmat([[G], [sparse.eye(n,n)]])
-    
+
+   
     npixel = n/nlabel
     F = sparse.bmat([
         [sparse.bmat([[-sparse.eye(npixel,npixel) for i in range(nlabel-1)]])],
         [sparse.eye(npixel*(nlabel-1),npixel*(nlabel-1))],
         ])
-    
 
     ## initial guess
     list_GT_init = kwargs.pop('list_GT_init',None)
@@ -337,7 +345,7 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     else:
         xinit = np.asmatrix(np.asarray(list_GT_init).ravel()).T
  
-    use_mosek = False
+    use_mosek = True
     if use_mosek:
         import solver_mosek as solver         
         reload(solver)
@@ -360,6 +368,10 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
         prob = np.clip(x.reshape((nlabel,-1)), 0,1)
         prob = prob / np.sum(prob,axis=0)
         nx = prob.reshape(x.shape)
+       
+        #check validity
+        ndiff = np.sum(np.argmax(prob, axis=0)!=np.argmax(list_GT,axis=0))
+        logger.info('number incorrect pixels: {}'.format(ndiff))
         return nx
 
 
@@ -387,9 +399,8 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     ## internal solver is newton's method
     newton_a       = kwargs.pop('newton_a', 0.4)
     newton_b       = kwargs.pop('newton_b', 0.8)
-    #newton_epsilon = kwargs.pop('newton_epsilon', 1e-6)
-    newton_epsilon = kwargs.pop('newton_epsilon', 1e-5)
-    newton_maxiter = kwargs.pop('newton_maxiter', 100)
+    newton_epsilon = kwargs.pop('newton_epsilon', 1e-4)
+    newton_maxiter = kwargs.pop('newton_maxiter', 500)
    
     p = xinit.A.reshape((nlabel,-1)) + 1e-8
     xinit = np.mat((p/np.sum(p,axis=0)).reshape(xinit.shape))

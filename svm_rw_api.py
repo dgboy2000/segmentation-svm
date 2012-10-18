@@ -94,6 +94,8 @@ class SVMRWMeanAPI(object):
         self.loss_type = kwargs.pop('loss_type','anchor')
         logger.info('using loss type: {}'.format(self.loss_type))
         
+        self.approx_aci = kwargs.pop('approx_aci', False)
+
         self.laplacian_functions = laplacian_functions
         
         if prior_models is None:
@@ -116,16 +118,16 @@ class SVMRWMeanAPI(object):
         self.mask = np.asarray([self.immask.ravel() for i in range(self.nlabel)])
         self.prior_mask = np.zeros(seeds.shape, dtype=bool)
         self.prior_mask.flat[self.prior['imask']] = 1
-       
+        self.maskinds = np.arange(seeds.size).reshape(seeds.shape)
        
         # rescale loss 
         self.loss_factor = float(kwargs.pop('loss_factor', 1.0))
         logger.warning('loss is scaled by {:.3}'.format(self.loss_factor))
         
-    def compute_loss(self,z,y_):
-
-        if hasattr(z, 'islices'):
-            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+    def compute_loss(self,z,y_, **kwargs):
+        islices = kwargs.pop('islices',None)
+        if islices is not None:
+            mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
         else:
             mask = self.mask
 
@@ -147,16 +149,18 @@ class SVMRWMeanAPI(object):
         return loss*self.loss_factor
 
     ## psi  
-    def compute_psi(self, x,y):
+    def compute_psi(self, x,y, **kwargs):
         ''' - sum(a){Ea(x,y)} '''
 
-        if hasattr(x, 'islices'):
+        islices = kwargs.pop('islices',None)
+        iimask = kwargs.pop('iimask',None)
+        if islices is not None:
             im = x
-            seeds = self.seeds[x.islices]
+            seeds = self.seeds[islices]
             prior = {
-                'data': np.asarray(self.prior['data'])[:,x.iimask],
-                'imask': self.prior['imask'][x.iimask],
-                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'data': np.asarray(self.prior['data'])[:,iimask],
+                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 } 
             if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
@@ -206,18 +210,20 @@ class SVMRWMeanAPI(object):
 
 
 
-    def full_lai(self, w,x,z, switch_loss=False):
+    def full_lai(self, w,x,z, switch_loss=False, iter=-1, **kwargs):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
 
-        if hasattr(x, 'islices'):
+        islices = kwargs.pop('islices',None)
+        iimask = kwargs.pop('iimask',None)
+        if islices is not None:   
             im = x
-            seeds = self.seeds[x.islices]
-            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+            seeds = self.seeds[islices]
+            mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
             prior = {
-                'data': np.asarray(self.prior['data'])[:,x.iimask],
-                'imask': self.prior['imask'][x.iimask],
-                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'data': np.asarray(self.prior['data'])[:,iimask],
+                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 }
             if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
@@ -246,6 +252,9 @@ class SVMRWMeanAPI(object):
             loss_type = 'approx'
         else:
             loss_type = self.loss_type
+
+        if iter==0:
+            loss_type = 'anchor'
 
         if loss_type=='none':
             pass
@@ -286,23 +295,29 @@ class SVMRWMeanAPI(object):
         return y_
         
    
-    def compute_mvc(self,w,x,z,exact=True, switch_loss=False):
-        return self.full_lai(w,x,z, switch_loss=switch_loss)
+    def compute_mvc(self,w,x,z,exact=True, switch_loss=False, **kwargs):
+        return self.full_lai(w,x,z, switch_loss=switch_loss, **kwargs)
                         
-    def compute_aci(self,w,x,z,y0):
+    def compute_aci(self,*args, **kwargs):
         ''' annotation consistent inference'''
+        if self.approx_aci:
+            return self.compute_approximate_aci(*args, **kwargs)
+        else:
+            return self.compute_exact_aci(*args, **kwargs)
 
-        if hasattr(x, 'islices'):           
-            seeds = self.seeds[x.islices]
-            mask = [self.immask[z.islices].ravel() for i in range(len(self.labelset))]
+    def compute_exact_aci(self, w,x,z,y0,**kwargs):
+        islices = kwargs.pop('islices',None)
+        iimask = kwargs.pop('iimask',None)
+        if islices is not None:
+            seeds = self.seeds[islices]
+            mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
             prior = {
-                'data': np.asarray(self.prior['data'])[:,x.iimask],
-                'imask': self.prior['imask'][x.iimask],
-                'variance': np.asarray(self.prior['variance'])[:,x.iimask],
+                'data': np.asarray(self.prior['data'])[:,iimask],
+                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 }
             if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
-            #logger.debug('cropped image {}'.format()
         else:
             mask = self.mask
             seeds = self.seeds
@@ -333,7 +348,71 @@ class SVMRWMeanAPI(object):
             **self.rwparams
             )
         return y 
-                
+ 
+    def compute_approximate_aci(self, w,x,z,y0,**kwargs):
+        logger.info('using approximate aci')
+        islices = kwargs.pop('islices',None)
+        iimask = kwargs.pop('iimask',None)
+        if islices is not None:
+            seeds = self.seeds[islices]
+            mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
+            prior = {
+                'data': np.asarray(self.prior['data'])[:,iimask],
+                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'variance': np.asarray(self.prior['variance'])[:,iimask],
+                'labelset': self.labelset,
+                }
+            if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
+        else:
+            mask = self.mask
+            seeds = self.seeds
+            prior = self.prior
+        
+        weight_function = MetaLaplacianFunction(
+            np.asarray(w)[self.indices_laplacians],
+            self.laplacian_functions,
+            )
+        
+        ## combine all prior models
+        anchor_api = MetaAnchor(
+            prior=prior,
+            prior_models=self.prior_models,
+            prior_weights=np.asarray(w)[self.indices_priors],
+            image=x,
+            )
+
+        ## unconstrained inference
+        y_ = rwsegment.segment(
+            x, 
+            anchor_api,
+            seeds=seeds,
+            weight_function=weight_function,
+            return_arguments=['y'],
+            **self.rwparams
+            )
+
+        ## fix correct labels
+        gt = np.argmax(z,axis=0)
+        icorrect = np.argmax(y_,axis=0)==gt
+        seeds_correct = -np.ones(seeds.shape, dtype=int)
+        seeds_correct.flat[icorrect] = self.labelset[gt[icorrect]]
+
+        ## annotation consistent inference
+        #import ipdb; ipdb.set_trace()
+        y = rwsegment.segment(
+            x, 
+            anchor_api,
+            seeds=seeds_correct,
+            weight_function=weight_function,
+            return_arguments=['y'],
+            ground_truth=z,
+            ground_truth_init=y0,
+            seeds_prob=y_,
+            **self.rwparams
+            )
+        y[:,icorrect] = y_[:,icorrect]
+        #import ipdb; ipdb.set_trace()
+        return y                
 #-------------------------------------------------------------------------------
 ##------------------------------------------------------------------------------
 '''

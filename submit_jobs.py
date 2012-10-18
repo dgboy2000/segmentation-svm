@@ -21,17 +21,17 @@ header = \
 def icemem48gbq():
     return '''
 # Params for icemem48gbq
-#PBS -l select=1:ncpus=12:mpiprocs=6:mem=44gb
+#PBS -l select=1:ncpus=12:mpiprocs=1:mem=44gb
 #PBS -l walltime=23:59:00
-NP=6
+NP=1
 '''
 
 def icemem72gbq():
     return '''
 # Params for icemem72gbq
-#PBS -l select=1:ncpus=12:mpiprocs=7:mem=68gb
+#PBS -l select=1:ncpus=12:mpiprocs=1:mem=68gb
 #PBS -l walltime=23:59:00
-NP=7
+NP=1
 '''
 
 def icepar156q():
@@ -99,18 +99,66 @@ def make_job(job_name, command, queue='icepar156q'):
 if __name__=='__main__':
     
      # jobs
+ 
+     make_job(
+        '2012.10.18.test_latent_LAInone2',
+        'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none -t 192 --crop 5 --approx_aci',
+        queue='icetestq',
+        )
+
+    #  make_job(
+    #      '2012.10.17.autoseeds',
+    #      'python autoseeds.py -s --basis allmuscles',
+    #      queue='icetestq',
+    #      )
+    #  
+
+     # make_job(
+     #     '2012.10.17.latent_LAInone_approx_aci',
+     #     'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --crop 5 --approx_aci',
+     #     )
+
+
+     # make_job(
+     #     '2012.10.17.pca_syn',
+     #     'python batch_rwpca.py -s',
+     #     queue='icemem72gbq'
+     #     )
+
+   # make_job(
+   #      '2012.10.11.latent_LAInone_approx_aci',
+   #      'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --crop 5 --approx_aci',
+   #      )
+
+   #  make_job(
+   #      '2012.10.11.latent_LAInone',
+   #      'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --crop 5',
+   #      )
+
 
      #make_job(
-     #    '2012.10.07.latent_LAInone',
-     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none',
+     #    '2012.10.10.pca_syn',
+     #    'python batch_rwpca.py -s',
+     #    queue='icemem48gbq'
      #    )
 
 
-     make_job(
-        '2012.10.07.test_latent_LAInone',
-        'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal -t 1',
-        queue='icetestq',
-        )
+     #make_job(
+     #    '2012.10.09.latent_LAInone_approx_aci',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --crop 5 --approx_aci',
+     #    )
+
+    #  make_job(
+    #      '2012.10.09.latent_LAInone',
+    #      'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --crop 5',
+    #      )
+
+
+     # make_job(
+     #    '2012.10.07.test_latent_LAInone',
+     #    'mpirun -np $NP python learn_svm_batch.py --parallel --latent --one_iter --loss none --minimal -t 1 --crop 7',
+     #    queue='icetestq',
+     #    )
 
     #make_job(
     #     '2012.09.28.pca_test',

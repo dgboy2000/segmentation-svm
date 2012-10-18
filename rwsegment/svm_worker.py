@@ -22,11 +22,11 @@ class SVMWorker(object):
         # Receive the specified number of tuples
         mvc_data = self.receive_n_items(ndata)
         ys = []
-        for ind,w,x,z in mvc_data:
+        for ind,w,x,z,metadata in mvc_data:
             logger.debug('worker #{}: MVC on sample #{}'\
                 .format(self.rank, ind))
 
-            y_ = self.api.compute_mvc(w,x.data,z.data, exact=True, **kwargs)
+            y_ = self.api.compute_mvc(w,x.data,z.data, exact=True, **dict(kwargs.items() + metadata.items()))
             ys.append((ind, DataContainer(y_)))
             
         ## send data
@@ -42,11 +42,11 @@ class SVMWorker(object):
         psi_data = self.receive_n_items(ndata)
         psis = []
         
-        for ind, x, y in psi_data:
+        for ind,x,y,metadata in psi_data:
             logger.debug('worker #{}: PSI for sample #{}'\
                 .format(self.rank, ind))
             
-            psi = self.api.compute_psi(x.data, y.data)    
+            psi = self.api.compute_psi(x.data, y.data, **metadata)    
             psis.append((ind,psi))
             
         ## send data
@@ -62,11 +62,11 @@ class SVMWorker(object):
         aci_data = self.receive_n_items(ndata)
         ys = []
         
-        for ind,w,x,y0,z in aci_data:        
+        for ind,w,x,y0,z,metadata in aci_data:        
             logger.debug('worker #{}: ACI on sample #{}'\
                 .format(self.rank, ind))
             
-            y_ = self.api.compute_aci(w,x,z,y0)
+            y_ = self.api.compute_aci(w,x,z,y0,**metadata)
             ys.append((ind, y_))
             
         ## send data

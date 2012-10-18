@@ -219,13 +219,22 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
     file_entropymap = outdir + 'entropymap.hdr'
    
     if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
-        mask  = io_analyze.load(file_mask)
+        mask  = io_analyze.load(file_mask).astype(bool)
         prior = np.load(file_prior)
     else:
         if pca:
-            generator = rwsegment_pca_prior.PriorGenerator(labelset)
+            prior, mask = load_or_compute_prior_and_mask(test)
+            generator = rwsegment_pca_prior.PriorGenerator(labelset, mask=mask)
         else:
             generator = rwsegment_prior.PriorGenerator(labelset)
+            from scipy import ndimage
+            mask    = generator.get_mask()
+            struct  = np.ones((7,)*mask.ndim)
+            mask    = ndimage.binary_dilation(
+                    mask.astype(bool),
+                    structure=struct,
+                    ).astype(bool)
+ 
 
         ntrain = 0 
         for train in config.vols:
@@ -244,25 +253,18 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
             ntrain += 1
             #if ntrain == 3:
             #    logger.warning('temp break in pca prior')
-            #    break
+            #break
          
         
-        from scipy import ndimage
-        mask    = generator.get_mask()
-        struct  = np.ones((7,)*mask.ndim)
-        mask    = ndimage.binary_dilation(
-                mask.astype(bool),
-                structure=struct,
-                )
-        
+       
         prior = generator.get_prior(mask)
         
         nlabel = len(labelset)
         segprior = np.zeros(mask.shape)
-        segprior[mask] = labelset[np.argmax(prior['data'],axis=0)]
+        segprior.flat[prior['imask']] = labelset[np.argmax(prior['data'],axis=0)]
             
         entropymap = np.zeros(mask.shape)
-        entropymap[mask] = np.sum(
+        entropymap.flat[prior['imask']] = np.sum(
             np.log(prior['data'] + 1e-10)*prior['data'],
             axis=0)
         entropymap = entropymap / np.log(nlabel) * 2**15
