@@ -58,8 +58,6 @@ class MetaAnchor():
              all_anchor = all_anchor / all_weights
         return all_anchor, all_weights 
 
-
-
 ## combine all weight functions
 class MetaLaplacianFunction(object):
     def __init__(self,w,laplacian_functions):    
@@ -74,8 +72,7 @@ class MetaLaplacianFunction(object):
             data += self.w[iwf]*_data
         return ij, data
             
-        
-        
+               
 class SVMRWMeanAPI(object):
     def __init__(
             self, 
@@ -151,7 +148,6 @@ class SVMRWMeanAPI(object):
     ## psi  
     def compute_psi(self, x,y, **kwargs):
         ''' - sum(a){Ea(x,y)} '''
-
         islices = kwargs.pop('islices',None)
         iimask = kwargs.pop('iimask',None)
         if islices is not None:
@@ -171,7 +167,6 @@ class SVMRWMeanAPI(object):
             prior = self.prior
             seg = y
 
-       
         ## normalizing by the approximate mask size
         # normalize = float(nnode)/100.0
         normalize = 1.0
@@ -203,12 +198,7 @@ class SVMRWMeanAPI(object):
                     weight_function=wf,
                     **self.rwparams
                 )/normalize)
-            
-        if v[0]==0:
-            import ipdb; ipdb.set_trace()
         return v
-
-
 
     def full_lai(self, w,x,z, switch_loss=False, iter=-1, **kwargs):
         ''' full Loss Augmented Inference
@@ -234,7 +224,6 @@ class SVMRWMeanAPI(object):
             seeds = self.seeds
             prior = self.prior
             seg = z
- 
            
         ## combine all weight functions
         weight_function = MetaLaplacianFunction(
@@ -294,7 +283,6 @@ class SVMRWMeanAPI(object):
             
         return y_
         
-   
     def compute_mvc(self,w,x,z,exact=True, switch_loss=False, **kwargs):
         return self.full_lai(w,x,z, switch_loss=switch_loss, **kwargs)
                         
@@ -305,7 +293,7 @@ class SVMRWMeanAPI(object):
         else:
             return self.compute_exact_aci(*args, **kwargs)
 
-    def compute_exact_aci(self, w,x,z,y0,**kwargs):
+    def compute_exact_aci(self,w,x,z,y0,**kwargs):
         islices = kwargs.pop('islices',None)
         iimask = kwargs.pop('iimask',None)
         if islices is not None:
@@ -413,48 +401,4 @@ class SVMRWMeanAPI(object):
         y[:,icorrect] = y_[:,icorrect]
         #import ipdb; ipdb.set_trace()
         return y                
-#-------------------------------------------------------------------------------
-##------------------------------------------------------------------------------
-'''
-def laplacian_loss(ground_truth, mask=None):
-    from scipy import sparse
-    
-    size = ground_truth[0].size
-    if mask is None:
-        gt = ground_truth
-        npix = size
-    else:
-        npix = np.sum(mask[0])
-        gt = ground_truth*mask
-
-    nlabel = len(ground_truth)
-            
-    ## TODO: max loss is with uniform probability
-    weight = 1.0/float((nlabel-1)*npix)
-
-    A_blocks = []
-    for l2 in range(nlabel):
-        A_blocks_row = []
-        for l11 in range(l2):
-            A_blocks_row.append(sparse.coo_matrix((size,size)))
-        for l12 in range(l2,nlabel):
-            A_blocks_row.append(
-                sparse.spdiags(1.0*np.logical_xor(gt[l12],gt[l2]),0,size,size))
-        A_blocks.append(A_blocks_row)
-    A_loss = sparse.bmat(A_blocks)
-     
-    #import ipdb; ipdb.set_trace() ## not working  
-    # A_loss = sparse.bmat([
-    #     [sparse.coo_matrix((size,size)) for l11 in range(l2)] +
-    #     [sparse.spdiags(1.0*(gt[l12]&(~gt[l2])),0,size,size) \
-    #         for l12 in range(l2,nlabel)] \
-    #     for l2 in range(nlabel)
-    #     ])
-        
-    A_loss = A_loss + A_loss.T
-    D_loss = np.asarray(A_loss.sum(axis=0)).ravel()
-    L_loss = sparse.spdiags(D_loss,0,*A_loss.shape) - A_loss
-
-    return -weight*L_loss.tocsr()
-'''
 

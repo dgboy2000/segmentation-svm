@@ -14,7 +14,7 @@ weight_functions = {
     }
 '''
 import utils_logging
-logger = utils_logging.get_logger('weigth_functions',utils_logging.DEBUG)
+logger = utils_logging.get_logger('weigth_functions',utils_logging.INFO)
 
 def weight_std(image, beta=1.0):
     ''' standard weight function '''

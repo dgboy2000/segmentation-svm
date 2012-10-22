@@ -97,14 +97,29 @@ def make_job(job_name, command, queue='icepar156q'):
     os.system('qsub -k oe -m ae -M {} {}'.format(email,job_file))
 
 if __name__=='__main__':
-    
-     # jobs
- 
-     make_job(
-        '2012.10.18.test_latent_LAInone2',
-        'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none -t 192 --crop 5 --approx_aci',
-        queue='icetestq',
-        )
+
+
+    # jobs
+    #make_job(
+    #   '2012.10.22.test_latent_LAInone',
+    #   'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent --crop 5 --approx_aci -C 10000',
+    #   )
+
+   
+    C = [10000, 1000,100,10]
+    for c in C:
+        make_job(
+           '2012.10.22.test_latent_t192_C{}'.format(c),
+           'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
+           queue='icetestq',
+           )
+
+   
+    #make_job(
+    #   '2012.10.22.test_latent_LAInone',
+    #   'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent -t 192 --crop 5 --approx_aci -C 10000',
+    #   queue='icetestq',
+    #   )
 
     #  make_job(
     #      '2012.10.17.autoseeds',

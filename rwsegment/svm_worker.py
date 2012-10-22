@@ -1,12 +1,33 @@
 import numpy as np
 import gc
-
 import mpi
-# from mpi4py import MPI
+
 import utils_logging
 logger = utils_logging.get_logger('svm_worker',utils_logging.DEBUG)
 
-from struct_svm import DataContainer
+#from struct_svm import DataContainer
+
+def broadcast(task, *args, **kwargs):
+    ''' send data to SVM worker '''
+    comm = mpi.COMM
+    nproc = mpi.SIZE
+    ndata = len(args[0])
+    all = np.arange(ndata)
+
+    ## send
+    for iproc in range(1,nproc):
+       some = all[np.mod(all, nproc-1) == (iproc-1)]
+       comm.send((task, len(some), kwargs), dest=iproc) # send initial message
+       for i in some:
+           comm.send(tuple([i]+[arg[i] for arg in args]), dest=iproc)
+     
+    ## receive
+    output = []
+    for n in range(ndata):
+        source_proc = np.mod(n, comm.Get_size()-1) + 1
+        output.append(comm.recv(source=source_proc, tag=n))
+    return output
+
 
 class SVMWorker(object):
     def __init__(self,svm_rw_api):
@@ -26,8 +47,8 @@ class SVMWorker(object):
             logger.debug('worker #{}: MVC on sample #{}'\
                 .format(self.rank, ind))
 
-            y_ = self.api.compute_mvc(w,x.data,z.data, exact=True, **dict(kwargs.items() + metadata.items()))
-            ys.append((ind, DataContainer(y_)))
+            y_ = self.api.compute_mvc(w,x,z, exact=True, **dict(metadata,**kwargs))
+            ys.append((ind, y_))
             
         ## send data
         for i, y_ in ys:
@@ -46,7 +67,7 @@ class SVMWorker(object):
             logger.debug('worker #{}: PSI for sample #{}'\
                 .format(self.rank, ind))
             
-            psi = self.api.compute_psi(x.data, y.data, **metadata)    
+            psi = self.api.compute_psi(x, y, **dict(metadata, **kwargs))    
             psis.append((ind,psi))
             
         ## send data
@@ -66,7 +87,7 @@ class SVMWorker(object):
             logger.debug('worker #{}: ACI on sample #{}'\
                 .format(self.rank, ind))
             
-            y_ = self.api.compute_aci(w,x,z,y0,**metadata)
+            y_ = self.api.compute_aci(w,x,z,y0,**dict(metadata, **kwargs))
             ys.append((ind, y_))
             
         ## send data

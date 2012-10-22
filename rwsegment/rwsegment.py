@@ -14,8 +14,7 @@ import numpy as np
 from scipy import sparse
         
 import utils_logging
-# logger = utils_logging.get_logger('rwsegment',utils_logging.INFO)
-logger = utils_logging.get_logger('rwsegment',utils_logging.DEBUG)
+logger = utils_logging.get_logger('rwsegment',utils_logging.INFO)
         
 class BaseAnchorAPI(object):
     def __init__(self,anchor, anchor_weight=1.0, **kwargs):
@@ -83,7 +82,6 @@ def segment(
         logger.error('no unknown pixels in image')
         sys.exit()
 
-     
     ## parameters
     beta    = kwargs.pop('beta', 1.)
     wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function

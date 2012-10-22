@@ -1,24 +1,8 @@
-'''
-    Notes:
-        - the energy should only be computed wrt to the unkwnown pixels.
-        In some place we sloppily include known pixels in the computation.
-        These do not matter since a constant does not change the solution.
-        
-        - Change the smv training set to the non-registered image set.
-        
-        - idea: make one big call containing psi, loss and mvc 
-        so that we can cache Laplacians (used in both psi and mvc)?
-        (e.g. We could call that class UserFunctionsSVM)
-        
-        - the loss function (1-zy) is ambiguous: what is worse 0 or 1-z ?
-        maybe (1-2z)y  is better ?
-'''
- 
+
 # import commands
 import sys
 import os
 import subprocess
-
 import numpy as np
 
 ## Initialize logging before loading any modules
@@ -28,62 +12,34 @@ reload(config)
 from rwsegment import io_analyze
 from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment
+reload(rwsegment)
 from rwsegment import rwsegment_prior_models as models
-from rwsegment import struct_svm
-from rwsegment import latent_svm
-from rwsegment import loss_functions
-from rwsegment.rwsegment import BaseAnchorAPI
-reload(rwsegment),
-reload(wflib)
 reload(models)
+from rwsegment import struct_svm
 reload(struct_svm)
+from rwsegment import latent_svm
 reload(latent_svm)
-reload(loss_functions)
-
 from rwsegment import svm_worker
 reload(svm_worker)
-
+from rwsegment import loss_functions
+reload(loss_functions)
+from rwsegment.rwsegment import BaseAnchorAPI
 from segmentation_utils import load_or_compute_prior_and_mask
 from segmentation_utils import compute_dice_coef
-
-
 import svm_rw_api
 reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
 from svm_rw_api import MetaAnchor
-
 from rwsegment import mpi
-
 
 from rwsegment import utils_logging
 logger = utils_logging.get_logger('learn_svm_batch',utils_logging.DEBUG)
-
-
-class ImageArray(np.ndarray):
-    def __new__(cls, input_array, islices=None, iimask=None):
-        # Input array is an already formed ndarray instance
-        # We first cast to be our class type
-        obj = np.asarray(input_array).view(cls)
-        # add the new attribute to the created instance
-        #if islices is not None:
-        obj.islices = islices
-        #if iimask is not None:
-        obj.iimask = iimask
-        # Finally, we must return the newly created object:
-        return obj
-
-    def __array_finalize__(self, obj):
-        if obj is None: return
-        self.info = getattr(obj, 'info', None)
 
 class SVMSegmenter(object):
 
     def __init__(self,
             use_parallel=True, 
-            use_latent=False,
             loss_type='anchor',
-            ntrain='all',
-            debug=False,
             **kwargs
             ):
     
@@ -91,21 +47,23 @@ class SVMSegmenter(object):
         self.dir_reg = config.dir_reg
         self.dir_inf = config.dir_inf
         self.dir_svm = config.dir_svm
-        
+        self.training_vols = config.vols
+
         ## params
-        self.use_latent = use_latent
-        #self.retrain = True
         self.force_recompute_prior = False
         self.use_parallel = use_parallel    
-        self.debug = debug
-        self.retrain = kwargs.pop('retrain', True)
-        self.nomosek = kwargs.pop('nomosek',False)
+
         C = kwargs.pop('C',1.0)
-        self.minimal_svm = kwargs.pop('minimal', False)
+        self.labelset = np.asarray(config.labelset)
+
+        self.use_latent    = kwargs.pop('use_latent', False)
+        self.debug         = kwargs.pop('debug', False)
+        self.retrain       = kwargs.pop('retrain', True)
+        self.minimal_svm   = kwargs.pop('minimal', False)
         self.one_iteration = kwargs.pop('one_iteration', False)
-        switch_loss = kwargs.pop('switch_loss', False)
-        self.start_script = kwargs.pop('start_script', '')       
-        logbmod = True
+        switch_loss        = kwargs.pop('switch_loss', False)
+        self.start_script  = kwargs.pop('start_script', '')       
+        self.nomosek       = kwargs.pop('nomosek',False)
 
         crop = kwargs.pop('crop','none')
         if crop=='none':
@@ -116,44 +74,29 @@ class SVMSegmenter(object):
            self.slice_size = ncrop
            self.slice_step = ncrop
 
-
- 
-        ## params
-        # slices = [slice(20,40),slice(None),slice(None)]
-        slices = [slice(None),slice(None),slice(None)]
-        
-        self.labelset = np.asarray(config.labelset)
-        
+        ntrain = kwargs.pop('ntrain', 'all')
         if ntrain in ['all']:
              self.select_vol = slice(None)
-        #    self.training_vols = config.vols
         elif ntrain.isdigit():
              n = int(ntrain)
              self.select_vol = slice(n,n+1)
-        #    n = int(ntrain)
-        #    self.training_vols = config.vols.keys()[:n]
-        self.training_vols = config.vols
                
-
- 
         ## parameters for rw learning
         self.rwparams_svm = {
             'labelset':self.labelset,
-            
             # optimization
-            'rtol': 1e-6,#1e-5,
+            'rtol': 1e-6,
             'maxiter': 1e3,
             'per_label':True,
-            # 'per_label':False,
             'optim_solver':'unconstrained',
             'logbarrier_mu': 10,
             'logbarrier_initial_t': 10,
-            'logbarrier_modified': logbmod,
+            'logbarrier_modified': False,
             }
         
         ## parameters for svm api
         self.svm_api_params = {
-            'loss_type': loss_type,#'laplacian',#'anchor',
+            'loss_type': loss_type, #'laplacian','anchor', 'none'
             'approx_aci': kwargs.pop('approx_aci', False),
             }
             
@@ -161,7 +104,6 @@ class SVMSegmenter(object):
         self.rwparams_inf = {
             'labelset':self.labelset,
             'return_arguments':['image','y'],
-            
             # optimization
             'rtol': 1e-6,
             'maxiter': 1e3,
@@ -176,10 +118,8 @@ class SVMSegmenter(object):
             'nomosek': self.nomosek,
             'epsilon': 1e-5,
             'do_switch_loss': switch_loss,
-
             # latent
             'latent_niter_max': 100,
-            'latent_C': 10,
             'latent_epsilon': 1e-3,
             'latent_use_parallel': self.use_parallel,
             }
@@ -264,26 +204,42 @@ class SVMSegmenter(object):
         
         
     def train_svm(self,test,outdir=''):
-
+        ## instantiate functors
+        self.svm_rwmean_api = SVMRWMeanAPI(
+            self.prior, 
+            self.laplacian_functions, 
+            self.labelset,
+            self.rwparams_svm,
+            prior_models=self.prior_functions,   
+            seeds=self.seeds,
+            **self.svm_api_params
+            )
+ 
         ## training images and segmentations
         if self.isroot:
-            self.training_set = []
-            slice_border = 20
+            slice_border = 20 # do not consider top and bottom slices
+            images = []
+            segmentations = []
+            metadata = []
 
             for train in self.training_vols:
-            #for train in ['13/']:
                 if test==train: continue
-                if self.isroot:  
-                    logger.info('loading training data: {}'.format(train))
+                logger.info('loading training data: {}'.format(train))
+                 
+                ## file names
                 file_seg = self.dir_reg + test + train + 'regseg.hdr'
                 file_im  = self.dir_reg + test + train + 'reggray.hdr'
                 
+                ## load image
                 im  = io_analyze.load(file_im)
                 im = im/np.std(im) # normalize image by std
                 
+                ## load segmentation
                 seg = io_analyze.load(file_seg).astype(int)
                 seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
+
                 if self.crop:
+                    ## if split training images into smaller sets
                     pmask = -1 * np.ones(seg.shape, dtype=int)
                     pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
                     nslice = im.shape[0]
@@ -296,127 +252,128 @@ class SVMSegmenter(object):
                         if np.all(seg[islices]==self.labelset[0]) or \
                            np.all(self.seeds[islices]>=0):
                             continue
-                        logger.debug('ivol {}, slices: start end: {} {}'.format(len(self.training_set),istart, iend))
-                        bin = (seg[islices].ravel()==np.c_[self.labelset])
+                        logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
+                        bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
                         iimask = pmask[islices]
                         iimask = iimask[iimask>=0]
-                        self.training_set.append((
-                            ImageArray(im[islices], islices=islices, iimask=iimask), 
-                            ImageArray(bin, islices=islices), 
-                            ))
+                        
+                        ## append to training set
+                        images.append(im[islices])
+                        segmentations.append(bin)
+                        metadata.append({'islices': islices, 'iimask': iimask})
+
+                        ## break loop
+                        if len(images) == self.select_vol.stop:
+                            break 
+
                 else:
                     bin = (seg.ravel()==np.c_[self.labelset])# make bin vector z                
-                    self.training_set.append((ImageArray(im), bin))
-      
-            ## random select 50 training images
-            self.training_set = self.training_set[self.select_vol]
-            iselect = np.random.randint(
-                0,
-                len(self.training_set),
-                np.minimum(50,len(self.training_set)),
-                )       
-            logger.info('selected training: {}'.format(iselect))
-            self.training_set = [self.training_set[i] for i in iselect]
+                    ## append to training set
+                    images.append(im)
+                    segmentations.append(bin)
+                    metadata.append({})
 
-            ntrain = len(self.training_set)
+                ## break loop
+                if len(images) == self.select_vol.stop:
+                    break 
+
+            if self.crop:
+                ## random select 50 training images
+                iselect = np.arange(len(images))[self.select_vol]
+                iselect = iselect[np.random.randint(
+                    0,len(iselect),
+                    np.minimum(50,len(iselect)),
+                    )]
+                logger.info('selected training: {}'.format(iselect))
+                images = [images[i] for i in iselect]
+                segmentations = [segmentations[i] for i in iselect]
+                metadata = [metadata[i] for i in iselect]
+
+            ntrain = len(images)
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
-  
-
-        ## instanciate functors
-        self.svm_rwmean_api = SVMRWMeanAPI(
-            self.prior, 
-            self.laplacian_functions, 
-            self.labelset,
-            self.rwparams_svm,
-            prior_models=self.prior_functions,   
-            seeds=self.seeds,
-            **self.svm_api_params
-            )
-        
-        
-        if self.isroot:
+       
             try:
                 import time                
 
                 ## learn struct svm
                 logger.debug('started root learning')
                 if self.use_latent:
-                    self.svm = latent_svm.LatentSVM(
-                        self.svm_rwmean_api.compute_loss,
-                        self.svm_rwmean_api.compute_psi,
-                        self.svm_rwmean_api.compute_mvc,
-                        self.svm_rwmean_api.compute_aci,
-                        one_iteration=self.one_iteration,
-                        **self.svmparams
-                        )
                     if self.one_iteration:
+                        self.svmparams.pop('latent_niter_max',0) # remove kwarg
+                        self.svm = latent_svm.LatentSVM(
+                            self.svm_rwmean_api.compute_loss,
+                            self.svm_rwmean_api.compute_psi,
+                            self.svm_rwmean_api.compute_mvc,
+                            self.svm_rwmean_api.compute_aci,
+                            one_iteration=self.one_iteration,
+                            latent_niter_max=1,
+                            **self.svmparams
+                            )
 
                         # if we're computing one iteration at a time
                         if os.path.isfile(outdir + 'niter.txt'):
+                            ## continue previous work
                             niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
                             ys = np.load(outdir + 'ys.npy')
                             w = np.loadtxt(outdir + 'w_{}.txt'.format(niter))
                             
                             curr_iter = niter + 1
                             logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
-                            w,xi,info = self.svm.train(self.training_set, niter0=curr_iter, w0=w, ys=ys)
+                            w,xi,ys,info = self.svm.train(images, segmentations, metadata, w0=w, init_latents=ys)
                         else:
+                            ## start learning
                             niter = 1
                             if self.minimal_svm:
                                 w0 = [1.0, 1e-2]
                             else:
                                 w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
                             logger.info('latent svm: first iteration. w0 = {}'.format(w0))
-                            w,xi,info = self.svm.train(self.training_set, w0=w0)
+                            w,xi,ys,info = self.svm.train(images, segmentations, metadata, w0=w0)
                            
                         # save output for next iteration
-                        if not self.debug and not info['stopped']:
-                            niter = info['niter']
+                        if not self.debug and not info['converged']:
                             np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
                             np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
-                            np.save(outdir + 'ys.npy', info['ys'])
+                            np.save(outdir + 'ys.npy', ys)
                             
                             logger.warning('Exiting program. Run script again to continue.')
                             if self.use_parallel:
                                 for n in range(1, self.MPI_size):
-                                    #logger.debug('sending kill signal to worker #{}'.format(n))
                                     self.comm.send(('stop',1, {}),dest=n)
-
-                            ## re-run script
-                            #curr_time = time.time()
-                            #logger.info('elapsed time = {:.2} hours, with {} iterations'\
-                            #    .format((curr_time-self.start_time)*3600, niter))
-                            ## check if we have the time to run a new iteration
-                            #if (curr_time - self.start_time)/(niter) < (3.90 * 3600.0)/(niter + 1) and \
-                            #    os.path.isfile(self.start_script):
-                            #    os.system('qsub -k oe {}'.format(self.start_script))
-                            #else:
                             logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
 
                     else:
-                        nvar = len(self.indices_laplacians) + len(self.indices_priors)
+                        ## do all iterations
+                        self.svm = latent_svm.LatentSVM(
+                            self.svm_rwmean_api.compute_loss,
+                            self.svm_rwmean_api.compute_psi,
+                            self.svm_rwmean_api.compute_mvc,
+                            self.svm_rwmean_api.compute_aci,
+                            one_iteration=self.one_iteration,
+                            **self.svmparams
+                            )
+
                         logger.info('latent svm: start all iterations')
                         if self.minimal_svm:
                             w0 = [1.0, 1e-2]
                         else:
                             w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
-                        w,xi,info = self.svm.train(self.training_set, w0=w0)
+                        w,xi,info = self.svm.train(images, segmentations, metadata, w0=w0)
                 
                 else:
+                    ## baseline: use binary ground truth with struct SVM
                     self.svm = struct_svm.StructSVM(
-                        self.training_set,
                         self.svm_rwmean_api.compute_loss,
                         self.svm_rwmean_api.compute_psi,
                         self.svm_rwmean_api.compute_mvc,
-                        wsize=self.svm_rwmean_api.wsize,
                         **self.svmparams
                         )
                     if self.minimal_svm:
                         w0 = [1.0, 1e-2]
                     else:
                         w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
-                    w,xi,info = self.svm.train(w=w0)
+                    w,xi,info = self.svm.train(images, segmentations, metadata, w=w0)
                 
             except Exception as e:
                 import traceback
