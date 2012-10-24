@@ -18,9 +18,9 @@
 extern "C" {
 #endif
 
-//extern __declspec(dllexport) 
-
-
+#ifdef OSWIN
+  extern __declspec(dllexport) 
+#endif
 /** Fast marching function
  */
 int fast_marching_3d_general(

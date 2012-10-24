@@ -201,7 +201,11 @@ class StructSVM(object):
             return False
              
     def current_solution(self, W, gtpsis, w0=None, scale_only=False):
-        solver = svm_solver.SVMSolver(self.C, use_mosek=True, scale_only=True)
+        solver = svm_solver.SVMSolver(
+            self.C, 
+            use_mosek=True, 
+            scale_only=scale_only,
+            )
         w,xi = solver.solve(W,gtpsis,w0=w0)
         return w,xi
 

@@ -124,16 +124,14 @@ class Allocator:
 # ------------------------------------------------------------------------------
 ## load lib on import
 import os
+import sys
 import platform
 from numpy.ctypeslib import ndpointer
 
-#if platform.architecture()[0]=='64bit': build_dir = 'build64'
-#else: build_dir = 'build32'
-
-#config = 'Release'
-# config = 'Debug'
-#libpath = 'fastm/%s/%s/fastm.dll' %(build_dir, config)
-libpath = 'build/fastm/libs/libfastm.so'
+if sys.platform[:3]=='win':
+    libpath = 'build/fastm/libs/Release/fastm.dll'
+else:
+    libpath = 'build/fastm/libs/libfastm.so'
 path = os.path.abspath(os.path.dirname(__file__))
 if not len(path):
     path = './'

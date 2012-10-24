@@ -28,6 +28,7 @@ pip-log.txt
 
 
 rwsegment/lfunctions/build*
+rwsegment/ffd/build*
 
 segmentation/*
 learning/*
@@ -37,3 +38,4 @@ test/segmentation/*
 test/learning/inference/01/*.test.*
 test/learning/svm/01/*.test.*
 test/prior/*
+
