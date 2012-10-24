@@ -1,0 +1,137 @@
+import numpy as np
+from numpy.ctypeslib import ndpointer
+import os
+import ctypes
+
+INT = np.int32
+DOUBLE = np.float64
+
+
+
+def fast_marching_3d(
+        speed, 
+        start_points, 
+        end_points=[], 
+        nitermax=1000,
+        method='peyre',
+        debug=False,
+        ):
+                
+        
+    # take input args as numpy arrays
+    W = np.array(speed, order='F')
+    dims = np.array(W.shape)
+    ndims = len(dims)
+
+    
+    start_pt = np.array(start_points)
+    if start_pt.size < ndims:
+        print 'error, start_point must contain at least one point'
+        return
+    elif start_pt.size == ndims:
+        start_pt = start_pt[np.newaxis]
+    elif start_pt.shape[1] != ndims:
+        start_pt = start_pt.T
+        if start_pt.shape[1] != ndims:
+            print 'error, start_points must be an KxN array, with N the number of dimensions'
+            return
+    nstart = start_pt.shape[0]
+    
+    
+
+    end_pt = np.array(end_points);
+    if end_pt.size == ndims:
+        end_pt = end_pt[np.newaxis]
+    elif end_pt.size and end_pt.shape[1] != ndims:
+        end_pt = end_pt.T
+        if end_pt.shape[1] != ndims:
+            print 'error, end_points must be an KxN array, with N the number of dimensions'
+            return
+    nend = end_pt.shape[0]
+
+    
+        
+    if 1: #method == 'peyre':
+        
+        config = 'Release'
+        #config = 'Debug'
+        
+        # load dll
+        path = os.path.dirname(__file__)
+        if not len(path):
+            path = './'
+        file = path+'/build/%s/peyrefm_api.dll' %config 
+        assert os.path.isfile(file)
+        lib = ctypes.CDLL(file)
+        #lib = np.ctypeslib.load_library('peyrefm_api', path+'/build/%s/'%config)
+        
+
+        lib.fast_marching.argtypes = [
+            ndpointer(dtype=INT,ndim=1), #dims
+            ndpointer(dtype=DOUBLE, ndim=ndims),        #weights
+            ctypes.c_int,                               #nb start points
+            ndpointer(dtype=DOUBLE, ndim=2),            #start points
+            ctypes.c_int,                               #nb end points
+            ndpointer(dtype=DOUBLE),                    #end points
+            ctypes.c_int,                               #max nb iterations
+            ndpointer(dtype=DOUBLE, ndim=ndims),        #distance
+            ndpointer(dtype=DOUBLE, ndim=ndims),        #state
+            ndpointer(dtype=DOUBLE, ndim=ndims),        #index
+            ctypes.c_bool,
+            ]
+            
+        # output arrays
+        dimsT = dims#np.flipud(dims)
+        distance = np.zeros(dimsT, dtype=DOUBLE, order='F')
+        state = np.zeros(dimsT, dtype=DOUBLE, order='F')
+        index = np.zeros(dimsT, dtype=DOUBLE, order='F')
+        
+        # launch algo
+        lib.fast_marching(
+            dims,
+            W.astype(DOUBLE),
+            nstart,
+            start_pt.astype(DOUBLE),
+            nend,
+            end_pt.astype(DOUBLE),
+            nitermax,
+            distance,
+            state,
+            index,
+            debug,
+            )
+            
+        return (distance,state,index)
+    
+    # end peyre fast marching 3D
+    
+    
+def test_fast_marching():
+    shape = (5,5,5)
+    start = (2,2,2)
+    # img = np.sqrt( sum( np.square(
+        # np.array(start).reshape((-1,1,1,1)) - \
+        # np.mgrid[0:shape[0],0:shape[1],0:shape[2]]
+        # )))
+    #img = np.tile(np.arange(5), (5,5,1))
+    img = np.zeros(shape)
+    img[1,:,:] = 1
+    #img[1:-1,1:-1,1:-1] = 1
+    #img[2,2,2] = 0
+        
+    speed = 1./(np.sqrt(sum(np.square(np.gradient(img)))) + 1e-5)
+    
+        
+    D,S,Q = fast_marching_3d(speed,start)
+    return (img,speed,D,S,Q)
+    
+    
+    
+def coucou(text='coucou'):
+    config = 'Release'
+    path = './' + os.path.dirname(__file__)
+    
+    file = path+'/build/%s/peyrefm_api.dll' %config 
+    assert os.path.isfile(file)
+    peyre_lib = ctypes.CDLL(file)
+    peyre_lib.coucou(text)

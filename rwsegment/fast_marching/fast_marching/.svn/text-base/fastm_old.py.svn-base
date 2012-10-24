@@ -1,0 +1,351 @@
+import os
+import ctypes
+import numpy as np
+from numpy.ctypeslib import ndpointer
+
+
+
+def fast_marching_3d(
+        speed, 
+        points,
+        heap_size=1e6,
+        offset=0.0,
+        connectivity26=False,
+        output_arguments=('distances', 'labels', 'DM'),
+        ):
+        ''' standard fast marching method '''
+        
+        _speed_ = np.asarray(speed)
+        ishape = _speed_.shape
+
+        _points_ = np.asarray(points)
+        npoints = _points_.shape[0]
+        
+        while _points_.shape[1] < 3:
+            _points_ = np.column_stack(
+                (_points_,np.zeros(npoints))
+                ).astype(np.uint)
+        
+        _speed = np.array(np.atleast_3d(_speed_),order='C',dtype=np.float32)
+        _points = np.array(np.atleast_2d(_points_),order='C',dtype=np.uint)
+        shape = _speed.shape
+        
+        _distance = np.zeros(shape,dtype=np.float32,order='C')
+        _labels = np.zeros(shape,dtype=np.int,order='C')
+        _dm = np.zeros((npoints,npoints),dtype=np.float32,order='C')
+        _parents = np.zeros(shape,dtype=np.int,order='C')
+        _inter = np.zeros(shape,dtype=np.int,order='C')
+        
+        
+        lib.fast_marching_3d(
+            ctypes.ARRAY(ctypes.c_uint,3)(*shape),
+            _speed,
+            npoints,
+            _points,
+            _distance,
+            _labels,
+            _dm,
+            _parents,
+            _inter,
+            int(heap_size),
+            offset,
+            connectivity26,
+            False,
+            )
+            
+        _dm[range(npoints),range(npoints)]  = 0
+        
+        output_dict = {
+            'distances': _distance.reshape(ishape),
+            'labels': _labels.reshape(ishape),
+            'DM': _dm,
+            'parents': _parents.reshape(ishape),
+            'inter': _inter.reshape(ishape),
+            }
+            
+        if output_arguments in output_dict.keys():
+            return output_dict[output_arguments]
+            
+        output = []
+        for arg in output_arguments:
+            output.append(output_dict[arg])
+        
+        return tuple(output)
+         
+
+# ------------------------------------------------------------------------------
+def fast_marching_3d_aniso(
+        image, 
+        points,
+        heap_size=1e6,
+        offset=0.0,
+        wcenter=0.0,
+        method=0,
+        patch=False,
+        radius=1,
+        connectivity26=False,
+        output_arguments=('distances', 'labels', 'DM'),
+        dm_method=0,
+        ):
+        
+        ''' experimental fast marching method '''
+        
+        _image_ = np.asarray(image)
+        ishape = _image_.shape
+
+        _points_ = np.asarray(points)
+        npoints = _points_.shape[0]
+        
+        while _points_.shape[1] < 3:
+            _points_ = np.column_stack(
+                (_points_,np.zeros(npoints))
+                ).astype(np.uint)
+        
+        _image = np.array(np.atleast_3d(_image_),order='C',dtype=np.float32)
+        _points = np.array(np.atleast_2d(_points_),order='C',dtype=np.uint)
+        shape = _image.shape
+        
+        _distance = np.zeros(shape,dtype=np.float32,order='C')
+        _labels = np.zeros(shape,dtype=np.int,order='C')
+        _dm = np.zeros((npoints,npoints),dtype=np.float32,order='C')
+        _parents = np.zeros(shape,dtype=np.int,order='C')
+        _inter = np.zeros(shape,dtype=np.int,order='C')
+        
+        
+        if patch:
+            lib.fast_marching_3d_patch_aniso(
+                ctypes.ARRAY(ctypes.c_uint,3)(*shape),
+                _image,
+                npoints,
+                _points,
+                _distance,
+                _labels,
+                _dm,
+                # parents,
+                int(heap_size),
+                offset,
+                False, #integral distance 
+                method,
+                radius,
+                connectivity26,
+                False,
+                )
+                
+        else:
+            lib.fast_marching_3d_aniso(
+                ctypes.ARRAY(ctypes.c_uint,3)(*shape),
+                _image,
+                npoints,
+                _points,
+                _distance,
+                _labels,
+                _dm,
+                _parents,
+                _inter,
+                int(heap_size),
+                offset,
+                wcenter,
+                dm_method,
+                method,
+                connectivity26,
+                False,
+                )
+        _dm[range(npoints),range(npoints)]  = 0
+            
+        output_dict = {
+            'distances': _distance.reshape(ishape),
+            'labels': _labels.reshape(ishape),
+            'DM': _dm,
+            'parents': _parents.reshape(ishape),
+            'inter': _inter.reshape(ishape)
+            }
+            
+        if output_arguments in output_dict.keys():
+            return output_dict[output_arguments]
+            
+        output = []
+        for arg in output_arguments:
+            output.append(output_dict[arg])
+        
+        return tuple(output)
+          
+          
+# ------------------------------------------------------------------------------
+def shortestpath(parents, intersections, points):
+    inter = np.asarray(intersections, dtype=int)
+    pars = np.asarray(parents, dtype=int)
+    ndims = pars.ndim
+    shape = pars.shape
+    
+    nodes = np.argwhere(inter)
+    pts = np.asarray(points)
+
+    
+    ''' find all half pathes (from the intersections points to the seeds)'''
+    connections = {}
+    halfpathes = []
+    for i in range(len(nodes)):
+        # print '%d / %d' %(i, len(nodes)-1)
+        halfpathes.append([nodes[i]])
+        parent = pars[tuple(nodes[i,:])]
+        while parent != 0:
+            parentnode = [int(parent/np.prod(shape[d+1:]))%shape[d] \
+                for d in range(ndims)]
+            halfpathes[i].append(parentnode)
+            parent_ = parent
+            parent = pars.flat[parent]
+            
+        halfpathes[i] = np.asarray(halfpathes[i])
+        
+        inode = inter[tuple(nodes[i])]
+        if not connections.has_key(inode): connections[inode] = []
+        connections[inode].append(i)
+        
+    pathes = []
+    for c in connections:
+        h = connections[c]
+        for p in np.argwhere(np.tri(len(h),k=-1)):
+            pathes.append(np.r_[
+                np.flipud(halfpathes[h[p[1]]]),
+                halfpathes[h[p[0]]],
+                ])
+            
+    return pathes
+    
+
+
+# ------------------------------------------------------------------------------
+# load lib on import
+config = 'Release'
+#config = 'Debug'
+
+# load dll
+path = os.path.dirname(__file__)
+if not len(path):
+    path = './'
+file = path+'/build/fastm/%s/fastm.dll' %config 
+assert os.path.isfile(file)
+lib = ctypes.CDLL(file)
+
+# arg types for fast_marching_3d
+lib.fast_marching_3d.argtypes = [
+    ctypes.ARRAY(ctypes.c_uint,3),                            # img size
+    ndpointer(dtype=np.float32,ndim=3,flags='C_CONTIGUOUS'),  # speed
+    ctypes.c_uint,                                            # number of points
+    ndpointer(dtype=np.uint,ndim=2,flags='C_CONTIGUOUS'),     # points
+    ndpointer(dtype=np.float32, ndim=3,flags='C_CONTIGUOUS'), # distance
+    ndpointer(dtype=np.int, ndim=3,flags='C_CONTIGUOUS'),     # labels
+    ndpointer(dtype=np.float32, ndim=2,flags='C_CONTIGUOUS'), # dist matrix
+    ndpointer(dtype=np.int, ndim=3, flags='C_CONTIGUOUS'),    # parents
+    ndpointer(dtype=np.int, ndim=3, flags='C_CONTIGUOUS'),    # instersections
+    ctypes.c_uint,      # heap size      
+    ctypes.c_float,     # speed offset
+    ctypes.c_bool,      #connectivity = 26
+    ctypes.c_bool,      # debug
+    ]
+    
+# arg types for fast_marching_3d_aniso
+lib.fast_marching_3d_aniso.argtypes = [
+    ctypes.ARRAY(ctypes.c_uint,3),                           # img size
+    ndpointer(dtype=np.float32,ndim=3,flags='C_CONTIGUOUS'), # image
+    ctypes.c_uint,                                           # number of points
+    ndpointer(dtype=np.uint,ndim=2,flags='C_CONTIGUOUS'),    # points
+    ndpointer(dtype=np.float32, ndim=3,flags='C_CONTIGUOUS'),# distance
+    ndpointer(dtype=np.int, ndim=3,flags='C_CONTIGUOUS'),    # labels
+    ndpointer(dtype=np.float32, ndim=2,flags='C_CONTIGUOUS'),# dist matrix
+    ndpointer(dtype=np.int, ndim=3, flags='C_CONTIGUOUS'),   # parents
+    ndpointer(dtype=np.int, ndim=3, flags='C_CONTIGUOUS'),   # intersections
+    ctypes.c_uint,  # heap size
+    ctypes.c_float, # gap offset
+    ctypes.c_float, # center pixel weight
+    ctypes.c_int,   # experimental: distance matrix method
+    ctypes.c_int,   # method
+    ctypes.c_bool,  #connectivity = 26
+    ctypes.c_bool,  # debug
+    ]
+    
+lib.fast_marching_3d_patch_aniso.argtypes = [
+    ctypes.ARRAY(ctypes.c_uint,3),                           # img size
+    ndpointer(dtype=np.float32,ndim=3,flags='C_CONTIGUOUS'), # image
+    ctypes.c_uint,                                           # number of points
+    ndpointer(dtype=np.uint,ndim=2,flags='C_CONTIGUOUS'),    # points
+    ndpointer(dtype=np.float32, ndim=3,flags='C_CONTIGUOUS'),# distance
+    ndpointer(dtype=np.int, ndim=3,flags='C_CONTIGUOUS'),    # labels
+    ndpointer(dtype=np.float32, ndim=2,flags='C_CONTIGUOUS'),# dist matrix
+    ctypes.c_uint,  # heap size
+    ctypes.c_float, # gap offset
+    ctypes.c_bool,  # integral_distance,
+    ctypes.c_int,   # method
+    ctypes.c_uint,  # radius
+    ctypes.c_bool,  #connectivity = 26
+    ctypes.c_bool,  # debug
+    ]
+
+    
+    
+# ------------------------------------------------------------------------------
+if __name__=='__main__':
+    from scipy.misc import imread
+
+    # ''' 
+    vol = imread('test/thigh.png', flatten=True)
+    step = 10
+    points = np.indices(vol.shape)[:,::step,::step].ravel().reshape((2,-1)).T
+    
+
+    DM, labels, dists = fast_marching_3d_aniso(
+        vol,
+        points,
+        heap_size=1e5,
+        offset=1e-5,
+        output_arguments=('DM', 'labels', 'distances'),
+        # dm_method=2,
+        # method=2,
+        )
+        
+    DM = (DM + DM.T)/2
+    
+
+    
+    nlabels = np.max(labels)+1
+    rlabels = np.interp(
+        labels.ravel(), 
+        np.arange(nlabels), 
+        np.random.randint(0, 100, nlabels),
+        ).reshape(labels.shape)
+      
+    from matplotlib import pyplot
+    pyplot.figure()
+    pyplot.imshow(vol, cmap='gray', interpolation='nearest')
+    pyplot.imshow(rlabels, interpolation='nearest', alpha=0.7)
+    pyplot.show()
+    
+    from geodesic_matching import plot_graph
+    # plot_graph.plot(points, E=DM, connectivity=DM<1e8, img=rlabels, text_nodes=True, color=True)
+    plot_graph.plot(points, E=DM, connectivity=DM<1e8, img=dists, text_nodes=True, text_edges=True)
+    ''' 
+    
+    speed = np.ones((101,101))
+    points = np.asarray([
+        # [50,51],
+        [50,50],
+        # [34,15],
+        # [33,13 ]
+        ])
+
+    DM, distances = fast_marching_3d_aniso(
+        speed,
+        points,
+        offset=1,
+        output_arguments=('DM', 'distances' ),
+        method=2,
+        )
+    
+    # pathes = shortestpath(parents, inter, points)
+    from matplotlib import pyplot
+    pyplot.figure()
+    pyplot.imshow(distances, cmap='gray', interpolation='nearest')
+    pyplot.show()
+    '''
+    
+        

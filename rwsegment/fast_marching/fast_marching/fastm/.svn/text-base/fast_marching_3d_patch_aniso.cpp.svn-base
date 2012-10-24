@@ -1,0 +1,252 @@
+#include <iostream>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+
+#include "common.h"
+#include "distance_patch_aniso.h"
+
+///-----------------------------------------------------------------------------
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern __declspec(dllexport) 
+
+/** Fast marching function
+ *    standard fast marching alog
+ *    also computes the distance matrix DM of the points
+ *
+ *    Important: outputs (distance, labels and DM) must be allocated prior
+ *    to calling this function
+ */
+
+int fast_marching_3d_patch_aniso(
+    unsigned int size[3], float const *image, 
+    unsigned int npoints, unsigned int const *points,
+    float *distance, int *labels, float *DM, 
+    unsigned int heap_size=1000,
+    float offset=0.,
+    bool integral_distance=false,
+    int method=0,
+    unsigned int radius=1,
+    bool connect26=false,
+    bool debug=false)
+    
+{
+    unsigned int ni = size[0];
+    unsigned int nj = size[1];
+    unsigned int nk = size[2];
+    
+    /// neighborhood
+    unsigned int neigh_size = connect26 ? 26 : 6;
+    int neigh6[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+    int neigh26[26][3] = {
+        {-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},
+        
+        {-1,-1,-1},{-1,0,-1},{-1,1,-1},
+        {0,-1,-1},{0,1,-1},
+        {1,-1,-1},{1,0,-1},{1,1,-1},
+        
+        {-1,-1,0},{-1,1,0},
+        {1,-1,0},{1,1,0},
+        
+        {-1,-1,1},{-1,0,1},{-1,1,1},
+        {0,-1,1},{0,1,1},
+        {1,-1,1},{1,0,1},{1,1,1},        
+        };
+        
+    int (*neigh)[3] = connect26 ? neigh26 : neigh6;
+    
+    // init distance matrix
+    unsigned int *nDM;
+    
+    if (DM != NULL)
+    {
+        nDM = new unsigned int[npoints*npoints];
+        for (unsigned int id=0; id < npoints*npoints; ++id)
+        {
+            DM[id] = 1e10;
+            nDM[id] = 0;
+        }
+    }
+    
+    /// init labels and distance
+    int   *Q = labels;
+    float *D = distance;
+    for (int iq = ni*nj*nk - 1; iq >= 0; iq--) 
+    {
+        Q[iq] = -2;
+        D[iq] = 1e10;
+    }
+    
+    /// compute minimum gap (gradient)
+    float max_gap = 0;
+    for (int i=0; i < (int)ni; i++)
+    for (int j=0; j < (int)nj; j++)
+    for (int k=0; k < (int)nk; k++)
+    {
+        float gx = 0, gy = 0, gz = 0;
+        /// compute min speed
+        if (i < (int)ni-1)
+            gx = std::abs(GET(image,i,j,k) - GET(image,i+1,j,k));
+        if (j < (int)nj-1)
+            gy = std::abs(GET(image,i,j,k) - GET(image,i,j+1,k));
+        if (k < (int)nk-1)
+            gz = std::abs(GET(image,i,j,k) - GET(image,i,j,k+1));
+            
+        if (gx > max_gap) max_gap = gx;
+        if (gy > max_gap) max_gap = gy;
+        if (gz > max_gap) max_gap = gz;
+    }
+    
+    /// Distance function class
+    DistancePatchAniso distance_function(
+        size, image, Q, D, neigh, neigh_size, method, radius);
+    
+    /// heap
+    unsigned int top = 0;
+    std::queue<Cell> *H = new std::queue<Cell>[heap_size+1];
+    for (unsigned int ip=0; ip<npoints; ++ip)
+    {
+        unsigned int i = points[ip*3];
+        unsigned int j = points[ip*3+1];
+        unsigned int k = points[ip*3+2];
+        
+        SET(D,i,j,k,0.0);
+        SET(Q,i,j,k,-1);
+        
+        Cell c( GET(Q,i,j,k), GET(D,i,j,k), ip, i,j,k );
+        H[top].push(c); /// push cell (copy) at the end of the top queue
+    }
+    
+    ///+1 for precision errors
+    float delta = (max_gap+offset+1)/((float)heap_size); 
+    
+    /// loop: while heap not empty
+    unsigned int n_empty = 0;
+    unsigned int iiter = 0;
+    while (1)
+    {
+        if (H[top].empty())
+        {
+            n_empty +=1;
+            top = (top+1)%(heap_size+1);
+            
+            /// stop condition: all queues are empty
+            if (n_empty == heap_size+1) break;
+            else continue;
+        }
+        // std::cout <<"TOP: " << top << "\n";
+        n_empty = 0;
+        
+        /// extract front cell from top queue
+        Cell const &c = H[top].front();
+        int state = c.q;
+        unsigned int label = c.label;
+        unsigned int ci = c.i, cj = c.j, ck = c.k;
+        float cdist = c.d; 
+        
+        if (state >= 0)
+        {
+            /// skip if already frozen
+            H[top].pop(); /// remove cell from queue
+            continue;
+        }
+        else
+        {
+            /// freeze c
+            c.q = label; 
+            H[top].pop(); /// remove cell from queue
+        }
+               
+        /// for each neighbor of v
+        for (unsigned int in=0; in<neigh_size; ++in)
+        {
+            int i = ci + neigh[in][0];
+            int j = cj + neigh[in][1];
+            int k = ck + neigh[in][2];
+            
+
+            if ((i<0) || (i>=(int)ni) || 
+                (j<0) || (j>=(int)nj) || 
+                (k<0) || (k>=(int)nk) )
+                continue;
+            
+            /// get state of neighbor
+            int _state = GET(Q, i, j, k);
+            
+            /// if not frozen
+            if (_state < 0)
+            {
+                /// compute distance
+                float dist = distance_function(
+                    (unsigned int)i,
+                    (unsigned int)j,
+                    (unsigned int)k,
+                    offset);
+                    
+                /// save distance if shorter
+                float & d = GET(D,i,j,k);
+                if ((_state==-1) && (dist > (d - 1e-10))) continue;
+                
+                /// mark as narrow band
+                else if (_state==-2) SET(Q, i, j, k, -1);
+                
+                SET(D,i,j,k,dist);
+                
+                /// add to the heap
+                int h_index = int(dist/delta)%(heap_size+1);
+                Cell _c(GET(Q,i,j,k), GET(D,i,j,k), label, i,j,k);
+                H[h_index].push(_c);
+                
+            } /// end if (state not frozen)
+            
+            /// fill distance matrix
+            else if ((DM!=NULL)&& (_state!=label))
+            {
+                unsigned int &n_path = nDM[_state*npoints + label];
+                
+                /// shortest path and integral distance
+                if ((n_path == 0) || integral_distance)
+                {
+                    /// compute distance
+                    float dist = distance_function(
+                        (unsigned int)i,
+                        (unsigned int)j,
+                        (unsigned int)k,
+                        offset);
+                
+                    DM[_state*npoints + label] = cdist + GET(D,i,j,k) + dist;
+                    DM[label*npoints + _state] = cdist + GET(D,i,j,k) + dist;
+                        
+                    n_path ++;
+                    nDM[label*npoints + _state]++;
+                }
+            }
+            
+        } /// end for (each neighbor)
+        
+    } /// end while (heap not empty)
+    
+    if ((DM!=NULL)&&integral_distance)
+    {
+        /// normalize distances
+        for (unsigned int i=0; i < npoints*npoints; ++i)
+        {
+            if (nDM[i] > 0)
+            {
+                DM[i] /= nDM[i];
+            }
+        }
+    }
+    
+    delete[] nDM;
+    
+    return 0;
+    
+} /// end fast_marching_3d_aniso()
+///-----------------------------------------------------------------------------
+#ifdef __cplusplus
+}
+#endif

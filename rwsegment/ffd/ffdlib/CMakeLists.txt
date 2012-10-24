@@ -1,0 +1,9 @@
+PROJECT(FFDLIB)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+ADD_LIBRARY( ffdlib SHARED
+    ffdlib.cpp
+  )
+  
+set_target_properties(ffdlib PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libs)

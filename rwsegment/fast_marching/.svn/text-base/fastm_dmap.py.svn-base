@@ -1,0 +1,101 @@
+import os
+import ctypes
+import numpy as np
+from numpy.ctypeslib import ndpointer
+
+
+
+
+
+
+    
+
+def fast_marching_3d_dmap(
+        speed, 
+        heap_size=1e6,
+        offset=0.0,
+        connectivity26=False,
+        output_arguments=('distances', 'labels'),
+        ):
+        
+        _speed_ = np.asarray(speed)
+        ishape = _speed_.shape
+
+        _speed = np.array(np.atleast_3d(_speed_),order='C',dtype=np.float32)
+        shape = _speed.shape
+        
+        _distance = np.zeros(shape,dtype=np.float32,order='C')
+        _labels = np.zeros(shape,dtype=np.int,order='C')
+        
+        lib.fast_marching_3d_dmap(
+            ctypes.ARRAY(ctypes.c_uint,3)(*shape),
+            _speed,
+            _distance,
+            _labels,
+            int(heap_size),
+            offset,
+            connectivity26,
+            False,
+            )
+        
+        output_dict = {
+            'distances': _distance.reshape(ishape),
+            'labels': _labels.reshape(ishape),
+            }
+        
+        output = []
+        for arg in output_arguments:
+            output.append(output_dict[arg])
+        
+        return tuple(output)
+         
+         
+# ------------------------------------------------------------------------------         
+# load lib on import
+config = 'Release'
+#config = 'Debug'
+
+# load dll
+path = os.path.dirname(__file__)
+if not len(path):
+    path = './'
+file = path+'/build/fastm/%s/fastm.dll' %config 
+assert os.path.isfile(file)
+lib = ctypes.CDLL(file)
+
+# arg types for fast_marching_3d
+lib.fast_marching_3d_dmap.argtypes = [
+    ctypes.ARRAY(ctypes.c_uint,3),                              # img size
+    ndpointer(dtype=np.float32,ndim=3,flags='C_CONTIGUOUS'),    # speed
+    ndpointer(dtype=np.float32, ndim=3,flags='C_CONTIGUOUS'),   # distance
+    ndpointer(dtype=np.int, ndim=3,flags='C_CONTIGUOUS'),       # labels
+    ctypes.c_uint,      # heap size      
+    ctypes.c_float,     # speed offset
+    ctypes.c_bool,      #connectivity = 26
+    ctypes.c_bool,      # debug
+    ]
+# ------------------------------------------------------------------------------
+    
+    
+if __name__=='__main__':
+    from scipy.misc import imread
+    from rmn import io
+
+    # vol = imread('test/contours.png', flatten=True)
+    vol = imread('test/thigh.png', flatten=True)
+    
+    
+    dist, labels = fast_marching_3d_dmap(
+        vol,
+        heap_size = 1e6,
+        offset=1e-5,
+        )
+    
+    
+    from matplotlib import pyplot
+    pyplot.figure()
+    # pyplot.imshow(vol, cmap='gray', interpolation='nearest')
+    pyplot.imshow(dist, cmap='gray', interpolation='nearest')
+    pyplot.show()
+    
+        
