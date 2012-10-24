@@ -149,13 +149,14 @@ class SVMRWMeanAPI(object):
     def compute_psi(self, x,y, **kwargs):
         ''' - sum(a){Ea(x,y)} '''
         islices = kwargs.pop('islices',None)
+        imask = kwargs.pop('imask',None)
         iimask = kwargs.pop('iimask',None)
         if islices is not None:
             im = x
             seeds = self.seeds[islices]
             prior = {
                 'data': np.asarray(self.prior['data'])[:,iimask],
-                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'imask': imask,
                 'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 } 
@@ -205,6 +206,7 @@ class SVMRWMeanAPI(object):
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
 
         islices = kwargs.pop('islices',None)
+        imask = kwargs.pop('imask',None)
         iimask = kwargs.pop('iimask',None)
         if islices is not None:   
             im = x
@@ -212,7 +214,7 @@ class SVMRWMeanAPI(object):
             mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
             prior = {
                 'data': np.asarray(self.prior['data'])[:,iimask],
-                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'imask':imask,
                 'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 }
@@ -258,7 +260,7 @@ class SVMRWMeanAPI(object):
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
-        
+        #import ipdb; ipdb.set_trace() #check loss is working 
         ## loss function        
         anchor_api = MetaAnchor(
             prior=prior,
@@ -296,12 +298,13 @@ class SVMRWMeanAPI(object):
     def compute_exact_aci(self,w,x,z,y0,**kwargs):
         islices = kwargs.pop('islices',None)
         iimask = kwargs.pop('iimask',None)
+        imask = kwargs.pop('imask',None)
         if islices is not None:
             seeds = self.seeds[islices]
             mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
             prior = {
                 'data': np.asarray(self.prior['data'])[:,iimask],
-                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'imask': imask,
                 'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 }
@@ -340,13 +343,14 @@ class SVMRWMeanAPI(object):
     def compute_approximate_aci(self, w,x,z,y0,**kwargs):
         logger.info('using approximate aci')
         islices = kwargs.pop('islices',None)
+        imask = kwargs.pop('imask',None)
         iimask = kwargs.pop('iimask',None)
         if islices is not None:
             seeds = self.seeds[islices]
             mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
             prior = {
                 'data': np.asarray(self.prior['data'])[:,iimask],
-                'imask': np.digitize(self.prior['imask'][iimask], self.maskinds[islices].ravel()),
+                'imask': imask,
                 'variance': np.asarray(self.prior['variance'])[:,iimask],
                 'labelset': self.labelset,
                 }

@@ -114,7 +114,7 @@ class LatentSVM(object):
                 most_violated_constraint=self.user_mvc,
                 **self.struct_params
                 )
-            w,xi,struct_info = struct_svm.train(xs, ys, metadata=metas, w=w)
+            w,xi,struct_info = struct_svm.train(xs, ys, metadata=metas, w=w, **kwargs)
 
             ## Stop condition
             svm_objective = struct_svm.objective(w,xi)

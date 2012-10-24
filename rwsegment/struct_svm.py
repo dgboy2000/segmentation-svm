@@ -200,9 +200,9 @@ class StructSVM(object):
         else:
             return False
              
-    def current_solution(self, W, gtpsis, w=None):
-        solver = svm_solver.SVMSolver(self.C, use_mosek=True)
-        w,xi = solver.solve(W,gtpsis,w=w)
+    def current_solution(self, W, gtpsis, w0=None, scale_only=False):
+        solver = svm_solver.SVMSolver(self.C, use_mosek=True, scale_only=True)
+        w,xi = solver.solve(W,gtpsis,w0=w0)
         return w,xi
 
     def objective(self,w,xi):
@@ -221,7 +221,7 @@ class StructSVM(object):
             )
         return psistr
 
-    def train(self, images, annotations, metadata=None, w=None):
+    def train(self, images, annotations, metadata=None, w=None, **kwargs):
         xs = images
         zs = annotations      
         if metadata is None:
@@ -233,12 +233,12 @@ class StructSVM(object):
         
         ## log psis
         logger.debug('ground truth psis: {}'.format(self.print_psis(gtpsis)))
- 
-        ### initialize w
-        #if self.wsize is None:
-        #    logger.info("compute length of psi")
-        #    self.wsize = len(self.psi(*self.S[0]))
 
+        ## initial w
+        if w is not None:
+            w0 = [wi for wi in w]
+        else: w0 = None
+ 
         ## test set for qp
         W = [] 
        
@@ -253,7 +253,7 @@ class StructSVM(object):
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
         
-            w,xi = self.current_solution(W, gtpsis, w=w)
+            w,xi = self.current_solution(W, gtpsis, w0=w0, **kwargs)
  
             ## logging
             logger.debug("w={}, xi={:.04}".format(self.print_vec(w),xi))     
@@ -262,19 +262,7 @@ class StructSVM(object):
             ## find most violated constraint
             logger.info("find most violated constraint")
             ys = self.all_mvc(w, xs, zs, metas)
-            ''' 
-            if self.use_parallel:
-                ys = self.parallel_mvc(w)
-            else:
-                for s in self.S:
-                    #import ipdb; ipdb.set_trace()
-                    x,z = s
-                    y_ = self.mvc(w, x, z, exact=True, switch_loss=switch_loss)
-                    ys.append(y_)
-                    if np.std(np.sum(y_.data,axis=0)) > 1e-5:
-                        logger.error('y is not a probability vector everywhere')
-                        import ipdb; ipdb.set_trace()
-            '''
+
             ## compute psis and losses:
             logger.debug('compute psis and losses for added constraints')
             psis = list(self.all_psi(xs,ys,metas))

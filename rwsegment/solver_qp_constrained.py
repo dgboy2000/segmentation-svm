@@ -146,7 +146,7 @@ class ConstrainedSolver(object):
             
             ## stopping conditions
             if (self.nconst/float(t)) < epsilon:
-                return x
+                break
 
             ## update t
             t = mu * t
@@ -160,8 +160,10 @@ class ConstrainedSolver(object):
                 if 1./t < tthresh:
                     t /= np.sqrt(mu)
                 self.lmbda = self.dlog(t*cond + 1, self.lmbda)
+        else:
+            logger.warning('did not converge in {} iterations'.format(self.maxiter))
 
-        return y
+        return x
         
     def get_x(self,u,x0):
         F = self.F
@@ -309,7 +311,7 @@ class NewtonMethod(object):
             #if (0.5*lmbda2 <= epsilon) or ( np.dot(u_nt.T, u_nt) <= epsilon): 
                 logger.debug(
                     'Newt: return, lambda2={:.02}'.format(float(lmbda2)))
-                return u
+                break
 
             ## line search 
             logger.debug('Newton: (cg info = {}), a={:.3}, b={:.3}, line search'.format(info, float(self.a), float(self.b)))
@@ -327,9 +329,13 @@ class NewtonMethod(object):
             u = u + step*u_nt
             
         else:
-            raise Exception('Did not converge in {} iterations'\
-                .format(self.maxiter))
-        
+            logger.warning('Newton"s method did not converge in {} iterations'.format(self.maxiter))
+            #raise Exception('Did not converge in {} iterations'\
+            #    .format(self.maxiter))
+
+        ## return output
+        return u
+
     def extract_diag(self,H):
         ## extract diagonal from H
         ijH     = H.nonzero()

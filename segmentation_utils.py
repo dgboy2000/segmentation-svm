@@ -223,7 +223,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
         prior = np.load(file_prior)
     else:
         if pca:
-            prior, mask = load_or_compute_prior_and_mask(test)
+            _prior, mask = load_or_compute_prior_and_mask(test)
             generator = rwsegment_pca_prior.PriorGenerator(labelset, mask=mask)
         else:
             generator = rwsegment_prior.PriorGenerator(labelset)
@@ -235,7 +235,6 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
                     structure=struct,
                     ).astype(bool)
  
-
         ntrain = 0 
         for train in config.vols:
             if test==train: continue
@@ -255,10 +254,10 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
             #    logger.warning('temp break in pca prior')
             #break
          
-        
-       
+                 
         prior = generator.get_prior(mask)
-        
+        import ipdb; ipdb.set_trace()
+
         nlabel = len(labelset)
         segprior = np.zeros(mask.shape)
         segprior.flat[prior['imask']] = labelset[np.argmax(prior['data'],axis=0)]

@@ -55,6 +55,7 @@ class SVMSegmenter(object):
 
         C = kwargs.pop('C',1.0)
         self.labelset = np.asarray(config.labelset)
+        scale_only = kwargs.pop('scale_only', False)
 
         self.use_latent    = kwargs.pop('use_latent', False)
         self.debug         = kwargs.pop('debug', False)
@@ -63,7 +64,7 @@ class SVMSegmenter(object):
         self.one_iteration = kwargs.pop('one_iteration', False)
         switch_loss        = kwargs.pop('switch_loss', False)
         self.start_script  = kwargs.pop('start_script', '')       
-        self.nomosek       = kwargs.pop('nomosek',False)
+        self.use_mosek     = kwargs.pop('use_mosek',True)
 
         crop = kwargs.pop('crop','none')
         if crop=='none':
@@ -89,9 +90,13 @@ class SVMSegmenter(object):
             'maxiter': 1e3,
             'per_label':True,
             'optim_solver':'unconstrained',
+            # contrained optim
+            'use_mosek': self.use_mosek,
             'logbarrier_mu': 10,
             'logbarrier_initial_t': 10,
             'logbarrier_modified': False,
+            'logbarrier_maxiter': 10,
+            'newton_maxiter': 50,
             }
         
         ## parameters for svm api
@@ -115,19 +120,25 @@ class SVMSegmenter(object):
         self.svmparams = {
             'C': C,
             'nitermax': 100,
-            'nomosek': self.nomosek,
             'epsilon': 1e-5,
-            'do_switch_loss': switch_loss,
+            #'do_switch_loss': switch_loss,
             # latent
             'latent_niter_max': 100,
             'latent_epsilon': 1e-3,
             'latent_use_parallel': self.use_parallel,
             }
-            
+
+        self.trainparams = {
+            'scale_only': scale_only,
+            }       
+     
         ## weight functions
         if self.minimal_svm:
+            self.hand_tuned_w = [1, 1e-2]
             self.weight_functions = {'std_b50': lambda im: wflib.weight_std(im, beta=50)}
+            self.prior_models = {'constant': models.Constant}
         else:
+            self.hand_tuned_w = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0]
             self.weight_functions = {
                 'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
                 'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
@@ -137,11 +148,6 @@ class SVMSegmenter(object):
                 # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
                 # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
                 }
-         
-        ## priors models
-        if self.minimal_svm:
-            self.prior_models = {'constant': models.Constant}
-        else:
             self.prior_models = {
                 'constant': models.Constant,
                 'entropy': models.Entropy_no_D,
@@ -167,11 +173,6 @@ class SVMSegmenter(object):
         
         ## parallel ?
         if self.use_parallel:
-            ## communicator
-            # from mpi4py import MPI
-            # self.comm = MPI.COMM_WORLD
-            # self.MPI_rank = self.comm.Get_rank()
-            # self.MPI_size = self.comm.Get_size()
             self.comm = mpi.COMM
             self.MPI_rank = mpi.RANK
             self.MPI_size = mpi.SIZE
@@ -193,7 +194,6 @@ class SVMSegmenter(object):
             logger.info('laplacian functions (in order): {}'.format(strkeys))
             strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order): {}'.format(strkeys))
-            logger.info('don\'t use mosek ?: {}'.format(self.nomosek))
             logger.info('using loss type: {}'.format(loss_type))
             logger.info('SVM parameters: {}'.format(self.svmparams))
             logger.info('Computing one iteration at a time ?: {}'.format(self.one_iteration))
@@ -202,19 +202,8 @@ class SVMSegmenter(object):
             else:
                 logger.info('writing svm output to: {}'.format(self.dir_svm))
         
-        
-    def train_svm(self,test,outdir=''):
-        ## instantiate functors
-        self.svm_rwmean_api = SVMRWMeanAPI(
-            self.prior, 
-            self.laplacian_functions, 
-            self.labelset,
-            self.rwparams_svm,
-            prior_models=self.prior_functions,   
-            seeds=self.seeds,
-            **self.svm_api_params
-            )
- 
+
+    def make_training_set(self,test):
         ## training images and segmentations
         if self.isroot:
             slice_border = 20 # do not consider top and bottom slices
@@ -254,13 +243,16 @@ class SVMSegmenter(object):
                             continue
                         logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
-                        iimask = pmask[islices]
-                        iimask = iimask[iimask>=0]
+                        pmaski = pmask[islices]
+                        imask  = np.where(pmaski.ravel()>0)[0]
+                        iimask = pmaski.flat[imask]
+                        #iimask = pmask[islices]
+                        #iimask = iimask[iimask>=0]
                         
                         ## append to training set
                         images.append(im[islices])
                         segmentations.append(bin)
-                        metadata.append({'islices': islices, 'iimask': iimask})
+                        metadata.append({'islices': islices, 'imask':imask , 'iimask': iimask})
 
                         ## break loop
                         if len(images) == self.select_vol.stop:
@@ -292,7 +284,23 @@ class SVMSegmenter(object):
             ntrain = len(images)
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
-       
+            self.training_set = (images, segmentations, metadata) 
+
+
+        
+    def train_svm(self,test,outdir=''):
+        ## instantiate functors
+        self.svm_rwmean_api = SVMRWMeanAPI(
+            self.prior, 
+            self.laplacian_functions, 
+            self.labelset,
+            self.rwparams_svm,
+            prior_models=self.prior_functions,   
+            seeds=self.seeds,
+            **self.svm_api_params
+            )
+        if self.isroot:
+            images, segmentations, metadata = self.training_set
             try:
                 import time                
 
@@ -320,16 +328,20 @@ class SVMSegmenter(object):
                             
                             curr_iter = niter + 1
                             logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
-                            w,xi,ys,info = self.svm.train(images, segmentations, metadata, w0=w, init_latents=ys)
+                            w,xi,ys,info = self.svm.train(
+                                images, 
+                                segmentations, 
+                                metadata, 
+                                w0=w, 
+                                init_latents=ys, 
+                                **self.trainparams)
                         else:
                             ## start learning
                             niter = 1
-                            if self.minimal_svm:
-                                w0 = [1.0, 1e-2]
-                            else:
-                                w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
+                            w0 = self.hand_tuned_w
                             logger.info('latent svm: first iteration. w0 = {}'.format(w0))
-                            w,xi,ys,info = self.svm.train(images, segmentations, metadata, w0=w0)
+                            w,xi,ys,info = self.svm.train(
+                                images, segmentations, metadata, w0=w0, **self.trainparams)
                            
                         # save output for next iteration
                         if not self.debug and not info['converged']:
@@ -355,11 +367,9 @@ class SVMSegmenter(object):
                             )
 
                         logger.info('latent svm: start all iterations')
-                        if self.minimal_svm:
-                            w0 = [1.0, 1e-2]
-                        else:
-                            w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
-                        w,xi,info = self.svm.train(images, segmentations, metadata, w0=w0)
+                        w0 = self.hand_tuned_w
+                        w,xi,ys,info = self.svm.train(
+                            images, segmentations, metadata, w0=w0, **self.trainparams)
                 
                 else:
                     ## baseline: use binary ground truth with struct SVM
@@ -368,12 +378,9 @@ class SVMSegmenter(object):
                         self.svm_rwmean_api.compute_psi,
                         self.svm_rwmean_api.compute_mvc,
                         **self.svmparams
-                        )
-                    if self.minimal_svm:
-                        w0 = [1.0, 1e-2]
-                    else:
-                        w0 = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0 ]
-                    w,xi,info = self.svm.train(images, segmentations, metadata, w=w0)
+                        )                  
+                    w0 = self.hand_tuned_w
+                    w,xi,info = self.svm.train(images, segmentations, metadata, w=w0, **self.trainparams)
                 
             except Exception as e:
                 import traceback
@@ -412,7 +419,9 @@ class SVMSegmenter(object):
         logger.debug('scaled w=[{}]'.format(strw))
     
         weights_laplacians = np.asarray(w)[self.indices_laplacians]
+        weights_laplacians_h = np.asarray(self.hand_tuned_w)[self.indices_laplacians]
         weights_priors = np.asarray(w)[self.indices_priors]
+        weights_priors_h = np.asarray(self.hand_tuned_w)[self.indices_priors]
     
         ## segment test image with trained w
         def meta_weight_functions(im,_w):    
@@ -423,6 +432,7 @@ class SVMSegmenter(object):
                 data += _w[iwf]*_data
             return ij, data
         weight_function = lambda im: meta_weight_functions(im, weights_laplacians)
+        weight_function_h = lambda im: meta_weight_functions(im, weights_laplacians_h)
         
         ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
@@ -431,9 +441,78 @@ class SVMSegmenter(object):
         seg = io_analyze.load(file_seg)
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         
-        
         nim = im/np.std(im) # normalize image by std
-    
+
+        ## test training data ?
+        inference_train = True
+        if inference_train:
+            train_ims, train_segs, train_metas = self.training_set
+            for tim, tz, tmeta in zip(train_ims, train_segs, train_metas):
+                ## retrieve metadata
+                islices = tmeta.pop('islices',None)
+                imask = tmeta.pop('imask', None)
+                iimask = tmeta.pop('iimask',None)
+                if islices is not None:
+                    tseeds = self.seeds[islices]
+                    tprior = {
+                        'data': np.asarray(self.prior['data'])[:,iimask],
+                        'imask': imask,
+                        'variance': np.asarray(self.prior['variance'])[:,iimask],
+                        'labelset': self.labelset,
+                        }
+                    if 'intensity' in self.prior: 
+                        tprior['intensity'] = self.prior['intensity']
+                else:
+                    tseeds = self.seeds
+                    tprior = self.prior
+
+                ## prior
+                tseg = self.labelset[np.argmax(tz, axis=0)].reshape(tim.shape)
+                # w=[9.889e-10, 4.935e-10, 1.318e-05, 3.267e-10, 2.75e-05, 1.418e-11, 3.853e-11] logb
+                # w=[9.89e-10 , 4.935e-10, 1.31820407e-05, 3.267e-10, 2.749e-05, 1.417e-11, 3.853e-11
+                tanchor_api = MetaAnchor(
+                    tprior,
+                    self.prior_functions,
+                    weights_priors,
+                    image=tim,
+                    )
+                tsol,ty = rwsegment.segment(
+                    tim, 
+                    tanchor_api, 
+                    seeds=tseeds,
+                    weight_function=weight_function,
+                    **self.rwparams_inf
+                    )
+                ## compute Dice coefficient
+                tdice = compute_dice_coef(tsol, tseg, labelset=self.labelset)
+                logger.info('Dice coefficients for train: \n{}'.format(tdice))
+                nlabel = len(self.labelset)
+                tflatmask = np.zeros(ty.shape, dtype=bool)
+                tflatmask[:,imask] = True
+                loss0 = loss_functions.ideal_loss(tz,ty,mask=tflatmask)
+                logger.info('Tloss = {}'.format(loss0))
+ 
+                tanchor_api_h = MetaAnchor(
+                    tprior,
+                    self.prior_functions,
+                    weights_priors_h,
+                    image=tim,
+                    )
+            
+                tsol,ty = rwsegment.segment(
+                    tim, 
+                    tanchor_api_h, 
+                    seeds=tseeds,
+                    weight_function=weight_function_h,
+                    **self.rwparams_inf
+                    )
+                ## compute Dice coefficient
+                tdice = compute_dice_coef(tsol, tseg, labelset=self.labelset)
+                logger.info('Dice coefficients for train (handtuned): \n{}'.format(tdice))
+                loss0 = loss_functions.ideal_loss(tz,ty,mask=tflatmask)
+                logger.info('Tloss (handtuned) = {}'.format(loss0))
+ 
+
         ## prior
         anchor_api = MetaAnchor(
             self.prior,
@@ -452,7 +531,7 @@ class SVMSegmenter(object):
         
         ## compute Dice coefficient
         dice = compute_dice_coef(sol, seg,labelset=self.labelset)
-        logger.info('Dice coefficients: {}'.format(dice))
+        logger.info('Dice coefficients: \n{}'.format(dice))
 
         ## objective
         en_rw = rwsegment.energy_rw(
@@ -525,6 +604,9 @@ class SVMSegmenter(object):
         self.prior = prior
         self.seeds = (-1)*mask.astype(int)
         
+        ## training set
+        self.make_training_set(test)
+
         ## training
         if self.retrain:
             
@@ -594,9 +676,9 @@ if __name__=='__main__':
         )
     
     opt.add_option( # no mosek
-        '--nomosek', dest='nomosek', 
-        default=False, action="store_true",
-        help='don\'t use mosek',
+        '--use_mosek', dest='use_mosek', 
+        default='True', type=str,
+        help='use mosek in constrained optim ?',
         )  
     
     opt.add_option( # retrain ?
@@ -657,6 +739,11 @@ if __name__=='__main__':
         default=False, action="store_true",
         help='use approximate inference',
         )  
+    opt.add_option(
+        '--scale_only', dest='scale_only', 
+        default=False, action="store_true",
+        help='',
+        )     
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -664,7 +751,6 @@ if __name__=='__main__':
     loss_type = options.loss
     ntrain = options.ntrain
     debug = options.debug
-    nomosek = options.nomosek
     retrain = 1 - options.noretrain
     minimal = options.minimal
     one_iteration = options.one_iter
@@ -683,13 +769,14 @@ if __name__=='__main__':
         ntrain=ntrain,
         debug=debug,
         retrain=retrain,
-        nomosek=nomosek,
         minimal=minimal,
         one_iteration=one_iteration,
         switch_loss=switch_loss,
         start_script=script,
         crop=options.crop,
         approx_aci=options.approx_aci,
+        use_mosek=(options.use_mosek in ['True', 'true', '1']),
+        scale_only=options.scale_only,
         )
         
         

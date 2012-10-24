@@ -343,7 +343,7 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     else:
         xinit = np.asmatrix(np.asarray(list_GT_init).ravel()).T
  
-    use_mosek = True
+    use_mosek = kwargs.pop('use_mosek', True)
     if use_mosek:
         import solver_mosek as solver         
         reload(solver)
@@ -386,6 +386,7 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     mu      = kwargs.pop('logbarrier_mu',20.0)
     epsilon = kwargs.pop('logbarrier_epsilon',1e-4)
     modified = kwargs.pop('logbarrier_modified',False)
+    maxiter = kwargs.pop('logbarrier_maxiter', 10)
     solver = solver.ConstrainedSolver(
         objective,
         t0=t0,
@@ -398,7 +399,7 @@ def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
     newton_a       = kwargs.pop('newton_a', 0.4)
     newton_b       = kwargs.pop('newton_b', 0.8)
     newton_epsilon = kwargs.pop('newton_epsilon', 1e-4)
-    newton_maxiter = kwargs.pop('newton_maxiter', 500)
+    newton_maxiter = kwargs.pop('newton_maxiter', 100)
    
     p = xinit.A.reshape((nlabel,-1)) + 1e-8
     xinit = np.mat((p/np.sum(p,axis=0)).reshape(xinit.shape))

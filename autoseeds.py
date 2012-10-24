@@ -345,8 +345,8 @@ class Autoseeds(object):
         #import ipdb; ipdb.set_trace()
 
         ## solve MRF:
+        import ipdb; ipdb.set_trace()
         from rwsegment.mrf import fastPD
-
         class CostFunction(object):
             def __init__(self,**kwargs):
                 self.binary = kwargs.pop('binary',0)
@@ -361,7 +361,7 @@ class Autoseeds(object):
                 #return (l1!=l2)*self.binary[e,1]*0.1
                 #y = l1!=l2
                 #return self.binary[e, y]*pair_cost
-                print cost
+                print e, l1, l2, cost
                 return cost
  
         #sol, en = fastPD.fastPD_callback(unary, edges, cost_function(binary), debug=True)  
