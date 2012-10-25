@@ -22,7 +22,13 @@ class SVMSolver(object):
         '''   
         self.C = C
         self.use_mosek = kwargs.pop('use_mosek', True)
-        self.scale_only = kwargs.pop('scale_only', False)
+        self.Cprime = kwargs.pop('Cprime', 0)
+
+    def objective(self, w, xi, wref=None):
+        obj = 0.5 * sum([val**2 for val in w]) + self.C * xi
+        if wref is not None:
+            obj += self.Cprime * sum([(w1-w2) for w1,w2 in wip(w,wref)])
+        return obj
 
     def solve(self, W, gtpsis, **kwargs):
         NUMW = len(gtpsis[0])
@@ -34,8 +40,9 @@ class SVMSolver(object):
             xi = 0.0
             return w, xi
 
+        scale_only = kwargs.pop('scale_only', False)
         if self.use_mosek:
-            if self.scale_only:
+            if scale_only:
                 w0 = kwargs.pop('w0', [1.0 for i in range(NUMW)])
                 return self.solve_mosek_scale(W, gtpsis, w0, **kwargs)
             else:
@@ -44,6 +51,8 @@ class SVMSolver(object):
             return self.solve_no_mosek(W, gtpsis, **kwargs)
 
     def solve_mosek(self, W, gtpsis, **kwargs):
+        wref = kwargs.pop('wref',None)
+
         def streamprinter(text): 
             sys.stdout.write(text) 
             sys.stdout.flush()
@@ -73,10 +82,8 @@ class SVMSolver(object):
         NUMVAR = NUMW + 1 # +1 for xi
         NUMCON = len(W)
         NUMANZ = NUMCON*NUMVAR
-        #import ipdb; ipdb.set_trace()
         streamprinter('NUMVAR={}, NUMCON={}\n'.format(NUMVAR, NUMCON))
           
-
         # set const
         task.putmaxnumvar(NUMVAR) 
         task.putmaxnumcon(NUMCON) 
@@ -84,10 +91,6 @@ class SVMSolver(object):
        
         task.append(mosek.accmode.con,NUMCON)
         task.append(mosek.accmode.var,NUMVAR)       
-        # Set up and input bounds and linear coefficients
-        # bkx = [mosek.boundkey.fr for i in range(NUMW)] + \
-              # [mosek.boundkey.lo]
-        # blx = [ -inf for i in range(self.wsize)] + [0.0]
         bkx = [mosek.boundkey.lo for i in range(NUMW)] + \
               [mosek.boundkey.lo]
         blx = [ 0.0 for i in range(NUMW)]  + [0.0]
@@ -95,14 +98,22 @@ class SVMSolver(object):
         
         # linear term in objective
         c = [0 for i in range(NUMW)] + [self.C]
-        
+
         # quadratic term in objective
         qsubi = range(NUMVAR)
         qsubj = qsubi
         qval = [1. for i in range(NUMW)] + [0]
         
         ## constant term
-        task.putcfix(0.0)
+        cfix = 0
+
+        if wref is not None:
+            c = [val1 - self.Cprime*val2 for val1,val2 in zip(c, wref)]
+            qval = [val + self.Cprime for val in qval]
+            cfix += sum([self.Cprime*val**2 for val in wref])
+
+        ## constant term
+        task.putcfix(cfix)
         
         # Set the bounds on variable j 
         # blx[j] <= x_j <= bux[j] 
@@ -120,10 +131,6 @@ class SVMSolver(object):
             for i, p in enumerate(gtpsi):
                 avg_psi_gt[i] += 1.0/ float(NUMX) * p
 
-        #for psi in self.compute_all_psi():
-        #    for i_p,p in enumerate(psi):
-        #        avg_psi_gt[i_p] += 1.0/ float(Ssize) * p
-             
         ## set the constraints
         for j in range(NUMCON): 
             # average psi

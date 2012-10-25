@@ -28,18 +28,14 @@ logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
 
 class SegmentationBatch(object):
     
-    #def __init__(self, anchor_weight=1., model_type='constant'):
     def __init__(self, prior_weights=[1.,0,0], name='constant1'):
-        
         self.labelset  = np.asarray(config.labelset)
-        #self.model_type = model_type
         self.model_name = name
         self.force_recompute_prior = False
         
         self.params  = {
             'beta'             : 50,     # contrast parameter
             'return_arguments' :['image','y'],
-            
             # optimization parameter
             'per_label': True,
             'optim_solver':'unconstrained',
@@ -48,10 +44,6 @@ class SegmentationBatch(object):
             }
         
         laplacian_type = 'std_b50'
-        #laplacian_type = 'std_b100'
-        #laplacian_type = 'inv_b100o1'
-        # laplacian_type = 'pdiff_r1b10'
-        # laplacian_type = 'pdiff_r2b10'
         logger.info('laplacian type is: {}'.format(laplacian_type))
         
         self.weight_functions = {
@@ -77,11 +69,13 @@ class SegmentationBatch(object):
         logger.info('Model name = {}, using prior weights={}'\
             .format(self.model_name, self.prior_weights))
     
-    def process_sample(self,test):
+    def process_sample(self,test,fold=None):
 
         ## get prior
         prior, mask = load_or_compute_prior_and_mask(
-            test,force_recompute=self.force_recompute_prior)
+            test,
+            fold=fold,
+            force_recompute=self.force_recompute_prior)
         seeds   = (-1)*mask
         
         ## load image
@@ -140,16 +134,15 @@ class SegmentationBatch(object):
         logger.info('Dice: {}'.format(dice))
         
         if not config.debug:
-            #outdir = config.dir_seg + \
-            #    '/{}/{}'.format(self.model_type,test)
+            if fold is not None:
+                test_name = 'f{}_{}'.format(fold[0][:2], test)
+            else:
+                test_name = test
             outdir = config.dir_seg + \
-                '/{}/{}'.format(self.model_name,test)
+                '/{}/{}'.format(self.model_name,test_name)
             logger.info('saving data in: {}'.format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
-        
-            #io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32))
-            #np.save(outdir + 'y.npy', y)
         
             f = open(outdir + 'losses.txt', 'w')
             f.write('ideal_loss\t{}\n'.format(loss0))
@@ -224,9 +217,9 @@ class SegmentationBatch(object):
                     outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
  
 
-    def process_all_samples(self,sample_list):
+    def process_all_samples(self,sample_list, fold=None):
         for test in sample_list:
-            self.process_sample(test)
+            self.process_sample(test, fold=fold)
             
             
 if __name__=='__main__':
@@ -237,8 +230,13 @@ if __name__=='__main__':
 
     #sample_list = ['01/']
     #sample_list = ['02/']
-    sample_list = config.vols
+    #sample_list = config.vols
    
+    # entropy
+    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0, 0, 0], name='entropy1e-2')
+    for fold in config.folds:
+        segmenter.process_all_samples(fold, fold=fold)
+
     ## constant prior
     #segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
     #segmenter.process_all_samples(['01/'])
@@ -266,28 +264,28 @@ if __name__=='__main__':
     
     
     # variance+cmap
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-1], name='variancecmap1e-1')
-    #segmenter.compute_mean_segmentation(sample_list)
-    segmenter.process_all_samples(sample_list)
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-1], name='variancecmap1e-1')
+    ##segmenter.compute_mean_segmentation(sample_list)
+    #segmenter.process_all_samples(sample_list)
  
-    # variance
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 1e-1, 0], name='variance1e-1')
-    segmenter.process_all_samples(sample_list)
-    
-    # variance+cmap
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-0], name='variancecmap1e-0')
-    segmenter.process_all_samples(sample_list)
-    
-    # variance
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-0, 0], name='variance1e-0')
-    segmenter.process_all_samples(sample_list)
-    
-     # variance+cmap
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-2], name='variancecmap1e-2')
-    segmenter.process_all_samples(sample_list)
-    
-    # variance
-    segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-2, 0], name='variance1e-2')
-    segmenter.process_all_samples(sample_list)
+    ## variance
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 1e-1, 0], name='variance1e-1')
+    #segmenter.process_all_samples(sample_list)
+    #
+    ## variance+cmap
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-0], name='variancecmap1e-0')
+    #segmenter.process_all_samples(sample_list)
+    #
+    ## variance
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-0, 0], name='variance1e-0')
+    #segmenter.process_all_samples(sample_list)
+    #
+    # # variance+cmap
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-2], name='variancecmap1e-2')
+    #segmenter.process_all_samples(sample_list)
+    #
+    ## variance
+    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-2, 0], name='variance1e-2')
+    #segmenter.process_all_samples(sample_list)
     
     

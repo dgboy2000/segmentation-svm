@@ -45,23 +45,20 @@ class StructSVM(object):
         ## struct svm parameters 
         self.C = kwargs.pop('C',1.)
         self.epsilon = kwargs.pop('epsilon',1e-5)
-        self.niter_max = kwargs.pop('nitermax',100)
-        
+        self.niter_max = kwargs.pop('nitermax',100)        
+        self.use_parallel = kwargs.pop('use_parallel', False)
+
         ## user provided functions 
         self.user_loss = loss_function
         self.user_psi  = psi
-        self.user_mvc  = most_violated_constraint 
-       
-        #self.psi_cache  = {}
+        self.user_mvc  = most_violated_constraint        
         self.psis_cache = {}
-        #self.loss_cache = {}
-        #self.mvc_cache  = {}      
-  
-        #self.psi_scale = kwargs.pop('psi_scale', 1.0)
-        self.use_parallel = kwargs.pop('use_parallel', False)
-        #nomosek = kwargs.pop('nomosek',False)
 
-        #self.do_switch_loss = kwargs.pop('do_switch_loss', False)
+        self.solver = svm_solver.SVMSolver(
+            self.C, 
+            use_mosek=True,
+            **kwargs
+            )
 
     def parallel_all_mvc(self, w, xs, zs, metas, **kwargs):
         ws = [w for i in range(len(xs))]
@@ -153,11 +150,6 @@ class StructSVM(object):
         '''
             
     def all_psi(self,xs,ys,metas):
-        #if ys is None:
-        #    obj = None
-        #else:
-        #    obj = ys[0]
-
         key = hashlib.sha1(ys[0])
         if key in self.psis_cache:
             for psi in self.psis_cache[key]:
@@ -200,18 +192,12 @@ class StructSVM(object):
         else:
             return False
              
-    def current_solution(self, W, gtpsis, w0=None, scale_only=False):
-        solver = svm_solver.SVMSolver(
-            self.C, 
-            use_mosek=True, 
-            scale_only=scale_only,
-            )
-        w,xi = solver.solve(W,gtpsis,w0=w0)
+    def current_solution(self, W, gtpsis, w0=None, scale_only=False, wref=None):
+        w,xi = self.solver.solve(W,gtpsis,w0=w0,scale_only=scale_only, wref=None)
         return w,xi
 
-    def objective(self,w,xi):
-        obj = 0.5 * np.sum(np.square(w)) + self.C * xi
-        return obj
+    def objective(self,w,xi,wref=None):
+        return self.solver.objective(w,xi,wref=wref) 
  
     def print_vec(self,w):
         wstr = '[{}]'.format(', '.join('{:.04}'.format(val) for val in w))
@@ -225,7 +211,7 @@ class StructSVM(object):
             )
         return psistr
 
-    def train(self, images, annotations, metadata=None, w=None, **kwargs):
+    def train(self, images, annotations, metadata=None, **kwargs):
         xs = images
         zs = annotations      
         if metadata is None:
@@ -234,7 +220,12 @@ class StructSVM(object):
           
         ## compute psis of ground truth
         gtpsis = list(self.all_psi(xs,zs,metas))
-        
+       
+        ## parameters
+        scale_only = kwargs.pop('scale_only', False)
+        w = kwargs.pop('w', None)
+        wref = kwargs.pop('wref', None)
+ 
         ## log psis
         logger.debug('ground truth psis: {}'.format(self.print_psis(gtpsis)))
 
@@ -257,11 +248,11 @@ class StructSVM(object):
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
         
-            w,xi = self.current_solution(W, gtpsis, w0=w0, **kwargs)
+            w,xi = self.current_solution(W, gtpsis, w0=w0, scale_only=scale_only, wref=wref)
  
             ## logging
             logger.debug("w={}, xi={:.04}".format(self.print_vec(w),xi))     
-            logger.debug("objective={:.04}".format(self.objective(w,xi)))
+            logger.debug("objective={:.04}".format(self.objective(w,xi,wref=wref)))
        
             ## find most violated constraint
             logger.info("find most violated constraint")

@@ -87,14 +87,14 @@ class SVMRWMeanAPI(object):
         self.prior = prior
         self.labelset = labelset
         self.nlabel = len(labelset)
-        
-        self.loss_type = kwargs.pop('loss_type','anchor')
-        logger.info('using loss type: {}'.format(self.loss_type))
-        
-        self.approx_aci = kwargs.pop('approx_aci', False)
-
         self.laplacian_functions = laplacian_functions
-        
+ 
+        self.loss_type = kwargs.pop('loss_type','squareddiff')
+        logger.info('using loss type: {}'.format(self.loss_type)) 
+        self.approx_aci = kwargs.pop('approx_aci', False)
+        self.loss_factor = float(kwargs.pop('loss_factor', 1.0))
+        logger.info('loss is scaled by {:.3}'.format(self.loss_factor))       
+
         if prior_models is None:
             anchor_api = BaseAnchorAPI
             self.prior_models = [anchor_api]
@@ -107,8 +107,6 @@ class SVMRWMeanAPI(object):
         self.indices_laplacians = np.arange(nlaplacian)
         self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
         
-        self.wsize = nprior + nlaplacian
-        
         self.seeds = seeds
         self.rwparams = rwparams
         self.immask = seeds<0
@@ -116,11 +114,7 @@ class SVMRWMeanAPI(object):
         self.prior_mask = np.zeros(seeds.shape, dtype=bool)
         self.prior_mask.flat[self.prior['imask']] = 1
         self.maskinds = np.arange(seeds.size).reshape(seeds.shape)
-       
-        # rescale loss 
-        self.loss_factor = float(kwargs.pop('loss_factor', 1.0))
-        logger.warning('loss is scaled by {:.3}'.format(self.loss_factor))
-        
+               
     def compute_loss(self,z,y_, **kwargs):
         islices = kwargs.pop('islices',None)
         if islices is not None:
@@ -132,14 +126,15 @@ class SVMRWMeanAPI(object):
             miny = np.min(y_)
             logger.warning('negative (<-1e-6) values in y_. min = {:.3}'.format(miny))
 
-        self.use_ideal_loss = True
+        #self.use_ideal_loss = True
 
-        if self.use_ideal_loss:
+        #if self.use_ideal_loss:
+        if self.loss_type=='ideal':
             loss = loss_functions.ideal_loss(z,y_,mask=mask)
-        elif self.loss_type=='anchor':
-            loss = loss_functions.anchor_loss(z,y,mask=mask)
+        elif self.loss_type=='squareddiff':
+            loss = loss_functions.anchor_loss(z,y_,mask=mask)
         elif self.loss_type=='laplacian':
-            loss = loss_functions.laplacian_loss(z,y,mask=mask)
+            loss = loss_functions.laplacian_loss(z,y_,mask=mask)
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
@@ -239,28 +234,31 @@ class SVMRWMeanAPI(object):
         loss_weight = None
         L_loss      = None
         
-        if switch_loss:
-            loss_type = 'approx'
-        else:
-            loss_type = self.loss_type
+        #if switch_loss:
+        #    loss_type = 'approx'
+        #else:
+        #    loss_type = self.loss_type
 
-        if iter==0:
-            loss_type = 'anchor'
-
+        #if iter==0:
+        #    loss_type = 'squareddiff'
+        loss_type = self.loss_type
         if loss_type=='none':
             pass
-        elif loss_type=='anchor':
+        elif loss_type=='squareddiff':
             loss, loss_weight = loss_functions.compute_loss_anchor(seg, mask=mask)
+            loss_weight *= self.loss_factor
         elif loss_type=='laplacian':
-            L_loss = loss_functions.compute_loss_laplacian(seg, mask=mask)
-        elif loss_type=='approx':
+            L_loss = - loss_functions.compute_loss_laplacian(seg, mask=mask) *\
+                 self.loss_factor
+            #import ipdb; ipdb.set_trace()
+        elif loss_type=='ideal':
             nnode = len(z[0])
             addlin = 1./float(nnode)*z
             addlin *= self.loss_factor
         else:
             raise Exception('did not recognize loss type')
             sys.exit(1)
-        #import ipdb; ipdb.set_trace() #check loss is working 
+
         ## loss function        
         anchor_api = MetaAnchor(
             prior=prior,
@@ -269,8 +267,7 @@ class SVMRWMeanAPI(object):
             loss=loss,
             loss_weight=loss_weight,
             image=im,
-            )
-        
+            ) 
         ## best y_ most different from y
         y_ = rwsegment.segment(
             im, 

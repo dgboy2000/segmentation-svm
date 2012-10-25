@@ -201,13 +201,18 @@ def compute_objective(test, y, w):
     return obj
 
     
-def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
-
+def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=None):
+    if fold is not None:
+        test_name = 'f{}_{}/'.format(fold[0][:2], test)
+    else:
+        test_name = test
+        fold = [test]
+     
     labelset = np.asarray(config.labelset)
     if pca:
-        outdir = config.dir_pca_prior + test
+        outdir = config.dir_pca_prior + test_name
     else:
-        outdir = config.dir_prior + test
+        outdir = config.dir_prior + test_name
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     
@@ -223,21 +228,14 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
         prior = np.load(file_prior)
     else:
         if pca:
-            _prior, mask = load_or_compute_prior_and_mask(test)
+            _prior, mask = load_or_compute_prior_and_mask(test, fold=fold)
             generator = rwsegment_pca_prior.PriorGenerator(labelset, mask=mask)
         else:
             generator = rwsegment_prior.PriorGenerator(labelset)
-            from scipy import ndimage
-            mask    = generator.get_mask()
-            struct  = np.ones((7,)*mask.ndim)
-            mask    = ndimage.binary_dilation(
-                    mask.astype(bool),
-                    structure=struct,
-                    ).astype(bool)
  
-        ntrain = 0 
+        ntrain = 0
         for train in config.vols:
-            if test==train: continue
+            if train in fold: continue
             logger.debug('load training img: {}'.format(train))
             
             ## segmentation
@@ -250,9 +248,15 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
             
             generator.add_training_data(seg,image=im)
             ntrain += 1
-            #if ntrain == 3:
-            #    logger.warning('temp break in pca prior')
-            #break
+
+        if not pca:
+            from scipy import ndimage
+            mask    = generator.get_mask()
+            struct  = np.ones((7,)*mask.ndim)
+            mask    = ndimage.binary_dilation(
+                    mask.astype(bool),
+                    structure=struct,
+                    ).astype(bool)
          
                  
         prior = generator.get_prior(mask)

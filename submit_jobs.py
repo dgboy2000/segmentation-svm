@@ -100,9 +100,36 @@ if __name__=='__main__':
 
 
     # jobs
+    
+    C = [0.01, 0.1, 1, 10, 100, 1e3, 1e4, 1e5]
+    for c in C:
+        make_job(
+            '2012.10.25.exp_baseline_Lsdloss_x1000_C{}',
+            'mpirun -np $NP python learn_svm_batch.py \
+                --parallel \
+                --loss squareddiff --loss_factor 1000 \
+                --loss -C {}'.format(c),
+            )
+
+
+    #make_job(
+    #    '2012.10.25.exp_handtuned_entropy',
+    #    'python segmentation_batch.py -s',
+    #    queue='icemem48gbq',
+    #    )
 
     #C = [0.1, 1, 10, 100, 1000, 10000, 100000]
     #for c in C:
+        #make_job(
+        #   '2012.10.25.test_latent_lsdloss1000_t192_C{}'.format(c),
+        #   'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss squareddiff --loss_factor 1000 --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
+        #   queue='icetestq',
+        #   )
+        #make_job(
+        #   '2012.10.25.test_latent_llaploss1000_t192_C{}'.format(c),
+        #   'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss laplacian --loss_factor 1000 --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
+        #   queue='icetestq',
+        #   )
     #    make_job(
     #       '2012.10.23.test_latent_lsd_t192_C{}'.format(c),
     #       'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss anchor --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
@@ -119,11 +146,17 @@ if __name__=='__main__':
     #       queue='icetestq',
     #       )
     
-    make_job(
-        '2012.10.23.pca_syn',
-        'python batch_rwpca.py -s',
-        queue='icemem72gbq'
-        )
+    #make_job(
+    #    '2012.10.23.pca_syn',
+    #    'python batch_rwpca.py -s',
+    #    queue='icemem72gbq'
+    #    )
+
+    #make_job(
+    #    '2012.10.25.latent_Lnone_approxACI_mosek',
+    #    'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent --crop 5 --approx_aci -C 10000',
+    #    )
+
 
     #make_job(
     #    '2012.10.24.latent_Lnone_logb_exact',

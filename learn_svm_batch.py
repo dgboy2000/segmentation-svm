@@ -39,7 +39,6 @@ class SVMSegmenter(object):
 
     def __init__(self,
             use_parallel=True, 
-            loss_type='anchor',
             **kwargs
             ):
     
@@ -53,18 +52,22 @@ class SVMSegmenter(object):
         self.force_recompute_prior = False
         self.use_parallel = use_parallel    
 
-        C = kwargs.pop('C',1.0)
         self.labelset = np.asarray(config.labelset)
-        scale_only = kwargs.pop('scale_only', False)
 
+        C = kwargs.pop('C',1.0)
+        Cprime = kwargs.pop('Cprime',0.0)
+        self.scale_only    = kwargs.pop('scale_only', False)
+        self.loss_type     = kwargs.pop('loss_type', 'squareddiff')
+        self.loss_factor   = kwargs.pop('loss_factor', 1.)
         self.use_latent    = kwargs.pop('use_latent', False)
+        self.approx_aci    = kwargs.pop('approx_aci', False)
         self.debug         = kwargs.pop('debug', False)
         self.retrain       = kwargs.pop('retrain', True)
         self.minimal_svm   = kwargs.pop('minimal', False)
         self.one_iteration = kwargs.pop('one_iteration', False)
-        switch_loss        = kwargs.pop('switch_loss', False)
         self.start_script  = kwargs.pop('start_script', '')       
         self.use_mosek     = kwargs.pop('use_mosek',True)
+        #switch_loss        = kwargs.pop('switch_loss', False)
 
         crop = kwargs.pop('crop','none')
         if crop=='none':
@@ -101,8 +104,9 @@ class SVMSegmenter(object):
         
         ## parameters for svm api
         self.svm_api_params = {
-            'loss_type': loss_type, #'laplacian','anchor', 'none'
-            'approx_aci': kwargs.pop('approx_aci', False),
+            'loss_type': self.loss_type, #'laplacian','squareddif', 'ideal', 'none'
+            'loss_factor': self.loss_factor,
+            'approx_aci': self.approx_aci,
             }
             
         ## parameters for rw inference
@@ -119,6 +123,7 @@ class SVMSegmenter(object):
         ## svm params
         self.svmparams = {
             'C': C,
+            'Cprime': Cprime,
             'nitermax': 100,
             'epsilon': 1e-5,
             #'do_switch_loss': switch_loss,
@@ -129,7 +134,7 @@ class SVMSegmenter(object):
             }
 
         self.trainparams = {
-            'scale_only': scale_only,
+            'scale_only': self.scale_only,
             }       
      
         ## weight functions
@@ -188,13 +193,13 @@ class SVMSegmenter(object):
         if self.isroot:
             logger.info('passed these command line arguments: {}'.format(str(sys.argv)))
             logger.info('using parallel?: {}'.format(use_parallel))
-            logger.info('using latent?: {}'.format(use_latent))
+            logger.info('using latent?: {}'.format(self.use_latent))
             logger.info('train data: {}'.format(ntrain))
             strkeys = ', '.join(self.laplacian_names)
             logger.info('laplacian functions (in order): {}'.format(strkeys))
             strkeys = ', '.join(self.prior_names)
             logger.info('prior models (in order): {}'.format(strkeys))
-            logger.info('using loss type: {}'.format(loss_type))
+            logger.info('using loss type: {}'.format(self.loss_type))
             logger.info('SVM parameters: {}'.format(self.svmparams))
             logger.info('Computing one iteration at a time ?: {}'.format(self.one_iteration))
             if self.debug:
@@ -203,7 +208,10 @@ class SVMSegmenter(object):
                 logger.info('writing svm output to: {}'.format(self.dir_svm))
         
 
-    def make_training_set(self,test):
+    def make_training_set(self,test, fold=None):
+        if fold is None:
+            fold = [test]
+
         ## training images and segmentations
         if self.isroot:
             slice_border = 20 # do not consider top and bottom slices
@@ -212,7 +220,7 @@ class SVMSegmenter(object):
             metadata = []
 
             for train in self.training_vols:
-                if test==train: continue
+                if train in fold: continue
                 logger.info('loading training data: {}'.format(train))
                  
                 ## file names
@@ -303,7 +311,6 @@ class SVMSegmenter(object):
             images, segmentations, metadata = self.training_set
             try:
                 import time                
-
                 ## learn struct svm
                 logger.debug('started root learning')
                 if self.use_latent:
@@ -410,7 +417,7 @@ class SVMSegmenter(object):
         
         
         
-    def run_svm_inference(self,test,w):
+    def run_svm_inference(self,test,w, test_dir):
         logger.info('running inference on: {}'.format(test))
         
         ## normalize w
@@ -468,8 +475,6 @@ class SVMSegmenter(object):
 
                 ## prior
                 tseg = self.labelset[np.argmax(tz, axis=0)].reshape(tim.shape)
-                # w=[9.889e-10, 4.935e-10, 1.318e-05, 3.267e-10, 2.75e-05, 1.418e-11, 3.853e-11] logb
-                # w=[9.89e-10 , 4.935e-10, 1.31820407e-05, 3.267e-10, 2.749e-05, 1.417e-11, 3.853e-11
                 tanchor_api = MetaAnchor(
                     tprior,
                     self.prior_functions,
@@ -491,7 +496,14 @@ class SVMSegmenter(object):
                 tflatmask[:,imask] = True
                 loss0 = loss_functions.ideal_loss(tz,ty,mask=tflatmask)
                 logger.info('Tloss = {}'.format(loss0))
- 
+                ## loss2: squared difference with ztilde
+                loss1 = loss_functions.anchor_loss(tz,ty,mask=tflatmask)
+                logger.info('SDloss = {}'.format(loss1))
+                ## loss3: laplacian loss
+                loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
+                logger.info('LAPloss = {}'.format(loss2))
+
+
                 tanchor_api_h = MetaAnchor(
                     tprior,
                     self.prior_functions,
@@ -508,11 +520,16 @@ class SVMSegmenter(object):
                     )
                 ## compute Dice coefficient
                 tdice = compute_dice_coef(tsol, tseg, labelset=self.labelset)
-                logger.info('Dice coefficients for train (handtuned): \n{}'.format(tdice))
+                logger.info('Dice coefficients for train (hand-tuned): \n{}'.format(tdice))
                 loss0 = loss_functions.ideal_loss(tz,ty,mask=tflatmask)
-                logger.info('Tloss (handtuned) = {}'.format(loss0))
+                logger.info('Tloss (hand-tuned) = {}'.format(loss0))
+                ## loss2: squared difference with ztilde
+                loss1 = loss_functions.anchor_loss(tz,ty,mask=tflatmask)
+                logger.info('SDloss (hand-tuned) = {}'.format(loss1))
+                ## loss3: laplacian loss
+                loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
+                logger.info('LAPloss (hand-tuned) = {}'.format(loss2))
  
-
         ## prior
         anchor_api = MetaAnchor(
             self.prior,
@@ -562,14 +579,12 @@ class SVMSegmenter(object):
         ## loss4: linear loss
         loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
         logger.info('LINloss = {}'.format(loss3))
-
-
-        
+       
         ## saving
         if self.debug:
             pass
         elif self.isroot:
-            outdir = self.dir_inf + test
+            outdir = self.dir_inf + test_dir
             logger.info('saving data in: {}'.format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
@@ -588,11 +603,15 @@ class SVMSegmenter(object):
             f.write('laplacian_loss\t{}\n'.format(loss2))
             f.close()
         
-    def process_sample(self, test):
-        
+    def process_sample(self, test, fold=None):
+        if fold is not None:
+            test_dir = 'f{}_{}'.format(fold[0][:2], test)
+        else:
+            test_dir = test
+ 
         if self.isroot:
             prior, mask = load_or_compute_prior_and_mask(
-                test,force_recompute=self.force_recompute_prior)
+                test,force_recompute=self.force_recompute_prior, fold=fold)
             
             if self.use_parallel:
                 # have only the root process compute the prior 
@@ -605,12 +624,11 @@ class SVMSegmenter(object):
         self.seeds = (-1)*mask.astype(int)
         
         ## training set
-        self.make_training_set(test)
+        self.make_training_set(test, fold=fold)
 
         ## training
         if self.retrain:
-            
-            outdir = self.dir_svm + test
+            outdir = self.dir_svm + test_dir
             if not self.debug and not os.path.isdir(outdir):
                 os.makedirs(outdir)
                 
@@ -630,14 +648,13 @@ class SVMSegmenter(object):
         ## inference
         if self.isroot: 
             self.w = w
-            
-            self.run_svm_inference(test,w)
+            self.run_svm_inference(test,w, test_dir=test_dir)
         
         
     
-    def process_all_samples(self,sample_list):
+    def process_all_samples(self,sample_list,fold=None):
         for test in sample_list:
-            self.process_sample(test)
+            self.process_sample(test, fold)
     
 ##------------------------------------------------------------------------------
 
@@ -659,46 +676,45 @@ if __name__=='__main__':
         help='latent svm',
         )
     opt.add_option( # loss type
-        '-o', '--loss', dest='loss', 
-        default='anchor', type=str,
-        help='loss type ("anchor", "laplacian")',
+        '--loss', dest='loss', 
+        default='squareddiff', type=str,
+        help='loss type ("squareddiff", "laplacian", "none", "ideal")',
         )
+    opt.add_option( # loss factor
+        '--loss_factor', dest='loss_factor', 
+        default=1, type=float,
+        help='',
+        )   
     opt.add_option( # nb training set
         '-t', '--training', dest='ntrain', 
         default='all', type=str,
         help='number of training set (default: "all")',
         )
-        
     opt.add_option( # nb training set
         '-g', '--debug', dest='debug', 
         default=False, action="store_true",
         help='debug mode (no saving)',
         )
-    
     opt.add_option( # no mosek
         '--use_mosek', dest='use_mosek', 
         default='True', type=str,
         help='use mosek in constrained optim ?',
         )  
-    
     opt.add_option( # retrain ?
         '--noretrain', dest='noretrain', 
         default=False, action="store_true",
         help='retrain svm ?',
         )  
- 
     opt.add_option( # minimal svm
         '--minimal', dest='minimal', 
         default=False, action="store_true",
         help='minimal svm: one laplacian, one prior ?',
         )  
- 
     opt.add_option( # one iteration at a time
         '--one_iter', dest='one_iter', 
         default=False, action="store_true",
         help='compute one iteration at a time (latent only)',
         )
-  
     opt.add_option(
         '--switch_loss', dest='switch_loss', 
         default=False, action="store_true",
@@ -709,31 +725,31 @@ if __name__=='__main__':
         default='default', type=str,
         help='',
         ) 
-
     opt.add_option( # C
         '-C', dest='C', 
         default=1.0, type=float,
         help='C value',
         )  
-       
+    opt.add_option( # Cprime
+        '--Cprime', dest='Cprime', 
+        default=0.0, type=float,
+        help='Cprime value',
+        )  
     opt.add_option( # folder name
         '--folder', dest='folder', 
         default='', type=str,
         help='set folder name',
         ) 
-    
     opt.add_option(
         '--script', dest='script', 
         default="", type=str,
         help='script file to run this module',
         )  
- 
     opt.add_option(
         '--crop', dest='crop', 
         default='none', type=str,
         help='crop images (integer or none)',
         )  
-
     opt.add_option(
         '--approx_aci', dest='approx_aci', 
         default=False, action="store_true",
@@ -747,25 +763,24 @@ if __name__=='__main__':
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
-    use_latent = bool(options.latent)
-    loss_type = options.loss
     ntrain = options.ntrain
     debug = options.debug
     retrain = 1 - options.noretrain
     minimal = options.minimal
     one_iteration = options.one_iter
     switch_loss = options.switch_loss
-    C = options.C
     script = options.script
 
     folder = options.folder #unused
 
     ''' start script '''
     svm_segmenter = SVMSegmenter(
-        C=C,
+        C=options.C,
+        Cprime=options.Cprime,
         use_parallel=use_parallel,
-        use_latent=use_latent,
-        loss_type=loss_type,
+        use_latent=options.latent,
+        loss_type=options.loss,
+        loss_factor=options.loss_factor,
         ntrain=ntrain,
         debug=debug,
         retrain=retrain,
@@ -780,8 +795,8 @@ if __name__=='__main__':
         )
         
         
-    sample_list = ['01/']
-    
-    svm_segmenter.process_all_samples(sample_list)
+    #sample_list = ['01/']
+    for fold in config.folds:
+        svm_segmenter.process_all_samples(fold, fold=fold)
 
     
