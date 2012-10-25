@@ -97,9 +97,9 @@ class SVMSolver(object):
         c = [0 for i in range(NUMW)] + [self.C]
         
         # quadratic term in objective
-        qsubi = range(NUMW)
+        qsubi = range(NUMVAR)
         qsubj = qsubi
-        qval = [1. for i in range(NUMW)]
+        qval = [1. for i in range(NUMW)] + [0]
         
         ## constant term
         task.putcfix(0.0)
