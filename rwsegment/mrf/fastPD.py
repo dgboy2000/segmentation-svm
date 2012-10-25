@@ -5,7 +5,7 @@ import ctypes
 
  
 CBType = ctypes.CFUNCTYPE(
-        ctypes.c_float, ctypes.c_int32, ctypes.c_int32, ctypes.c_int32)
+        ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int)
  
 def fastPD(
         unary,
@@ -276,27 +276,37 @@ else:
 if __name__=='__main__':
     print  'test_graph'
     nlabels = 2
-    unary = np.array([
-        [10,1],
-        [1,10],
-        [10,1],
-        ])
-        
-    pairs = np.array([[0,1],[1,2],[2,0]])
-    binary = np.ones((nlabels,nlabels))
-    binary = np.array([
-        [1, 50],
-        [50, 1],
-        ])
-        
+    #unary = np.array([
+    #    [10,1],
+    #    [1,10],
+    #    [10,1],
+    #    ])
+    
+    #pairs = np.array([[0,1],[1,2],[2,0]])
+    #binary = np.ones((nlabels,nlabels))
+    #binary = np.array([
+    #    [1, 50],
+    #    [50, 1],
+    #    ])
+       
+    N = 2000
+    unary = np.random.random((N,10))*10
+    pairs0 = np.random.randint(0,N-101,N*10)
+    pairs1 = pairs0 + np.random.randint(0,100, N*10)
+    pairs = np.c_[pairs0, pairs1]
+
+
     def costfunction(e,l1,l2): 
         # print e,l1,l2
-        return binary[l1,l2]
+        #return binary[l1,l2]
+        cost =  1 + (l1!=l2)*np.random.random()
+        #print cost
+        return cost
       
-    res1 =  fastPD(unary, pairs, binary,debug=True)
+    #res1 =  fastPD(unary, pairs, binary,debug=True)
     res2 =  fastPD_callback(unary, pairs, costfunction,debug=True)
     
 
-    print res1
+    #print res1
     print res2
     

@@ -106,8 +106,8 @@ if __name__=='__main__':
     #    make_job(
     #       '2012.10.23.test_latent_lsd_t192_C{}'.format(c),
     #       'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss anchor --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
-    #       queue='icetestq',
-    #       )
+    #       queue='icetestq',    
+    #   )
     #    make_job(
     #       '2012.10.23.test_latent_lnone_t192_C{}'.format(c),
     #       'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent -t 192 --crop 5 --approx_aci -C {}'.format(c),
@@ -119,16 +119,16 @@ if __name__=='__main__':
     #       queue='icetestq',
     #       )
     
-    #make_job(
-    #    '2012.10.23.pca_syn',
-    #    'python batch_rwpca.py -s',
-    #    queue='icemem72gbq'
-    #    )
-
     make_job(
-        '2012.10.24.latent_Lnone_logb_exact',
-        'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent --crop 5 -C 10000 --use_mosek False',
+        '2012.10.23.pca_syn',
+        'python batch_rwpca.py -s',
+        queue='icemem72gbq'
         )
+
+    #make_job(
+    #    '2012.10.24.latent_Lnone_logb_exact',
+    #    'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --latent --crop 5 -C 10000 --use_mosek False',
+    #    )
 
    # make_job(
    #    '2012.10.22.test_latent_LAInone',

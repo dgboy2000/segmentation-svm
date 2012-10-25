@@ -256,7 +256,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False):
          
                  
         prior = generator.get_prior(mask)
-        import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
 
         nlabel = len(labelset)
         segprior = np.zeros(mask.shape)

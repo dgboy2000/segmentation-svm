@@ -73,7 +73,7 @@ class SVMSolver(object):
         NUMVAR = NUMW + 1 # +1 for xi
         NUMCON = len(W)
         NUMANZ = NUMCON*NUMVAR
-        import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         streamprinter('NUMVAR={}, NUMCON={}\n'.format(NUMVAR, NUMCON))
           
 

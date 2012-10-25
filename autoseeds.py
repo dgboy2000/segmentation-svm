@@ -346,6 +346,7 @@ class Autoseeds(object):
 
         ## solve MRF:
         import ipdb; ipdb.set_trace()
+        '''
         from rwsegment.mrf import fastPD
         class CostFunction(object):
             def __init__(self,**kwargs):
@@ -371,7 +372,12 @@ class Autoseeds(object):
             orient_cost=orient_cost,
             )
         sol, en = fastPD.fastPD_callback(unary, edges, cost_function, debug=True)  
-        
+        '''
+        wpairs = orient_cost
+        from rwsegment.mrf import trw
+        sol, en = trw.TRW_general(
+            unary, edges, wpairs, niters=1000, verbose=True)
+
         labels = self.labelset[sol]
         imsol = np.ones(im.shape, dtype=np.int32)*20
         imsol[tuple(points.T)] = labels
