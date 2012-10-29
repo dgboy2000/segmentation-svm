@@ -27,7 +27,7 @@ class SVMSolver(object):
     def objective(self, w, xi, wref=None):
         obj = 0.5 * sum([val**2 for val in w]) + self.C * xi
         if wref is not None:
-            obj += self.Cprime * sum([(w1-w2) for w1,w2 in wip(w,wref)])
+            obj += 0.5 * self.Cprime * sum([(w1-w2)**2 for w1,w2 in zip(w,wref)])
         return obj
 
     def solve(self, W, gtpsis, **kwargs):
@@ -51,8 +51,6 @@ class SVMSolver(object):
             return self.solve_no_mosek(W, gtpsis, **kwargs)
 
     def solve_mosek(self, W, gtpsis, **kwargs):
-        wref = kwargs.pop('wref',None)
-
         def streamprinter(text): 
             sys.stdout.write(text) 
             sys.stdout.flush()
@@ -64,7 +62,8 @@ class SVMSolver(object):
                 f.close()
         
         inf = 0
-        
+        wref = kwargs.pop('wref',None)
+
         # Open MOSEK and create an environment and task 
         # Make a MOSEK environment 
         env = mosek.Env () 
@@ -106,10 +105,11 @@ class SVMSolver(object):
         
         ## constant term
         cfix = 0
-
         if wref is not None:
-            c = [val1 - self.Cprime*val2 for val1,val2 in zip(c, wref)]
-            qval = [val + self.Cprime for val in qval]
+            wstr = '[{}]'.format(','.join([str(val) for val in wref]))
+            streamprinter('wref={}, Cprime={}\n'.format(wstr, self.Cprime))
+            c = [val1 - self.Cprime*val2 for val1,val2 in zip(c, wref)] + c[-1:]
+            qval = [val + self.Cprime for val in qval[:-1]] + qval[-1:]
             cfix += sum([self.Cprime*val**2 for val in wref])
 
         ## constant term

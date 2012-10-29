@@ -129,12 +129,14 @@ class SVMRWMeanAPI(object):
         #self.use_ideal_loss = True
 
         #if self.use_ideal_loss:
-        if self.loss_type=='ideal':
+        if self.loss_type in ['ideal', 'none']:
             loss = loss_functions.ideal_loss(z,y_,mask=mask)
         elif self.loss_type=='squareddiff':
             loss = loss_functions.anchor_loss(z,y_,mask=mask)
         elif self.loss_type=='laplacian':
             loss = loss_functions.laplacian_loss(z,y_,mask=mask)
+        elif self.loss_type=='linear':
+            loss = loss_function.linear_loss(z,y,mask=mask)
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
@@ -242,7 +244,7 @@ class SVMRWMeanAPI(object):
         #if iter==0:
         #    loss_type = 'squareddiff'
         loss_type = self.loss_type
-        if loss_type=='none':
+        if loss_type in ['ideal', 'none']:
             pass
         elif loss_type=='squareddiff':
             loss, loss_weight = loss_functions.compute_loss_anchor(seg, mask=mask)
@@ -250,13 +252,11 @@ class SVMRWMeanAPI(object):
         elif loss_type=='laplacian':
             L_loss = - loss_functions.compute_loss_laplacian(seg, mask=mask) *\
                  self.loss_factor
-            #import ipdb; ipdb.set_trace()
-        elif loss_type=='ideal':
-            nnode = len(z[0])
-            addlin = 1./float(nnode)*z
-            addlin *= self.loss_factor
+        elif loss_type=='linear':
+            addlin, linw = loss_functions.compute_loss_linear(seg, mask=mask)
+            addlin *= linw * self.loss_factor
         else:
-            raise Exception('did not recognize loss type')
+            raise Exception('did not recognize loss type {}'.format(loss_type))
             sys.exit(1)
 
         ## loss function        
@@ -337,7 +337,7 @@ class SVMRWMeanAPI(object):
             )
         return y 
  
-    def compute_approximate_aci(self, w,x,z,y0,**kwargs):
+    def compute_approximate_aci2(self, w,x,z,y0,**kwargs):
         logger.info('using approximate aci')
         islices = kwargs.pop('islices',None)
         imask = kwargs.pop('imask',None)
@@ -402,4 +402,92 @@ class SVMRWMeanAPI(object):
         y[:,icorrect] = y_[:,icorrect]
         #import ipdb; ipdb.set_trace()
         return y                
+
+    def compute_approximate_aci(self, w,x,z,y0,**kwargs):
+        logger.info('using approximate aci (Danny"s)')
+        islices = kwargs.pop('islices',None)
+        imask = kwargs.pop('imask',None)
+        iimask = kwargs.pop('iimask',None)
+        if islices is not None:
+            seeds = self.seeds[islices]
+            mask = [self.immask[islices].ravel() for i in range(len(self.labelset))]
+            prior = {
+                'data': np.asarray(self.prior['data'])[:,iimask],
+                'imask': imask,
+                'variance': np.asarray(self.prior['variance'])[:,iimask],
+                'labelset': self.labelset,
+                }
+            if 'intensity' in self.prior: prior['intensity'] = self.prior['intensity']
+        else:
+            mask = self.mask
+            seeds = self.seeds
+            prior = self.prior
+        
+        weight_function = MetaLaplacianFunction(
+            np.asarray(w)[self.indices_laplacians],
+            self.laplacian_functions,
+            )
+        
+        ## combine all prior models
+        anchor_api = MetaAnchor(
+            prior=prior,
+            prior_models=self.prior_models,
+            prior_weights=np.asarray(w)[self.indices_priors],
+            image=x,
+            )
+
+        class GroundTruthAnchor(object):
+            def __init__(self, anchor_api, gt, gt_weights):
+                self.anchor_api = anchor_api
+                self.gt = gt
+                self.gt_weights = gt_weights
+            def get_labelset(self): 
+                return self.anchor_api.get_labelset()
+
+            def get_anchor_and_weights(self, D, indices):
+                anchor, weights = self.anchor_api.get_anchor_and_weights(D,indices)
+                gt_weights = self.gt_weights[:,indices]
+                gt = self.gt[:,indices]
+                new_weights = weights + gt_weights
+                new_anchor = (anchor * weights + gt*gt_weights) / new_weights
+                return new_anchor, new_weights
+                
+        self.approx_aci_maxiter = 100
+        self.approx_aci_maxstep = 1e-2
+        z_weights = np.zeros(np.asarray(z).shape)
+        z_label = np.argmax(z,axis=0)
+        for i in range(self.approx_aci_maxiter):
+            logger.debug('approx aci (Danny"s), iter={}'.format(i))
+    
+            ## add ground truth to anchor api
+            modified_api = GroundTruthAnchor(anchor_api, z, z_weights)
+
+            ## inference
+            y_ = rwsegment.segment(
+                x, 
+                modified_api,
+                seeds=seeds,
+                weight_function=weight_function,
+                return_arguments=['y'],
+                **self.rwparams
+                )
+
+            ## loss            
+            loss = self.compute_loss(z,y_, islices=islices)
+            logger.debug('loss = {}'.format(loss))
+            if loss < 1e-8: 
+                break
+            
+            #inc = np.where(z_label!=np.argmax(y_,axis=0))[0]
+            #print len(inc), inc
+            #import ipdb; ipdb.set_trace()
+            ## uptade weights
+            delta = np.max(y_ - y_[z_label, np.arange(y_.shape[1])], axis=0)
+            delta = np.clip(delta, 0, self.approx_aci_maxstep)
+            z_weights += delta
+
+        return y_        
+
+
+   
 

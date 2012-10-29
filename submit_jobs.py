@@ -100,17 +100,61 @@ if __name__=='__main__':
 
 
     # jobs
-    
+
+    #make_job(
+    #    '2012.10.29.test2_latent_Lsdloss_x1000_C{}'.format(100),
+    #    'mpirun -np $NP python learn_svm_batch.py ' \
+    #        '--parallel --crop 5 -t 0 '\
+    #        '--loss squareddiff --loss_factor 1000 '\
+    #        '--latent --approx_aci -C {} '.format(100),
+    #    queue='icetestq')
+
+    #make_job(
+    #   '2012.10.26.test3_latent_crop5_Lnone_x1000_t0_DACI_Cprime100_C1',
+    #   'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --loss_factor 1000 --latent --crop 5 -t 0 --approx_aci --Cprime 100 -C 1',
+    #   queue='icetestq',
+    #  )
+
+
+    # make_job(
+    #    '2012.10.26.test2_latent_Lnone_x1000_t0_DACI_Cprime100_C1',
+    #    'mpirun -np $NP python learn_svm_batch.py --parallel --one_iter --loss none --loss_factor 1000 --latent -t 0 --approx_aci --Cprime 100 -C 1',
+    #    queue='icemem48gbq',
+    #    )
+
+   
     C = [0.01, 0.1, 1, 10, 100, 1e3, 1e4, 1e5]
     for c in C:
+        pass
         make_job(
-            '2012.10.25.exp_baseline_Lsdloss_x1000_C{}',
-            'mpirun -np $NP python learn_svm_batch.py \
-                --parallel \
-                --loss squareddiff --loss_factor 1000 \
-                --loss -C {}'.format(c),
-            )
+            '2012.10.26.exp_latent_DACI_crop10_Lsdloss_x1000_C{}'.format(c),
+            'mpirun -np $NP python learn_svm_batch.py ' \
+                '--parallel --crop 10 '\
+                '--loss squareddiff --loss_factor 1000 '\
+                '--latent --approx_aci -C {} '.format(c))
+    
+        for cprime in C:
+            make_job(
+                '2012.10.26.exp_latent_DACI_crop10_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                'mpirun -np $NP python learn_svm_batch.py ' \
+                    '--parallel --crop 10 '\
+                    '--loss none --loss_factor 1000 '\
+                    '--latent --approx_aci --Cprime {} -C {} '.format(cprime, c))
+ 
+        make_job(
+            '2012.10.29.exp_baseline_Lsdloss_x1000_C{}'.format(c),
+            'mpirun -np $NP python learn_svm_batch.py ' \
+                '--parallel '\
+                '--loss squareddiff --loss_factor 1000 '\
+                '-C {} '.format(c))
 
+        for cprime in C:
+            make_job(
+                '2012.10.29.exp_baseline_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                'mpirun -np $NP python learn_svm_batch.py '\
+                    '--parallel '\
+                    '--loss none --loss_factor 1000 '\
+                    '--Cprime {} -C {} '.format(cprime, c))
 
     #make_job(
     #    '2012.10.25.exp_handtuned_entropy',

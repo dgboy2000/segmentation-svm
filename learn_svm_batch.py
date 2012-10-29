@@ -277,7 +277,7 @@ class SVMSegmenter(object):
                 if len(images) == self.select_vol.stop:
                     break 
 
-            if self.crop:
+            if self.select_vol.stop is not None:
                 ## random select 50 training images
                 iselect = np.arange(len(images))[self.select_vol]
                 iselect = iselect[np.random.randint(
@@ -295,127 +295,109 @@ class SVMSegmenter(object):
             self.training_set = (images, segmentations, metadata) 
 
 
-        
+ 
     def train_svm(self,test,outdir=''):
-        ## instantiate functors
-        self.svm_rwmean_api = SVMRWMeanAPI(
-            self.prior, 
-            self.laplacian_functions, 
-            self.labelset,
-            self.rwparams_svm,
-            prior_models=self.prior_functions,   
-            seeds=self.seeds,
-            **self.svm_api_params
-            )
-        if self.isroot:
-            images, segmentations, metadata = self.training_set
-            try:
-                import time                
-                ## learn struct svm
-                logger.debug('started root learning')
-                if self.use_latent:
-                    if self.one_iteration:
-                        self.svmparams.pop('latent_niter_max',0) # remove kwarg
-                        self.svm = latent_svm.LatentSVM(
-                            self.svm_rwmean_api.compute_loss,
-                            self.svm_rwmean_api.compute_psi,
-                            self.svm_rwmean_api.compute_mvc,
-                            self.svm_rwmean_api.compute_aci,
-                            one_iteration=self.one_iteration,
-                            latent_niter_max=1,
-                            **self.svmparams
-                            )
-
-                        # if we're computing one iteration at a time
-                        if os.path.isfile(outdir + 'niter.txt'):
-                            ## continue previous work
-                            niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
-                            ys = np.load(outdir + 'ys.npy')
-                            w = np.loadtxt(outdir + 'w_{}.txt'.format(niter))
-                            
-                            curr_iter = niter + 1
-                            logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
-                            w,xi,ys,info = self.svm.train(
-                                images, 
-                                segmentations, 
-                                metadata, 
-                                w0=w, 
-                                init_latents=ys, 
-                                **self.trainparams)
-                        else:
-                            ## start learning
-                            niter = 1
-                            w0 = self.hand_tuned_w
-                            logger.info('latent svm: first iteration. w0 = {}'.format(w0))
-                            w,xi,ys,info = self.svm.train(
-                                images, segmentations, metadata, w0=w0, **self.trainparams)
-                           
-                        # save output for next iteration
-                        if not self.debug and not info['converged']:
-                            np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
-                            np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
-                            np.save(outdir + 'ys.npy', ys)
-                            
-                            logger.warning('Exiting program. Run script again to continue.')
-                            if self.use_parallel:
-                                for n in range(1, self.MPI_size):
-                                    self.comm.send(('stop',1, {}),dest=n)
-                            logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
-
-                    else:
-                        ## do all iterations
-                        self.svm = latent_svm.LatentSVM(
-                            self.svm_rwmean_api.compute_loss,
-                            self.svm_rwmean_api.compute_psi,
-                            self.svm_rwmean_api.compute_mvc,
-                            self.svm_rwmean_api.compute_aci,
-                            one_iteration=self.one_iteration,
-                            **self.svmparams
-                            )
-
-                        logger.info('latent svm: start all iterations')
-                        w0 = self.hand_tuned_w
-                        w,xi,ys,info = self.svm.train(
-                            images, segmentations, metadata, w0=w0, **self.trainparams)
-                
-                else:
-                    ## baseline: use binary ground truth with struct SVM
-                    self.svm = struct_svm.StructSVM(
+        images, segmentations, metadata = self.training_set
+        try:
+            import time                
+            ## learn struct svm
+            logger.debug('started root learning')
+            wref = self.hand_tuned_w
+            if self.use_latent:
+                if self.one_iteration:
+                    self.svmparams.pop('latent_niter_max',0) # remove kwarg
+                    self.svm = latent_svm.LatentSVM(
                         self.svm_rwmean_api.compute_loss,
                         self.svm_rwmean_api.compute_psi,
                         self.svm_rwmean_api.compute_mvc,
+                        self.svm_rwmean_api.compute_aci,
+                        one_iteration=self.one_iteration,
+                        latent_niter_max=1,
                         **self.svmparams
-                        )                  
+                        )
+
+                    # if we're computing one iteration at a time
+                    if os.path.isfile(outdir + 'niter.txt'):
+                        ## continue previous work
+                        niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
+                        ys = np.load(outdir + 'ys.npy')
+                        w = np.loadtxt(outdir + 'w_{}.txt'.format(niter))
+                        
+                        curr_iter = niter + 1
+                        logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
+                        w,xi,ys,info = self.svm.train(
+                            images, 
+                            segmentations, 
+                            metadata, 
+                            w0=w,
+                            wref=wref, 
+                            init_latents=ys, 
+                            **self.trainparams)
+                    else:
+                        ## start learning
+                        niter = 1
+                        w0 = self.hand_tuned_w
+                        logger.info('latent svm: first iteration. w0 = {}'.format(w0))
+                        w,xi,ys,info = self.svm.train(
+                            images, segmentations, metadata, w0=w0, wref=wref, **self.trainparams)
+                       
+                    # save output for next iteration
+                    if not self.debug and not info['converged']:
+                        np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
+                        np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
+                        np.save(outdir + 'ys.npy', ys)
+                        
+                        #logger.warning('Exiting program. Run script again to continue.')
+                        if self.use_parallel:
+                            for n in range(1, self.MPI_size):
+                                self.comm.send(('stop',1, {}),dest=n)
+                        logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
+
+                else:
+                    ## do all iterations
+                    self.svm = latent_svm.LatentSVM(
+                        self.svm_rwmean_api.compute_loss,
+                        self.svm_rwmean_api.compute_psi,
+                        self.svm_rwmean_api.compute_mvc,
+                        self.svm_rwmean_api.compute_aci,
+                        one_iteration=self.one_iteration,
+                        **self.svmparams
+                        )
+
+                    logger.info('latent svm: start all iterations')
                     w0 = self.hand_tuned_w
-                    w,xi,info = self.svm.train(images, segmentations, metadata, w=w0, **self.trainparams)
-                
-            except Exception as e:
-                import traceback
-                logger.error('{}: {}'.format(e.message, e.__class__.__name__))
-                traceback.print_exc()
-                import ipdb; ipdb.set_trace()
-            finally:
-                ##kill signal
-                if self.use_parallel:
-                    logger.info('root finished training svm on {}. about to kill workers'\
-                        .format(test))
-                    for n in range(1, self.MPI_size):
-                        logger.debug('sending kill signal to worker #{}'.format(n))
-                        self.comm.send(('stop',None,{}),dest=n)
-                return w,xi,info
-                
-        else:
-            ## parallel loss augmented inference
-            rank = self.MPI_rank
-            logger.debug('started worker #{}'.format(rank))
+                    w,xi,ys,info = self.svm.train(
+                        images, segmentations, metadata, w0=w0, wref=wref, **self.trainparams)
             
-            worker = svm_worker.SVMWorker(self.svm_rwmean_api)
-            worker.work()
-            logger.debug('worker #{} about to exit'.format(rank))
-            sys.exit(0)
-        
-        
-        
+            else:
+                ## baseline: use binary ground truth with struct SVM
+                self.svm = struct_svm.StructSVM(
+                    self.svm_rwmean_api.compute_loss,
+                    self.svm_rwmean_api.compute_psi,
+                    self.svm_rwmean_api.compute_mvc,
+                    **self.svmparams
+                    )                  
+                w0 = self.hand_tuned_w
+                w,xi,info = self.svm.train( 
+                    images, segmentations, metadata, 
+                    w0=w0, wref=wref, **self.trainparams)
+
+        except Exception as e:
+            import traceback
+            logger.error('{}: {}'.format(e.message, e.__class__.__name__))
+            traceback.print_exc()
+            #import ipdb; ipdb.set_trace()
+        finally:
+            ##kill signal
+            if self.use_parallel:
+                logger.info('root finished training svm on {}. about to kill workers'\
+                    .format(test))
+                for n in range(1, self.MPI_size):
+                    logger.debug('sending kill signal to worker #{}'.format(n))
+                    self.comm.send(('stop',None,{}),dest=n)
+            return w,xi
+            #logger.debug('worker #{} about to exit'.format(rank))
+  
         
     def run_svm_inference(self,test,w, test_dir):
         logger.info('running inference on: {}'.format(test))
@@ -589,9 +571,9 @@ class SVMSegmenter(object):
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
                 
-            io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
-            np.save(outdir + 'y.npy',y)        
-            io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
+            #io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
+            #np.save(outdir + 'y.npy',y)        
+            #io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
             np.savetxt(outdir + 'objective.txt', [obj])
             np.savetxt(
                 outdir + 'dice.txt', 
@@ -631,14 +613,32 @@ class SVMSegmenter(object):
             outdir = self.dir_svm + test_dir
             if not self.debug and not os.path.isdir(outdir):
                 os.makedirs(outdir)
-                
-            w,xi,info = self.train_svm(test,outdir=outdir)
-            
-            if self.debug:
-                pass
-            elif self.isroot:
-                np.savetxt(outdir + 'w',w)
-                np.savetxt(outdir + 'xi',[xi])     
+
+            ## instantiate functors
+            self.svm_rwmean_api = SVMRWMeanAPI(
+            self.prior, 
+            self.laplacian_functions, 
+            self.labelset,
+            self.rwparams_svm,
+            prior_models=self.prior_functions,   
+            seeds=self.seeds,
+            **self.svm_api_params
+            )           
+
+            if self.isroot:
+                w,xi = self.train_svm(test,outdir=outdir)
+                if self.debug:
+                    pass
+                elif self.isroot:
+                    np.savetxt(outdir + 'w',w)
+                    np.savetxt(outdir + 'xi',[xi])     
+            else:
+                ## parallel 
+                rank = self.MPI_rank
+                logger.debug('started worker #{}'.format(rank))                
+                worker = svm_worker.SVMWorker(self.svm_rwmean_api)
+                worker.work()
+
         else:
             if self.isroot and not self.retrain:    
                 outdir = self.dir_svm + test
@@ -654,7 +654,14 @@ class SVMSegmenter(object):
     
     def process_all_samples(self,sample_list,fold=None):
         for test in sample_list:
+            if self.isroot:
+                logger.info('--------------------------')
+                logger.info('test data: {}'.format(test))
             self.process_sample(test, fold)
+        #if self.isroot:
+        #   for n in range(1, self.MPI_size):
+        #       logger.debug('sending kill signal to worker #{}'.format(n))
+        #       self.comm.send(('stop',None,{}),dest=n)
     
 ##------------------------------------------------------------------------------
 
@@ -797,6 +804,6 @@ if __name__=='__main__':
         
     #sample_list = ['01/']
     for fold in config.folds:
-        svm_segmenter.process_all_samples(fold, fold=fold)
-
+        svm_segmenter.process_all_samples(fold, fold=fold) 
+    sys.exit(1)
     

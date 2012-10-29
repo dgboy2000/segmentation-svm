@@ -193,7 +193,7 @@ class StructSVM(object):
             return False
              
     def current_solution(self, W, gtpsis, w0=None, scale_only=False, wref=None):
-        w,xi = self.solver.solve(W,gtpsis,w0=w0,scale_only=scale_only, wref=None)
+        w,xi = self.solver.solve(W,gtpsis,w0=w0,scale_only=scale_only, wref=wref)
         return w,xi
 
     def objective(self,w,xi,wref=None):
@@ -223,17 +223,12 @@ class StructSVM(object):
        
         ## parameters
         scale_only = kwargs.pop('scale_only', False)
-        w = kwargs.pop('w', None)
+        w0 = kwargs.pop('w0', None)
         wref = kwargs.pop('wref', None)
  
         ## log psis
         logger.debug('ground truth psis: {}'.format(self.print_psis(gtpsis)))
 
-        ## initial w
-        if w is not None:
-            w0 = [wi for wi in w]
-        else: w0 = None
- 
         ## test set for qp
         W = [] 
        

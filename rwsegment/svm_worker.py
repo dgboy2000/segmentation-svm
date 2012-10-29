@@ -3,7 +3,7 @@ import gc
 import mpi
 
 import utils_logging
-logger = utils_logging.get_logger('svm_worker',utils_logging.DEBUG)
+logger = utils_logging.get_logger('svm_worker',utils_logging.INFO)
 
 #from struct_svm import DataContainer
 
