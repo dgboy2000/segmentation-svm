@@ -157,7 +157,8 @@ def segment(
             **kwargs)
     else:
         x = solve_per_label(
-            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,
+            **kwargs)
         
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)
@@ -180,10 +181,12 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
+    laplacian_label_weights = kwargs.pop('laplacian_label_weights', 1.0)
+    Lweights = laplacian_label_weights*np.ones(nlabel)
     
     ## intermediary matrices
-    LL  = sparse.kron(np.eye(nlabel), Lu)
-    BB  = sparse.kron(np.eye(nlabel), B)
+    LL  = sparse.kron(np.diag(Lweights), Lu)
+    BB  = sparse.kron(np.diag(Lweights), B)
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
@@ -249,6 +252,8 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
+    laplacian_label_weights = kwargs.pop('laplacian_label_weights', 1.0)
+    Lweights = laplacian_label_weights*np.ones(nlabel)    
 
     ## if no laplacian, return prior
     if len(Lu.data)==0 or np.max(np.abs(Lu.data))<1e-10:
@@ -271,12 +276,11 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     for s in range(nlabel - 1):## don't need to solve the last one !
         x0 = np.asmatrix(np.c_[list_x0[s]])
         xm = np.asmatrix(np.c_[list_xm[s]])
-
         Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
-                
+        w = Lweights[s]
         ## solve
-        P = Lu + Omega
-        q = B*xm - Omega*x0
+        P = w*Lu + Omega
+        q = w*B*xm - Omega*x0
         
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -618,31 +622,52 @@ def compute_laplacian(
     '''
     
     im = np.asarray(image)
-    N  = im.size
-    
+    inds = np.arange(im.size).reshape(im.shape)
+
+    i = np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
+            for d in range(im.ndim)])]
+    j = np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
+            for d in range(im.ndim)])]
+
+    ## select only unknown pairs
+    if marked is not None:
+        is_unknown_i = np.logical_not(np.in1d(i,marked))
+        is_unknown_j = np.logical_not(np.in1d(j,marked))
+        is_border_p  = np.logical_xor(is_unknown_i, is_unknown_j)
+        is_unknown_p = np.logical_and(is_unknown_i, is_unknown_j)
+        is_both_p    = np.logical_or(is_border_p, is_unknown_p) 
+        i = i[is_both_p]
+        j = j[is_both_p]
+
     ## compute weights
     logger.debug('compute L weights')
     if weight_function is None:
         # if no wf provided, use standard with provided beta
         weight_function = lambda x: weight_std(x,beta=beta)
-    ij, data = weight_function(im)
+    data = weight_function(im,i,j)
     
     ## affinity matrix
     logger.debug('laplacian matrix')
-    # import ipdb; ipdb.set_trace()
-    A = sparse.coo_matrix((data, ij), shape=(N,N))
+    A = sparse.coo_matrix((data, (i,j)), shape=(N,N))
     A = A + A.T
     
     ## laplacian matrix
     L = (sparse.spdiags(A.sum(axis=0),0,N,N) - A).tocsr()
     
     ## return laplacian
-    if marked is None and return_D:
-        D = A.sum(axis=0)
+    if marked is None:
+        D = A.sum(axis=0).A.ravel() 
         return L,D
-    elif marked is None:
-        return L
-        
+    else:
+        Lu = L[unknown, :][:, unknown]         
+        B =  L[unknown, :][:, border]
+        D = A.sum(axis=0).A.ravel()
+        return Lu, border, B, D 
+
+    ...
+
+
+
     ## if marked is not None,
     ## keep only unknown pixels, and marked pixels touching unknown
     logger.debug('decompose into Lu, B')
@@ -666,33 +691,42 @@ def compute_laplacian(
     
     
 ##------------------------------------------------------------------------------
-def weight_std(image, beta=1.0):
+def weight_std(image, i, j, beta=1.0):
     ''' standard weight function 
     
         for touching pixel pair (i,j),
             wij = exp (- beta (image.flat[i] - image.flat[j])^2)
     '''
     im = np.asarray(image)
-    
-    ## affinity matrix sparse data
-    data = np.exp( - beta * np.r_[tuple([
-        np.square(
-            im.take(np.arange(im.shape[d]-1), axis=d).ravel() - \
-            im.take(np.arange(1,im.shape[d]), axis=d).ravel(),
-            )
-        for d in range(im.ndim)
-        ])])
-    
-    ## affinity matrix sparse indices
-    inds = np.arange(im.size).reshape(im.shape)
-    ij = (
-        np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        )
-    
-    return ij, data
+    wij = np.exp(-beta * (images.flat[i] - images.flat[j])**2)
+    return wij
     
 ##------------------------------------------------------------------------------
-
+#def weight_std(image, beta=1.0):
+#    ''' standard weight function 
+#    
+#        for touching pixel pair (i,j),
+#            wij = exp (- beta (image.flat[i] - image.flat[j])^2)
+#    '''
+#    im = np.asarray(image)
+#    
+#    ## affinity matrix sparse data
+#    data = np.exp( - beta * np.r_[tuple([
+#        np.square(
+#            im.take(np.arange(im.shape[d]-1), axis=d).ravel() - \
+#            im.take(np.arange(1,im.shape[d]), axis=d).ravel(),
+#            )
+#        for d in range(im.ndim)
+#        ])])
+#    
+#    ## affinity matrix sparse indices
+#    inds = np.arange(im.size).reshape(im.shape)
+#    ij = (
+#        np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
+#            for d in range(im.ndim)])],
+#        np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
+#            for d in range(im.ndim)])],
+#        )
+#    
+#    return ij, data
+    

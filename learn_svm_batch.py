@@ -616,13 +616,13 @@ class SVMSegmenter(object):
 
             ## instantiate functors
             self.svm_rwmean_api = SVMRWMeanAPI(
-            self.prior, 
-            self.laplacian_functions, 
-            self.labelset,
-            self.rwparams_svm,
-            prior_models=self.prior_functions,   
-            seeds=self.seeds,
-            **self.svm_api_params
+                self.prior, 
+                self.laplacian_functions, 
+                self.labelset,
+                self.rwparams_svm,
+                prior_models=self.prior_functions,   
+                seeds=self.seeds,
+                **self.svm_api_params
             )           
 
             if self.isroot:
