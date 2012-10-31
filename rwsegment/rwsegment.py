@@ -158,7 +158,11 @@ def segment(
     else:
         x = solve_per_label(
             Lu,B,list_xm,list_Omega,list_x0,**kwargs)
-        
+    
+    ## normalize x
+    x = np.clip(x, 0,1)
+    x = x / np.sum(x, axis=0) 
+
     ## reshape solution
     y = (seeds.ravel()==np.c_[labelset]).astype(float)
     y[:,unknown] = x

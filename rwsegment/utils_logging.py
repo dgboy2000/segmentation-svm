@@ -22,6 +22,8 @@ class LoggerInfo:
             result = self._format_free_memory()
         elif name == 'rank':
             result = 'process {}'.format(RANK)
+        elif name=='host':
+            result = 'host {}'.format(HOST)
         else:
             result = self.__dict__.get(name, '?')
         return result
@@ -31,7 +33,7 @@ class LoggerInfo:
         To allow iteration over keys, which will be merged into
         the LogRecord dict before formatting and output.
         """
-        keys = ['memory', 'rank']
+        keys = ['memory', 'rank', 'host']
         keys.extend(self.__dict__.keys())
         return keys.__iter__()
 
@@ -61,8 +63,10 @@ ADD_EXTRA_LOGGING_INFO = True
 try:
     from mpi4py import MPI
     RANK = MPI.COMM_WORLD.Get_rank()
+    HOST = MPI.Get_processor_name()
 except ImportError:
     RANK = 0
+    HOST = ''
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
@@ -74,7 +78,7 @@ def get_logger(name, log_level):
         # create formatter and add it to the handlers
         if ADD_EXTRA_LOGGING_INFO:
             formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(rank)s - %(memory)s - %(levelname)s - %(message)s')
+                '%(asctime)s - %(name)s - %(rank)s - %(host)s - %(memory)s - %(levelname)s - %(message)s')
         else:
             formatter = logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -86,7 +90,7 @@ def get_logger(name, log_level):
             
             ## Make sure that log directory exists
             if RANK == 0:
-                if not os.path.isdir(LOG_OUTPUT_DIR):
+                if not os.path.exists(LOG_OUTPUT_DIR):
                     os.makedirs(LOG_OUTPUT_DIR)
             else:
                 while not os.path.isdir(LOG_OUTPUT_DIR):
