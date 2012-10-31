@@ -236,13 +236,6 @@ class SVMRWMeanAPI(object):
         loss_weight = None
         L_loss      = None
         
-        #if switch_loss:
-        #    loss_type = 'approx'
-        #else:
-        #    loss_type = self.loss_type
-
-        #if iter==0:
-        #    loss_type = 'squareddiff'
         loss_type = self.loss_type
         if loss_type in ['ideal', 'none']:
             pass
@@ -277,6 +270,7 @@ class SVMRWMeanAPI(object):
             return_arguments=['y'],
             additional_laplacian=L_loss,
             additional_linear=addlin,
+            #laplacian_label_weights=,
             **self.rwparams
             )
             
@@ -333,6 +327,7 @@ class SVMRWMeanAPI(object):
             return_arguments=['y'],
             ground_truth=z,
             ground_truth_init=y0,
+            #laplacian_label_weights=,
             **self.rwparams
             )
         return y 
@@ -377,6 +372,7 @@ class SVMRWMeanAPI(object):
             seeds=seeds,
             weight_function=weight_function,
             return_arguments=['y'],
+            #laplacian_label_weights=,
             **self.rwparams
             )
 
@@ -397,6 +393,7 @@ class SVMRWMeanAPI(object):
             ground_truth=z,
             ground_truth_init=y0,
             seeds_prob=y_,
+            #laplacian_label_weights=,
             **self.rwparams
             )
         y[:,icorrect] = y_[:,icorrect]
@@ -469,6 +466,7 @@ class SVMRWMeanAPI(object):
                 seeds=seeds,
                 weight_function=weight_function,
                 return_arguments=['y'],
+                #laplacian_label_weights=,
                 **self.rwparams
                 )
 
