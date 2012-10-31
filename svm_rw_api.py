@@ -411,7 +411,7 @@ class SVMRWMeanAPI(object):
         return y                
 
     def compute_approximate_aci(self, w,x,z,y0,**kwargs):
-        logger.info('using approximate aci (Danny"s)')
+        logger.info("using approximate aci (Danny's)")
         islices = kwargs.pop('islices',None)
         imask = kwargs.pop('imask',None)
         iimask = kwargs.pop('iimask',None)
@@ -459,12 +459,12 @@ class SVMRWMeanAPI(object):
                 new_anchor = (anchor * weights + gt*gt_weights) / new_weights
                 return new_anchor, new_weights
                 
-        self.approx_aci_maxiter = 100
+        self.approx_aci_maxiter = 200
         self.approx_aci_maxstep = 1e-2
         z_weights = np.zeros(np.asarray(z).shape)
         z_label = np.argmax(z,axis=0)
         for i in range(self.approx_aci_maxiter):
-            logger.debug('approx aci (Danny"s), iter={}'.format(i))
+            logger.debug("approx aci, iter={}".format(i))
     
             ## add ground truth to anchor api
             modified_api = GroundTruthAnchor(anchor_api, z, z_weights)
@@ -480,7 +480,8 @@ class SVMRWMeanAPI(object):
                 )
 
             ## loss            
-            loss = self.compute_loss(z,y_, islices=islices)
+            #loss = self.compute_loss(z,y_, islices=islices)
+            loss = loss_functions.ideal_loss(z,y_,mask=mask)
             logger.debug('loss = {}'.format(loss))
             if loss < 1e-8: 
                 break

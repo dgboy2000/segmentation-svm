@@ -516,6 +516,7 @@ class SVMSegmenter(object):
                 ## loss3: laplacian loss
                 loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
                 logger.info('LAPloss (hand-tuned) = {}'.format(loss2))
+                break
  
         ## prior
         anchor_api = MetaAnchor(
