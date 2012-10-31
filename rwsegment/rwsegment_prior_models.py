@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import ndimage
-
 import rwsegment
 reload(rwsegment)
 from rwsegment import BaseAnchorAPI
@@ -8,6 +7,7 @@ from rwsegment import BaseAnchorAPI
 import  utils_logging
 logger = utils_logging.get_logger('rwsegment_prior_models',utils_logging.DEBUG)
 
+'''
 class PriorModel(BaseAnchorAPI):
     def __init__(self,*args, **kwargs):
         super(PriorModel,self).__init__(*args, **kwargs)
@@ -22,18 +22,19 @@ class PriorModel(BaseAnchorAPI):
         data = data[:,indices]
         weights = self.anchor_weight * np.ones((nlabel,len(indices)))
         return data, weights
+'''
 
-
-class Constant(PriorModel):
-   pass
- 
-class Uniform(PriorModel):
+class Constant(BaseAnchorAPI):
     def get_anchor_and_weights(self, D, indices):
-        data, weights = super(Uniform, self).get_anchor_and_weights(D,indices)
-        return self.anchor, weights * D
+        data, weights = super(Constant, self).get_anchor_and_weights(1, indices)
+        return data, weights # *1
+ 
+class Uniform(BaseAnchorAPI):
+    pass
     
-class Entropy(PriorModel):
-    def init_model(self):
+class Entropy(BaseAnchorAPI):
+    def __init__(self,*args, **kwargs):
+        super(Entropy,self).__init__(*args, **kwargs)
         nlabel = len(self.anchor['data'])
         prior = np.asarray(self.anchor['data'])
         entropy = -np.sum(np.log(prior + 1e-10)*prior,axis=0)
@@ -51,7 +52,7 @@ class Entropy_no_D(Entropy):
     def get_anchor_and_weights(self, D, indices):
         return super(Entropy_no_D, self).get_anchor_and_weights(1, indices)
     
-class Variance(PriorModel):
+class Variance(BaseAnchorAPI):
     def get_anchor_and_weights(self, D, indices):
         data, weights = super(Variance, self).get_anchor_and_weights(D,indices)
         inds1 = np.in1d(indices, self.imask)
@@ -65,7 +66,7 @@ class Variance_no_D(Variance):
     def get_anchor_and_weights(self, D, indices):
         return super(Variance_no_D, self).get_anchor_and_weights(1, indices)
  
-class Variance_no_D_Cmap(PriorModel):
+class Variance_no_D_Cmap(BaseAnchorAPI):
     def __init__(self, *args,**kwargs):
         im = kwargs.pop('image')
         super(Variance_no_D_Cmap,self).__init__(*args, **kwargs)
@@ -85,14 +86,11 @@ class Variance_no_D_Cmap(PriorModel):
         return data, weights * D
 
    
-class Intensity(PriorModel):
-    ## TODO: spatially parameterized intensity prior
+class Intensity(BaseAnchorAPI):
     def __init__(self, *args,**kwargs):
         self.image = kwargs.pop('image')
         super(Intensity,self).__init__(*args, **kwargs)
-        self.init_model()
         
-    def init_model(self):
         ## classify image
         nlabel = len(self.labelset)
         avg,var = self.anchor['intensity']
@@ -113,27 +111,4 @@ class Intensity(PriorModel):
         weights[:,inds1] *= self.intensity[:,inds2]
         return data, weights
 
-        
-# class CombinedConstantIntensity(Intensity):
-    # def init_model(self):
-        # super(CombinedConstantIntensity,self).init_model()
-        # nlabel, nnode = len(self.anchor['data']), len(self.anchor['data'][0])
-        
-        ##constant prior
-        # cprior = self.anchor['data']
-        # cweights = np.ones((nlabel,nnode))
-        
-        ##intensity prior
-        # iprior = self.prior['data']
-        # iweights = self.weights / np.mean(self.weights)
-        
-        ##combined weights
-        # weights = cweights + iweights
-        # prior = (cweights*cprior + iweights*iprior) / weights
-        
-        # self.prior = {
-            # 'imask': self.anchor['imask'],
-            # 'data': prior,
-            # }
-        # self.weigths = weights
         

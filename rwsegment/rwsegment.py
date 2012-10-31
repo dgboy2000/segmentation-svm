@@ -5,12 +5,9 @@
     Pierre-Yves Baudin 2012
 '''
 
-
 import sys
 import os
 import numpy as np
-
-
 from scipy import sparse
         
 import utils_logging
@@ -26,14 +23,14 @@ class BaseAnchorAPI(object):
     def get_labelset(self):
         return self.labelset
     
-    def get_anchor_and_weights(self, D, indices):
+    def get_anchor_and_weights(self, list_D, indices):
         nlabel = len(self.labelset)
         N = np.maximum(np.max(self.imask), np.max(indices))+ 1
-        data = 1./nlabel * np.ones((nlabel,N))
-        data[:,self.imask] = self.anchor['data']
-        data = data[:,indices]
-        weights = self.anchor_weight * np.ones((nlabel,len(indices))) * D
-        return data, weights
+        omega = 1./nlabel * np.ones((nlabel,N))
+        omega[:,self.imask] = self.anchor['data']
+        omega = omega[:,indices]
+        weights = self.anchor_weight * np.ones(omega.shape) * np.asarray(list_D)
+        return omega, weights
         
 ##------------------------------------------------------------------------------
 def segment(
@@ -84,35 +81,34 @@ def segment(
 
     ## parameters
     beta    = kwargs.pop('beta', 1.)
-    wanchor   = kwargs.pop('wanchor', 1.) # TODO: consolidate this as part of anchor function
     per_label = kwargs.pop('per_label',True)
     
-    ## compute laplacian
-    logger.debug('compute laplacian')
-        
-    Lu, border, B,D = compute_laplacian(
-        image,
-        marked=marked,
-        beta=beta, 
-        weight_function=weight_function,
-        return_D=True,
-        )
-
-    ## anchor function:
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(D, unknown)
-        
     ## ground truth
     ground_truth = kwargs.pop('ground_truth',None)
     ground_truth_init = kwargs.pop('ground_truth_init',None)
        
     ## seeds values 
     seeds_prob = kwargs.pop('seeds_prob', None)
- 
+    
+    ## compute laplacian
+    logger.debug('compute laplacian')
+    list_Lu, list_B, list_D, border = compute_laplacians(
+        image,
+        marked=marked,
+        beta=beta, 
+        weight_function=weight_function,
+        )
+    if len(list_Lu)==1:
+        list_Lu = [list_Lu[0] for i in range(nlabel)]
+        list_B  = [list_B[0]  for i in range(nlabel)]
+        list_D  = [list_D[0]  for i in range(nlabel)]
+        
+    ## anchor function
+    list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown)
+       
     ## per label lists of vectors
-    list_x0, list_Omega, list_xm, list_GT, list_GT_init = [],[],[],[],[]
+    list_xm, list_GT, list_GT_init = [],[],[]
     for l in range(nlabel):
-        list_x0.append(anchor[l])
-        list_Omega.append(wanchor * anchor_weights[l])
         
         if seeds_prob is not None:
             list_xm.append(seeds_prob[l][border])
@@ -150,14 +146,14 @@ def segment(
     ## solve RW system
     if ground_truth is not None or not per_label:
         x = solve_at_once(
-            Lu,B,list_xm,list_Omega,list_x0, 
+            list_Lu, list_B, list_xm, list_Omega, list_x0, 
             list_GT=list_GT, list_GT_init=list_GT_init, 
             additional_laplacian=addL,
             additional_linear=addq,
             **kwargs)
     else:
         x = solve_per_label(
-            Lu,B,list_xm,list_Omega,list_x0,
+            list_Lu, list_B, list_xm, list_Omega, list_x0,
             **kwargs)
         
     ## reshape solution
@@ -177,16 +173,18 @@ def segment(
     else: return tuple(rargs)
     
     
-def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
+def solve_at_once(list_Lu, list_B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     
     nlabel = len(list_xm)
-    laplacian_label_weights = kwargs.pop('laplacian_label_weights', 1.0)
-    Lweights = laplacian_label_weights*np.ones(nlabel)
     
     ## intermediary matrices
-    LL  = sparse.kron(np.diag(Lweights), Lu)
-    BB  = sparse.kron(np.diag(Lweights), B)
+    #if len(list_Lu)==1:
+    #    LL  = sparse.kron(np.eye(nlabel), list_Lu[0])
+    #    BB  = sparse.kron(np.eye(nlabel), list_B[0])
+    #else:
+    LL = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,Lu)] for i,Lu in enumerate(list_Lu)])
+    BB = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,B)]  for i,Lu in enumerate(list_B)])
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
@@ -248,20 +246,12 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, list_GT=[], **kwargs):
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
-def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
+def solve_per_label(list_Lu, list_B, list_xm, list_Omega, list_x0, **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
-    
     nlabel = len(list_xm)
-    laplacian_label_weights = kwargs.pop('laplacian_label_weights', 1.0)
-    Lweights = laplacian_label_weights*np.ones(nlabel)    
-
-    ## if no laplacian, return prior
-    if len(Lu.data)==0 or np.max(np.abs(Lu.data))<1e-10:
-       x = list_x0
-       return x
     
     ## compute separately for each label (best)
-    nvar = Lu.shape[0]
+    nvar = list_Lu[0].shape[0]
     x = np.zeros((nlabel,nvar))
 
     ## solver
@@ -271,16 +261,29 @@ def solve_per_label(Lu,B,list_xm,list_Omega,list_x0, **kwargs):
     
     ## compute tolerance depending on the Laplacian
     rtol = kwargs.pop('rtol', 1e-6)
-    tol = np.maximum(np.max(Lu.data),np.max(list_Omega))*rtol
-    logger.debug('absolute CG tolerance = {}'.format(tol))
+    
     for s in range(nlabel - 1):## don't need to solve the last one !
-        x0 = np.asmatrix(np.c_[list_x0[s]])
-        xm = np.asmatrix(np.c_[list_xm[s]])
+        Lu = list_Lu[s]
+        B  = list_B[s]
+        
+        ## prior
         Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
-        w = Lweights[s]
+        x0 = np.asmatrix(np.c_[list_x0[s]])
+        
+        ## if no laplacian
+        if len(Lu.data)==0 or np.max(np.abs(Lu.data))<1e-10:
+            x[s] = x0.ravel()
+            
+        ## set tolerance
+        tol = np.maximum(np.max(Lu.data),np.max(list_Omega[s]))*rtol
+        logger.debug('absolute CG tolerance = {}'.format(tol))
+        
+        ## seeds
+        xm = np.asmatrix(np.c_[list_xm[s]].astype(float))
+        
         ## solve
-        P = w*Lu + Omega
-        q = w*B*xm - Omega*x0
+        P = Lu + Omega
+        q = B*xm - Omega*x0
         
         if P.nnz==0:
             logger.warning('in QP, P=0. Returning 1-(q>0)') 
@@ -468,7 +471,6 @@ def energy_anchor(
         x,
         anchor_api,
         seeds=[],
-        # anchor_function=None,
         weight_function=None,
         **kwargs
         ):
@@ -481,24 +483,21 @@ def energy_anchor(
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
     nunknown    = unknown.size
+    beta        = kwargs.pop('beta', 1.)
     
-    beta    = kwargs.pop('beta', 1.)
-    
-    ## anchor function:
-    # D = compute_D(  
-            # image, 
-            # marked=marked, 
-            # weight_function=weight_function,
-            # beta=beta)
-    # anchor, anchor_weights = anchor_api.get_anchor_and_weights(D)
-    anchor, anchor_weights = anchor_api.get_anchor_and_weights(1, unknown)
-    
-    ## per label lists of vectors
-    list_x0, list_Omega, list_xm = [],[],[]
-    for l in range(nlabel):
-        list_x0.append(anchor[l])
-        list_Omega.append(anchor_weights[l])
-    
+    ## anchor function
+    logger.debug('compute laplacian')
+    list_Lu, list_B, list_D, border = compute_laplacians(
+        image,
+        marked=marked,
+        beta=beta, 
+        weight_function=weight_function,
+        )
+    if len(list_D)==1:
+        list_D  = [list_D[0]  for i in range(nlabel)]
+        
+    #import ipdb; ipdb.set_trace()
+    list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown) ## D ?
     
     en = 0
     for label in range(nlabel):
@@ -523,15 +522,23 @@ def energy_rw(
     labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
-    nunknown    = unknown.size
+    beta        = kwargs.pop('beta', 1.)
     
-    beta    = kwargs.pop('beta', 1.)
-    
-    ## generate segmentation vector
     ## compute laplacian
     logger.debug('compute laplacian')
+    list_Lu, list_B, list_D, border = compute_laplacians(
+        image,
+        marked=marked,
+        beta=beta, 
+        weight_function=weight_function,
+        )
+    if len(list_Lu)==1:
+        list_Lu = [list_Lu[0] for i in range(nlabel)]
+        list_B  = [list_B[0]  for i in range(nlabel)]
+    
+    '''
     try:
-        L, border, B = compute_laplacian(
+        L, border, B, D = compute_laplacian(
             image,
             marked=marked,
             beta=beta, 
@@ -544,58 +551,32 @@ def energy_rw(
         logger.error(
             'Memory error computing Laplacian in process #{}'\
             .format(mpi.RANK))
-        L, border, B = compute_laplacian(
+        L, border, B, D = compute_laplacian(
             image,
             marked=marked,
             beta=beta, 
             weight_function=weight_function,
             )
-         
+    '''    
         
     ## compute energy
     en = 0.0
     for label in range(nlabel):
         X = np.asmatrix(x[label][unknown]).T
-        en += X.T * L * X
+        en += X.T * list_Lu[label] * X
+        
+        ## seeds !!
+        xm = seeds.ravel()[border]==labelset[label]
+        en += X.T * list_B[label] * np.mat(xm.reshape((-1,1)))
     return float(en)
+
     
 ##------------------------------------------------------------------------------
-def compute_D(
+def compute_laplacians(
         image, 
         marked=None,
         beta=1., 
         weight_function=None,
-        ):
-    im = np.asarray(image)
-    N  = im.size
-    
-    ## compute weights
-    logger.debug('compute D')
-    if weight_function is None:
-        # if no wf provided, use standard with provided beta
-        weight_function = lambda x: weight_std(x,beta=beta)
-    ij, data = weight_function(im)
-    
-    ## affinity matrix
-    A = sparse.coo_matrix((data, ij), shape=(N,N))
-    A = A + A.T
-    
-    D = np.asarray(A.sum(axis=0)).ravel()
-    
-    if marked is None:
-        return D
-    else:
-        unknown = np.setdiff1d(np.arange(im.size), marked, assume_unique=True)
-        D[unknown]
-        return D
-    
-##------------------------------------------------------------------------------
-def compute_laplacian(
-        image, 
-        marked=None,
-        beta=1., 
-        weight_function=None,
-        return_D=False,
         ):
     ''' compute laplacian matrix for using with Random Walks
     args:
@@ -604,91 +585,70 @@ def compute_laplacian(
         beta    : contrast parameter for default weight_function:
             for touching pixel pair (i,j),
             wij = exp (- beta (image.flat[i] - image.flat[j])^2)
-            
+           
         weight_function : user function to compute edge weights
-            must return: (ij, data), 
-            where ij[0][k]  = indices of vertex #0 in pair #k
-                  ij[1][k]  = indices of vertex #1 in pair #k
-                  data[k]   = weight of pair #k
-            Pairs are included once: if (m,n) is included, (n,m) is not.
-            
-    return args:
-        L       : laplacian matrix (for unmarked pixels only)
-        
-        Only if marked is provided:
-        border  : indices of marked pixels touching unknown ones
-        B       : laplacian matrix for (unknown, border) pairs
-    
     '''
     
     im = np.asarray(image)
+    npix = im.size
     inds = np.arange(im.size).reshape(im.shape)
 
-    i = np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
+    all_i = np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
             for d in range(im.ndim)])]
-    j = np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
+    all_j = np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
             for d in range(im.ndim)])]
 
     ## select only unknown pairs
     if marked is not None:
-        is_unknown_i = np.logical_not(np.in1d(i,marked))
-        is_unknown_j = np.logical_not(np.in1d(j,marked))
-        is_border_p  = np.logical_xor(is_unknown_i, is_unknown_j)
-        is_unknown_p = np.logical_and(is_unknown_i, is_unknown_j)
-        is_both_p    = np.logical_or(is_border_p, is_unknown_p) 
-        i = i[is_both_p]
-        j = j[is_both_p]
-
+        is_unknown = np.ones(npix, dtype=bool)
+        is_unknown[marked] = False
+        is_unknown_i = is_unknown[all_i]
+        is_unknown_j = is_unknown[all_j]
+        is_unknown_p = np.logical_or(is_unknown_i, is_unknown_j)
+        i = all_i[is_unknown_p]
+        j = all_j[is_unknown_p]
+        
+        unknown = np.where(is_unknown)[0]
+        is_border_p = np.logical_xor(is_unknown_i, is_unknown_j)
+        is_border_i = np.logical_and(np.logical_not(is_unknown_i), is_border_p)
+        is_border_j = np.logical_and(np.logical_not(is_unknown_j), is_border_p)
+        border = np.union1d(all_i[is_border_i], all_j[is_border_j])        
+    else:
+        i = all_i
+        j = all_j
+        
     ## compute weights
     logger.debug('compute L weights')
     if weight_function is None:
         # if no wf provided, use standard with provided beta
-        weight_function = lambda x: weight_std(x,beta=beta)
-    data = weight_function(im,i,j)
-    
-    ## affinity matrix
-    logger.debug('laplacian matrix')
-    A = sparse.coo_matrix((data, (i,j)), shape=(N,N))
-    A = A + A.T
-    
-    ## laplacian matrix
-    L = (sparse.spdiags(A.sum(axis=0),0,N,N) - A).tocsr()
-    
-    ## return laplacian
-    if marked is None:
-        D = A.sum(axis=0).A.ravel() 
-        return L,D
-    else:
-        Lu = L[unknown, :][:, unknown]         
-        B =  L[unknown, :][:, border]
-        D = A.sum(axis=0).A.ravel()
-        return Lu, border, B, D 
-
-    ...
-
-
-
-    ## if marked is not None,
-    ## keep only unknown pixels, and marked pixels touching unknown
-    logger.debug('decompose into Lu, B')
-    unknown = np.setdiff1d(np.arange(im.size), marked, assume_unique=True)
-    
-    mask = np.ones(im.shape, dtype=int)
-    mask.flat[unknown] = 0
-    ijborder = (mask.flat[ij[0]] + mask.flat[ij[1]])==1
-    mask.flat[ij[0][ijborder]] *= 2
-    mask.flat[ij[1][ijborder]] *= 2
-    border = np.where(mask.ravel()>=2)[0]
-
-    Lu = L[unknown,:][:,unknown]
-    B  = L[unknown,:][:,border]
-    
-    if return_D:
-        D = np.asarray(A.sum(axis=0)).flat[unknown]
-        return Lu,border,B,D
-    else:
-        return Lu,border,B
-    
+        weight_function = lambda x,i,j: weight_std(x,i,j,beta=beta)
+        
+    ## weight function may depend on label
+    list_Lu, list_B, list_D = [], [], []
+    for data in  weight_function(im,i,j):
+        ## affinity matrix
+        logger.debug('laplacian matrix')
+        A = sparse.coo_matrix((data, (i,j)), shape=(npix,npix))
+        A = A + A.T
+        
+        ## laplacian matrix
+        L = (sparse.spdiags(A.sum(axis=0),0,npix,npix) - A).tocsr()
+        
+        ## return laplacian
+        if marked is None:
+            Lu = L 
+            B  = sparse.coo_matrix((0,0))
+            D  = np.asarray(A.sum(axis=0))
+        else:
+            Lu = L[unknown,:][:,unknown]
+            B  = L[unknown,:][:,border]
+            D = np.asarray(A.sum(axis=0)).flat[unknown]
+        
+        list_Lu.append(Lu)
+        list_B.append(B)
+        list_D.append(D)
+        
+    return list_Lu, list_B, list_D, border
     
 ##------------------------------------------------------------------------------
 def weight_std(image, i, j, beta=1.0):
@@ -698,35 +658,6 @@ def weight_std(image, i, j, beta=1.0):
             wij = exp (- beta (image.flat[i] - image.flat[j])^2)
     '''
     im = np.asarray(image)
-    wij = np.exp(-beta * (images.flat[i] - images.flat[j])**2)
-    return wij
-    
-##------------------------------------------------------------------------------
-#def weight_std(image, beta=1.0):
-#    ''' standard weight function 
-#    
-#        for touching pixel pair (i,j),
-#            wij = exp (- beta (image.flat[i] - image.flat[j])^2)
-#    '''
-#    im = np.asarray(image)
-#    
-#    ## affinity matrix sparse data
-#    data = np.exp( - beta * np.r_[tuple([
-#        np.square(
-#            im.take(np.arange(im.shape[d]-1), axis=d).ravel() - \
-#            im.take(np.arange(1,im.shape[d]), axis=d).ravel(),
-#            )
-#        for d in range(im.ndim)
-#        ])])
-#    
-#    ## affinity matrix sparse indices
-#    inds = np.arange(im.size).reshape(im.shape)
-#    ij = (
-#        np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
-#            for d in range(im.ndim)])],
-#        np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
-#            for d in range(im.ndim)])],
-#        )
-#    
-#    return ij, data
+    wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
+    return [wij]
     

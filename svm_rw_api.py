@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from rwsegment import rwsegment
 from rwsegment.rwsegment import BaseAnchorAPI
 from rwsegment import loss_functions
@@ -64,13 +65,22 @@ class MetaLaplacianFunction(object):
         self.w = w
         self.laplacian_functions = laplacian_functions
         
-    def __call__(self,im):
+    def __call__(self,im,i,j):
         ''' meta weight function'''
-        data = 0
-        for iwf,wf in enumerate(self.laplacian_functions):
-            ij,_data = wf(im)
-            data += self.w[iwf]*_data
-        return ij, data
+        weights = None
+        for k,function in enumerate(self.laplacian_functions):
+            data = [self.w[k]*val for val in function(im,i,j)]
+            if weights==None: 
+                weights = data
+            elif len(weights)==1 and len(data)>1:
+                weight = weights[0]
+                weights = [weight + d for d in data]
+            elif len(weights)==len(data):
+                weights = [old + d for old,d in zip(weights,data)]
+            else:
+                logger.error('weight functions yield different number of labels')
+                sys.exit(1)
+        return weights
             
                
 class SVMRWMeanAPI(object):
@@ -466,7 +476,6 @@ class SVMRWMeanAPI(object):
                 seeds=seeds,
                 weight_function=weight_function,
                 return_arguments=['y'],
-                #laplacian_label_weights=,
                 **self.rwparams
                 )
 
@@ -476,9 +485,6 @@ class SVMRWMeanAPI(object):
             if loss < 1e-8: 
                 break
             
-            #inc = np.where(z_label!=np.argmax(y_,axis=0))[0]
-            #print len(inc), inc
-            #import ipdb; ipdb.set_trace()
             ## uptade weights
             delta = np.max(y_ - y_[z_label, np.arange(y_.shape[1])], axis=0)
             delta = np.clip(delta, 0, self.approx_aci_maxstep)

@@ -3,77 +3,36 @@ import os
 import numpy as np
 
 
-'''
-weight_functions = {
-    # 'std_b10'     : lambda im: weight_std(im, beta=10),
-    # 'std_b50'     : lambda im: weight_std(im, beta=50),
-    # 'std_b100'    : lambda im: weight_std(im, beta=100),
-    # 'inv_b100o1'    : lambda im: weight_inv(im, beta=100,offset=1),
-    # 'pdiff_r1b50'   : lambda im: weight_patch_diff(im, r0=1, beta=50),
-    'pdiff_r1b100'   : lambda im: weight_patch_diff(im, r0=1, beta=100),
-    }
-'''
 import utils_logging
 logger = utils_logging.get_logger('weigth_functions',utils_logging.INFO)
 
-def weight_std(image, beta=1.0):
-    ''' standard weight function '''
+
+def weight_std(image, i, j, beta=1.0):
+    ''' standard weight function 
+    
+        for touching pixel pair (i,j),
+            wij = exp (- beta (image.flat[i] - image.flat[j])^2)
+    '''
     im = np.asarray(image)
-    
-    ## affinity matrix sparse data
-    data = np.exp( - beta * np.r_[tuple([
-        np.square(
-            im.take(np.arange(im.shape[d]-1), axis=d).ravel() - \
-            im.take(np.arange(1,im.shape[d]), axis=d).ravel(),
-            )
-        for d in range(im.ndim)
-        ])])
-    
-    ## affinity matrix sparse indices
-    inds = np.arange(im.size).reshape(im.shape)
-    ij = (
-        np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        )
-    
-    return ij, data
-    
+    wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
+    return [wij]
+
 ##------------------------------------------------------------------------------
-def weight_inv(image, beta=1., offset=1.):
+def weight_inv(image, i, j, beta=1., offset=1.):
     ''' inverse weight function '''
     im = np.asarray(image)
-    
-    ## affinity matrix sparse data
-    data = np.r_[tuple([
-        np.abs(
-            im.take(np.arange(im.shape[d]-1), axis=d).ravel() - \
-            im.take(np.arange(1,im.shape[d]), axis=d).ravel(),
-            )
-        for d in range(im.ndim)
-        ])]
-    data = 1. / (offset + beta*data)
-    logger.debug('(weight value spread: {:.2}-{:.2})'.format(
-        np.min(data), np.max(data)))
-    
-    ## affinity matrix sparse indices
-    inds = np.arange(im.size).reshape(im.shape)
-    ij = (
-        np.r_[tuple([inds.take(np.arange(im.shape[d]-1), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
-            for d in range(im.ndim)])],
-        )
-    
-    return ij, data 
+    data = np.abs(image.flat[i] - image.flat[j])
+    wij = 1. / (offset + beta*data)
+    return [wij]
     
 ##------------------------------------------------------------------------------
 def weight_patch_diff(
         image, r0=1, step=1, beta=1e0, r1=None, gw=True,
         ):
-    ''' '''
-    
+    print "not implemented"
+    sys.exit(1)
+
+    '''
     im = np.asarray(image)
     
     ## make 3d arrays
@@ -113,6 +72,7 @@ def weight_patch_diff(
     data = np.exp(-beta*diff)
     
     return ij, data
+    '''
     
     
 ##------------------------------------------------------------------------------

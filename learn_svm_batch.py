@@ -29,7 +29,7 @@ from segmentation_utils import compute_dice_coef
 import svm_rw_api
 reload(svm_rw_api)
 from svm_rw_api import SVMRWMeanAPI
-from svm_rw_api import MetaAnchor
+from svm_rw_api import MetaAnchor, MetaLaplacianFunction
 from rwsegment import mpi
 
 from rwsegment import utils_logging
@@ -145,13 +145,10 @@ class SVMSegmenter(object):
         else:
             self.hand_tuned_w = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0]
             self.weight_functions = {
-                'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
-                'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-                'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
-                'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
-                # 'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
-                # 'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
-                # 'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
+                'std_b10'     : lambda im,i,j: wflib.weight_std(im,i,j, beta=10),
+                'std_b50'     : lambda im,i,j: wflib.weight_std(im,i,j, beta=50),
+                'std_b100'    : lambda im,i,j: wflib.weight_std(im,i,j, beta=100),
+                'inv_b100o1'  : lambda im,i,j: wflib.weight_inv(im,i,j, beta=100, offset=1),
                 }
             self.prior_models = {
                 'constant': models.Constant,
@@ -413,15 +410,23 @@ class SVMSegmenter(object):
         weights_priors_h = np.asarray(self.hand_tuned_w)[self.indices_priors]
     
         ## segment test image with trained w
-        def meta_weight_functions(im,_w):    
-            ''' meta weight function'''
+        '''
+        def meta_weight_functions(im,i,j,_w):    
             data = 0
             for iwf,wf in enumerate(self.laplacian_functions):
-                ij,_data = wf(im)
+                _data = wf(im,i,j)
                 data += _w[iwf]*_data
-            return ij, data
-        weight_function = lambda im: meta_weight_functions(im, weights_laplacians)
-        weight_function_h = lambda im: meta_weight_functions(im, weights_laplacians_h)
+            return data
+        weight_function = lambda im: meta_weight_functions(im,i,j,weights_laplacians)
+        weight_function_h = lambda im: meta_weight_functions(im,i,j,weights_laplacians_h)
+        '''
+        weight_function = MetaLaplacianFunction(
+            weights_laplacians,
+            self.laplacian_functions)
+        
+        weight_function_h = MetaLaplacianFunction(
+            weights_laplacians_h,
+            self.laplacian_functions)
         
         ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
