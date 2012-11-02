@@ -14,60 +14,36 @@ import utils_logging
 logger = utils_logging.get_logger('rwsegment',utils_logging.INFO)
         
 class BaseAnchorAPI(object):
-    def __init__(self,anchor, anchor_weight=1.0, **kwargs):
-        self.anchor = anchor
-        self.labelset = anchor['labelset']
-        self.imask = anchor['imask']
-        self.anchor_weight = anchor_weight
-        
-    def get_labelset(self):
-        return self.labelset
-    
-    def get_anchor_and_weights(self, list_D, indices):
-        nlabel = len(self.labelset)
-        N = np.maximum(np.max(self.imask), np.max(indices))+ 1
-        omega = 1./nlabel * np.ones((nlabel,N))
-        omega[:,self.imask] = self.anchor['data']
-        omega = omega[:,indices]
-        weights = self.anchor_weight * np.ones(omega.shape) * np.asarray(list_D)
-        return omega, weights
+    def __init__(self, ianchor, anchor, weights=None):
+        self.ianchor = ianchor
+        self.anchor  = anchor
+        self.weights = weights
+        if weights is None:
+            self.weights = np.ones((len(anchor), len(anchor[0])))
+
+    def get_anchor_and_weights(self, i, D, **kwargs):
+        nlabel = len(D)
+        inter = np.in1d(self.ianchor, i, assume_unique=True)
+        ## compute anchor weights
+        weights = np.asarray(D) * self.weights[:, inter]
+        ## get anchor at indices
+        anchor = self.anchor[:, inter]
+        return anchor, weights
         
 ##------------------------------------------------------------------------------
 def segment(
         image,
         anchor_api,
+        labelset,
         seeds=[],
-        weight_function=None,
+        laplacian_function=None,
         return_arguments=['image'],
         **kwargs
         ):
     ''' segment an image with method from MICCAI'12
-    
-    arguments:
-        image   = image to segment
-        anchor_api:
-            labelse = api.get_labelset()
-            anchor, weights = api.get_anchor_and_weights(D)
-            anchor is a dict
-        
-    keyword arguments:
-        
-    
-        seeds    = label map, with -1 for unmarked pixels
-                 must have the same shape as image
-                 
-        anchor_weights = a list of vectors of size npixel
-        
-        beta    = contrast parameter if no weight_function is provided
-        weight_function = user provided function:
-            (ij, data) = weight_function(image)
-        add 'laplacian' to return_arguments
-        
-                
     '''
     
     ## constants
-    labelset    = anchor_api.get_labelset()
     nlabel      = len(labelset) 
     npixel      = image.size
     inds        = np.arange(npixel)
@@ -96,7 +72,7 @@ def segment(
         image,
         marked=marked,
         beta=beta, 
-        weight_function=weight_function,
+        weight_function=laplacian_function,
         )
     if len(list_Lu)==1:
         list_Lu = [list_Lu[0] for i in range(nlabel)]
@@ -104,7 +80,8 @@ def segment(
         list_D  = [list_D[0]  for i in range(nlabel)]
         
     ## anchor function
-    list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown)
+    list_x0, list_Omega = anchor_api.get_anchor_and_weights(
+        unknown, list_D, image=image)
        
     ## per label lists of vectors
     list_xm, list_GT, list_GT_init = [],[],[]
@@ -178,14 +155,9 @@ def segment(
     
 def solve_at_once(list_Lu, list_B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
-    
     nlabel = len(list_xm)
     
     ## intermediary matrices
-    #if len(list_Lu)==1:
-    #    LL  = sparse.kron(np.eye(nlabel), list_Lu[0])
-    #    BB  = sparse.kron(np.eye(nlabel), list_B[0])
-    #else:
     LL = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,Lu)] for i,Lu in enumerate(list_Lu)])
     BB = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,B)]  for i,Lu in enumerate(list_B)])
 
@@ -207,8 +179,7 @@ def solve_at_once(list_Lu, list_B, list_xm, list_Omega, list_x0, list_GT=[], **k
     optim_solver = kwargs.pop('optim_solver','unconstrained')
     
     P = LL + Omega + addL
-    q = BB*xm - Omega*x0 + addq
-    # c = x0.T*Omega*x0
+    q = BB*xm - Omega*x0 + addq 
     c = 0
     
     if P.nnz==0:
@@ -489,6 +460,7 @@ def energy_anchor(
     beta        = kwargs.pop('beta', 1.)
     
     ## anchor function
+    '''
     logger.debug('compute laplacian')
     list_Lu, list_B, list_D, border = compute_laplacians(
         image,
@@ -498,23 +470,25 @@ def energy_anchor(
         )
     if len(list_D)==1:
         list_D  = [list_D[0]  for i in range(nlabel)]
-        
+    '''       
+ 
     #import ipdb; ipdb.set_trace()
-    list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown) ## D ?
+    #list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown) ## D ?
+    list_x0, list_Omega = anchor_api.get_anchor_and_weights(1, unknown) ## D ?
     
-    en = 0
+    energy = []
     for label in range(nlabel):
         xu = x[label][unknown]
-        en += np.sum(list_Omega[label] * (xu - list_x0[label])**2)
-        
-    return float(en)
+        energy.append(float(
+            np.sum(list_Omega[label] * (xu - list_x0[label])**2)))
+    return energy
     
 ##------------------------------------------------------------------------------
 def energy_rw(
         image,
         x,
         seeds=[],
-        weight_function=None,
+        laplacian_function=None,
         **kwargs
         ):
         
@@ -533,7 +507,7 @@ def energy_rw(
         image,
         marked=marked,
         beta=beta, 
-        weight_function=weight_function,
+        weight_function=laplacian_function,
         )
     if len(list_Lu)==1:
         list_Lu = [list_Lu[0] for i in range(nlabel)]
@@ -563,15 +537,16 @@ def energy_rw(
     '''    
         
     ## compute energy
-    en = 0.0
+    energy = []
     for label in range(nlabel):
         X = np.asmatrix(x[label][unknown]).T
-        en += X.T * list_Lu[label] * X
+        en = X.T * list_Lu[label] * X
         
         ## seeds !!
         xm = seeds.ravel()[border]==labelset[label]
         en += X.T * list_B[label] * np.mat(xm.reshape((-1,1)))
-    return float(en)
+        energy.append(float(en))
+    return energy
 
     
 ##------------------------------------------------------------------------------

@@ -126,7 +126,6 @@ class SVMSegmenter(object):
             'Cprime': Cprime,
             'nitermax': 100,
             'epsilon': 1e-5,
-            #'do_switch_loss': switch_loss,
             # latent
             'latent_niter_max': 100,
             'latent_epsilon': 1e-3,
@@ -143,36 +142,18 @@ class SVMSegmenter(object):
             self.weight_functions = {'std_b50': lambda im: wflib.weight_std(im, beta=50)}
             self.prior_models = {'constant': models.Constant}
         else:
-            self.hand_tuned_w = [1.0, 0.0, 0.0, 0.0, 1e-2, 0.0, 0.0]
-            self.weight_functions = {
-                'std_b10'     : lambda im,i,j: wflib.weight_std(im,i,j, beta=10),
-                'std_b50'     : lambda im,i,j: wflib.weight_std(im,i,j, beta=50),
-                'std_b100'    : lambda im,i,j: wflib.weight_std(im,i,j, beta=100),
-                'inv_b100o1'  : lambda im,i,j: wflib.weight_inv(im,i,j, beta=100, offset=1),
-                }
-            self.prior_models = {
-                'constant': models.Constant,
-                'entropy': models.Entropy_no_D,
-                'intensity': models.Intensity,
-                }
+            self.laplacian_functions = [
+                {'name':'std_b10',  'func': lambda im,i,j: wflib.weight_std(im,i,j, beta=10),  'default': 0.0},
+                {'name':'std_b50',  'func': lambda im,i,j: wflib.weight_std(im,i,j, beta=50),  'default': 1.0},
+                {'name':'std_b100', 'func': lambda im,i,j: wflib.weight_std(im,i,j, beta=100), 'default': 0.0},
+                {'name':'inv_b100o1', 'func': lambda im,i,j: wflib.weight_inv(im,i,j, beta=100, offset=1), 'default': 0.0},
+                ]
+            self.prior_models = [
+                {'name': 'constant',  'api': models.Constant, 'default': 0.0},
+                {'name': 'entropy',   'api': models.Entropy_no_D, 'default': 1e-2}
+                {'name': 'intensity', 'api': models.Intensity, 'default': 0.0}
+                ]
 
-        ## indices of w
-        nlaplacian = len(self.weight_functions)
-        nprior = len(self.prior_models)
-        self.indices_laplacians = np.arange(nlaplacian)
-        self.indices_priors = np.arange(nlaplacian,nlaplacian + nprior)
-        
-        ## compute the scale of psi
-        #self.psi_scale = [1e4] * nlaplacian + [1e5] * nprior
-        self.psi_scale = [1.0] * nlaplacian + [1.0] * nprior
-        self.svmparams['psi_scale'] = self.psi_scale
- 
-        ## make arrays of function
-        self.laplacian_functions = self.weight_functions.values()
-        self.laplacian_names     = self.weight_functions.keys()
-        self.prior_functions     = self.prior_models.values()
-        self.prior_names         = self.prior_models.keys()
-        
         ## parallel ?
         if self.use_parallel:
             self.comm = mpi.COMM
@@ -192,10 +173,10 @@ class SVMSegmenter(object):
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(self.use_latent))
             logger.info('train data: {}'.format(ntrain))
-            strkeys = ', '.join(self.laplacian_names)
-            logger.info('laplacian functions (in order): {}'.format(strkeys))
-            strkeys = ', '.join(self.prior_names)
-            logger.info('prior models (in order): {}'.format(strkeys))
+            logger.info('laplacian functions (in order): {}'\
+                ', '.join([lap['name'] for lap in self.laplacian_functions]))
+            logger.info('prior models (in order): {}'\
+                ', '.join([mod['name'] for mod in self.prior_models]))
             logger.info('using loss type: {}'.format(self.loss_type))
             logger.info('SVM parameters: {}'.format(self.svmparams))
             logger.info('Computing one iteration at a time ?: {}'.format(self.one_iteration))
@@ -203,7 +184,6 @@ class SVMSegmenter(object):
                 logger.info('debug mode, no saving')
             else:
                 logger.info('writing svm output to: {}'.format(self.dir_svm))
-        
 
     def make_training_set(self,test, fold=None):
         if fold is None:
@@ -251,8 +231,6 @@ class SVMSegmenter(object):
                         pmaski = pmask[islices]
                         imask  = np.where(pmaski.ravel()>0)[0]
                         iimask = pmaski.flat[imask]
-                        #iimask = pmask[islices]
-                        #iimask = iimask[iimask>=0]
                         
                         ## append to training set
                         images.append(im[islices])
@@ -400,26 +378,11 @@ class SVMSegmenter(object):
         logger.info('running inference on: {}'.format(test))
         
         ## normalize w
-        # w = w / np.sqrt(np.dot(w,w))
         strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w)*self.psi_scale)
-        logger.debug('scaled w=[{}]'.format(strw))
-    
-        weights_laplacians = np.asarray(w)[self.indices_laplacians]
-        weights_laplacians_h = np.asarray(self.hand_tuned_w)[self.indices_laplacians]
-        weights_priors = np.asarray(w)[self.indices_priors]
-        weights_priors_h = np.asarray(self.hand_tuned_w)[self.indices_priors]
-    
+        logger.debug('w=[{}]'.format(strw))
+   
+        '''
         ## segment test image with trained w
-        '''
-        def meta_weight_functions(im,i,j,_w):    
-            data = 0
-            for iwf,wf in enumerate(self.laplacian_functions):
-                _data = wf(im,i,j)
-                data += _w[iwf]*_data
-            return data
-        weight_function = lambda im: meta_weight_functions(im,i,j,weights_laplacians)
-        weight_function_h = lambda im: meta_weight_functions(im,i,j,weights_laplacians_h)
-        '''
         weight_function = MetaLaplacianFunction(
             weights_laplacians,
             self.laplacian_functions)
@@ -427,6 +390,7 @@ class SVMSegmenter(object):
         weight_function_h = MetaLaplacianFunction(
             weights_laplacians_h,
             self.laplacian_functions)
+        '''
         
         ## load images and ground truth
         file_seg = self.dir_reg + test + 'seg.hdr'
@@ -434,53 +398,57 @@ class SVMSegmenter(object):
         im  = io_analyze.load(file_im)
         seg = io_analyze.load(file_seg)
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
-        
         nim = im/np.std(im) # normalize image by std
+
+        ## prior data
+        indices = self.prior['imask']
+        average = self.prior['data']
+        variance = self.prior['variance']
+        intensity = self.prior['intensity']
+
+        nlabel = len(self.labelset)
+        weight_functions = svm_rw_api.WeightFunctions(
+            nlabel,
+            self.laplacian_functions, 
+            self.prior_models,
+            weights)
+
+        weight_functions_h = svm_rw_api.WeightFunctions(
+            nlabel,
+            self.laplacian_functions, 
+            self.prior_models)
 
         ## test training data ?
         inference_train = True
         if inference_train:
             train_ims, train_segs, train_metas = self.training_set
-            for tim, tz, tmeta in zip(train_ims, train_segs, train_metas):
-                ## retrieve metadata
-                islices = tmeta.pop('islices',None)
-                imask = tmeta.pop('imask', None)
-                iimask = tmeta.pop('iimask',None)
-                if islices is not None:
-                    tseeds = self.seeds[islices]
-                    tprior = {
-                        'data': np.asarray(self.prior['data'])[:,iimask],
-                        'imask': imask,
-                        'variance': np.asarray(self.prior['variance'])[:,iimask],
-                        'labelset': self.labelset,
-                        }
-                    if 'intensity' in self.prior: 
-                        tprior['intensity'] = self.prior['intensity']
-                else:
-                    tseeds = self.seeds
-                    tprior = self.prior
+            for tim, tz, tmeta in zip(train_ims, train_segs, train_metas): 
+                islices = tmeta.pop('islices', slice(None))
+                imask   = tmeta.pop('imask', indices)
+                tseeds = self.seeds[islices]
+                tseg = self.labelset[np.argmax(tz, axis=0)].reshape(tim.shape)
+                tflatmask = np.zeros(tz.shape, dtype=bool)
+                tflatmask[:, imask] = True
 
                 ## prior
-                tseg = self.labelset[np.argmax(tz, axis=0)].reshape(tim.shape)
-                tanchor_api = MetaAnchor(
-                    tprior,
-                    self.prior_functions,
-                    weights_priors,
-                    image=tim,
-                    )
+                laplacian_function = weight_functions.get_laplacian_function
+                anchor_api = weight_functions.get_anchor_api(
+                    average, indices, 
+                    variance=variance, intensity=intensity,
+                    islices=islices, imask=imask, **tmeta)
+
                 tsol,ty = rwsegment.segment(
                     tim, 
-                    tanchor_api, 
+                    anchor_api, 
+                    labelset,
                     seeds=tseeds,
-                    weight_function=weight_function,
+                    laplacian_function=laplacian_function,
                     **self.rwparams_inf
                     )
+
                 ## compute Dice coefficient
                 tdice = compute_dice_coef(tsol, tseg, labelset=self.labelset)
                 logger.info('Dice coefficients for train: \n{}'.format(tdice))
-                nlabel = len(self.labelset)
-                tflatmask = np.zeros(ty.shape, dtype=bool)
-                tflatmask[:,imask] = True
                 loss0 = loss_functions.ideal_loss(tz,ty,mask=tflatmask)
                 logger.info('Tloss = {}'.format(loss0))
                 ## loss2: squared difference with ztilde
@@ -490,15 +458,14 @@ class SVMSegmenter(object):
                 loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
                 logger.info('LAPloss = {}'.format(loss2))
 
+                ## hand tuned parameters
+                laplacian_function = weight_functions.get_laplacian_function
+                anchor_api = weight_functions.get_anchor_api(
+                    average, indices,
+                    variance=variance, intensity=intensity, 
+                    islices=islices, imask=imask, **tmeta)
 
-                tanchor_api_h = MetaAnchor(
-                    tprior,
-                    self.prior_functions,
-                    weights_priors_h,
-                    image=tim,
-                    )
-            
-                tsol,ty = rwsegment.segment(
+               tsol,ty = rwsegment.segment(
                     tim, 
                     tanchor_api_h, 
                     seeds=tseeds,
