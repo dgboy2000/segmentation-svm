@@ -22,8 +22,9 @@ class BaseAnchorAPI(object):
             self.weights = np.ones((len(anchor), len(anchor[0])))
 
     def get_anchor_and_weights(self, i, D, **kwargs):
+        indices = kwargs.pop('indices', i)
         nlabel = len(D)
-        inter = np.in1d(self.ianchor, i, assume_unique=True)
+        inter = np.in1d(self.ianchor, indices, assume_unique=True)
         ## compute anchor weights
         weights = np.asarray(D) * self.weights[:, inter]
         ## get anchor at indices
@@ -444,13 +445,13 @@ def energy_anchor(
         image,
         x,
         anchor_api,
+        labelset,
         seeds=[],
         weight_function=None,
         **kwargs
         ):
     
     ## constants
-    labelset    = anchor_api.get_labelset()
     nlabel      = len(labelset)
     npixel      = x[0].size
     inds        = np.arange(npixel)
@@ -472,9 +473,8 @@ def energy_anchor(
         list_D  = [list_D[0]  for i in range(nlabel)]
     '''       
  
-    #import ipdb; ipdb.set_trace()
-    #list_x0, list_Omega = anchor_api.get_anchor_and_weights(list_D, unknown) ## D ?
-    list_x0, list_Omega = anchor_api.get_anchor_and_weights(1, unknown) ## D ?
+    list_x0, list_Omega = anchor_api.get_anchor_and_weights(
+         unknown, np.ones((nlabel,nunknown)), image=image) ## D ?
     
     energy = []
     for label in range(nlabel):
@@ -487,16 +487,16 @@ def energy_anchor(
 def energy_rw(
         image,
         x,
+        labelset,
         seeds=[],
         laplacian_function=None,
         **kwargs
         ):
         
     ## constants
-    nlabel      = len(x)
+    nlabel      = len(labelset)
     npixel      = image.size
     inds        = np.arange(npixel)
-    labelset    = np.array(kwargs.pop('labelset', range(nlabel)), dtype=int)
     marked      = np.where(np.in1d(seeds,labelset))[0]
     unknown     = np.setdiff1d(inds,marked, assume_unique=True)
     beta        = kwargs.pop('beta', 1.)

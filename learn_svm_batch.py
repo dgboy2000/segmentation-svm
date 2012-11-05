@@ -28,8 +28,8 @@ from segmentation_utils import load_or_compute_prior_and_mask
 from segmentation_utils import compute_dice_coef
 import svm_rw_api
 reload(svm_rw_api)
+import svm_rw_functions
 from svm_rw_api import SVMRWMeanAPI
-from svm_rw_api import MetaAnchor, MetaLaplacianFunction
 from rwsegment import mpi
 
 from rwsegment import utils_logging
@@ -87,7 +87,6 @@ class SVMSegmenter(object):
                
         ## parameters for rw learning
         self.rwparams_svm = {
-            'labelset':self.labelset,
             # optimization
             'rtol': 1e-6,
             'maxiter': 1e3,
@@ -111,7 +110,6 @@ class SVMSegmenter(object):
             
         ## parameters for rw inference
         self.rwparams_inf = {
-            'labelset':self.labelset,
             'return_arguments':['image','y'],
             # optimization
             'rtol': 1e-6,
@@ -149,9 +147,9 @@ class SVMSegmenter(object):
                 {'name':'inv_b100o1', 'func': lambda im,i,j: wflib.weight_inv(im,i,j, beta=100, offset=1), 'default': 0.0},
                 ]
             self.prior_models = [
-                {'name': 'constant',  'api': models.Constant, 'default': 0.0},
-                {'name': 'entropy',   'api': models.Entropy_no_D, 'default': 1e-2}
-                {'name': 'intensity', 'api': models.Intensity, 'default': 0.0}
+                {'name': 'constant',  'default': 0.0},
+                {'name': 'entropy',   'default': 1e-2},
+                {'name': 'intensity', 'default': 0.0},
                 ]
 
         ## parallel ?
@@ -173,10 +171,10 @@ class SVMSegmenter(object):
             logger.info('using parallel?: {}'.format(use_parallel))
             logger.info('using latent?: {}'.format(self.use_latent))
             logger.info('train data: {}'.format(ntrain))
-            logger.info('laplacian functions (in order): {}'\
-                ', '.join([lap['name'] for lap in self.laplacian_functions]))
-            logger.info('prior models (in order): {}'\
-                ', '.join([mod['name'] for mod in self.prior_models]))
+            logger.info('laplacian functions (in order): {}'.format(
+                ', '.join([lap['name'] for lap in self.laplacian_functions])))
+            logger.info('prior models (in order): {}'.format(
+                ', '.join([mod['name'] for mod in self.prior_models])))
             logger.info('using loss type: {}'.format(self.loss_type))
             logger.info('SVM parameters: {}'.format(self.svmparams))
             logger.info('Computing one iteration at a time ?: {}'.format(self.one_iteration))
@@ -214,8 +212,8 @@ class SVMSegmenter(object):
 
                 if self.crop:
                     ## if split training images into smaller sets
-                    pmask = -1 * np.ones(seg.shape, dtype=int)
-                    pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
+                    #pmask = -1 * np.ones(seg.shape, dtype=int)
+                    #pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
                     nslice = im.shape[0]
                     for i in range(nslice/self.slice_step):    
                         istart = i*self.slice_step
@@ -228,14 +226,15 @@ class SVMSegmenter(object):
                             continue
                         logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
-                        pmaski = pmask[islices]
-                        imask  = np.where(pmaski.ravel()>0)[0]
-                        iimask = pmaski.flat[imask]
+                        #pmaski = pmask[islices]
+                        #imask  = np.where(pmaski.ravel()>0)[0]
+                        #iimask = pmaski.flat[imask]
                         
                         ## append to training set
                         images.append(im[islices])
                         segmentations.append(bin)
-                        metadata.append({'islices': islices, 'imask':imask , 'iimask': iimask})
+                        #metadata.append({'islices': islices, 'imask':imask , 'iimask': iimask, 'shape': im.shape})
+                        metadata.append({'islices': islices, 'shape': im.shape})
 
                         ## break loop
                         if len(images) == self.select_vol.stop:
@@ -277,7 +276,10 @@ class SVMSegmenter(object):
             import time                
             ## learn struct svm
             logger.debug('started root learning')
-            wref = self.hand_tuned_w
+            nlabel = len(self.labelset)
+            wref = [f['default'] for f in self.laplacian_functions for s in range(nlabel)] + \
+                   [m['default'] for m in self.prior_models for s in range(nlabel)]
+            w0 = wref
             if self.use_latent:
                 if self.one_iteration:
                     self.svmparams.pop('latent_niter_max',0) # remove kwarg
@@ -311,7 +313,6 @@ class SVMSegmenter(object):
                     else:
                         ## start learning
                         niter = 1
-                        w0 = self.hand_tuned_w
                         logger.info('latent svm: first iteration. w0 = {}'.format(w0))
                         w,xi,ys,info = self.svm.train(
                             images, segmentations, metadata, w0=w0, wref=wref, **self.trainparams)
@@ -340,7 +341,6 @@ class SVMSegmenter(object):
                         )
 
                     logger.info('latent svm: start all iterations')
-                    w0 = self.hand_tuned_w
                     w,xi,ys,info = self.svm.train(
                         images, segmentations, metadata, w0=w0, wref=wref, **self.trainparams)
             
@@ -351,8 +351,7 @@ class SVMSegmenter(object):
                     self.svm_rwmean_api.compute_psi,
                     self.svm_rwmean_api.compute_mvc,
                     **self.svmparams
-                    )                  
-                w0 = self.hand_tuned_w
+                    )
                 w,xi,info = self.svm.train( 
                     images, segmentations, metadata, 
                     w0=w0, wref=wref, **self.trainparams)
@@ -378,7 +377,7 @@ class SVMSegmenter(object):
         logger.info('running inference on: {}'.format(test))
         
         ## normalize w
-        strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w)*self.psi_scale)
+        strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
         logger.debug('w=[{}]'.format(strw))
    
         '''
@@ -399,48 +398,39 @@ class SVMSegmenter(object):
         seg = io_analyze.load(file_seg)
         seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
         nim = im/np.std(im) # normalize image by std
-
-        ## prior data
-        indices = self.prior['imask']
-        average = self.prior['data']
-        variance = self.prior['variance']
-        intensity = self.prior['intensity']
-
+        
+        ## laplacian functions
         nlabel = len(self.labelset)
-        weight_functions = svm_rw_api.WeightFunctions(
-            nlabel,
-            self.laplacian_functions, 
-            self.prior_models,
-            weights)
-
-        weight_functions_h = svm_rw_api.WeightFunctions(
-            nlabel,
-            self.laplacian_functions, 
-            self.prior_models)
-
+        nlaplacian = len(self.laplacian_functions)
+        lweights = w[:nlabel*nlaplacian]
+        laplacian_function = svm_rw_functions.LaplacianWeights(
+            nlabel,self.laplacian_functions, weights=lweights) 
+        laplacian_function_h = svm_rw_functions.LaplacianWeights(
+            nlabel,self.laplacian_functions) 
+        
+        ## anchor weights        
+        aweights = w[nlabel*nlaplacian:]
+            
         ## test training data ?
         inference_train = True
         if inference_train:
             train_ims, train_segs, train_metas = self.training_set
             for tim, tz, tmeta in zip(train_ims, train_segs, train_metas): 
                 islices = tmeta.pop('islices', slice(None))
-                imask   = tmeta.pop('imask', indices)
+                shape = tmeta.pop('shape', tim.shape)
+                tseg = self.labelset[np.argmax(tz,axis=0)].reshape(tim.shape)
                 tseeds = self.seeds[islices]
-                tseg = self.labelset[np.argmax(tz, axis=0)].reshape(tim.shape)
-                tflatmask = np.zeros(tz.shape, dtype=bool)
-                tflatmask[:, imask] = True
+                tflatmask = (tseeds<0).ravel()*np.ones((len(self.labelset),1))
 
-                ## prior
-                laplacian_function = weight_functions.get_laplacian_function
-                anchor_api = weight_functions.get_anchor_api(
-                    average, indices, 
-                    variance=variance, intensity=intensity,
-                    islices=islices, imask=imask, **tmeta)
-
+                ## anchors
+                amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
+                anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, weights=aweights)
+                
+                ## segment
                 tsol,ty = rwsegment.segment(
                     tim, 
                     anchor_api, 
-                    labelset,
+                    self.labelset,
                     seeds=tseeds,
                     laplacian_function=laplacian_function,
                     **self.rwparams_inf
@@ -459,17 +449,14 @@ class SVMSegmenter(object):
                 logger.info('LAPloss = {}'.format(loss2))
 
                 ## hand tuned parameters
-                laplacian_function = weight_functions.get_laplacian_function
-                anchor_api = weight_functions.get_anchor_api(
-                    average, indices,
-                    variance=variance, intensity=intensity, 
-                    islices=islices, imask=imask, **tmeta)
+                anchor_api_h = svm_rw_functions.MetaAnchorApi(nlabel, amodels)
 
-               tsol,ty = rwsegment.segment(
+                tsol,ty = rwsegment.segment(
                     tim, 
-                    tanchor_api_h, 
+                    anchor_api_h,
+                    self.labelset,
                     seeds=tseeds,
-                    weight_function=weight_function_h,
+                    laplacian_function=laplacian_function_h,
                     **self.rwparams_inf
                     )
                 ## compute Dice coefficient
@@ -486,18 +473,14 @@ class SVMSegmenter(object):
                 break
  
         ## prior
-        anchor_api = MetaAnchor(
-            self.prior,
-            self.prior_functions,
-            weights_priors,
-            image=nim,
-            )
+        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, self.prior_models, weights=aweights)
     
         sol,y = rwsegment.segment(
             nim, 
             anchor_api, 
+            self.labelset,
             seeds=self.seeds,
-            weight_function=weight_function,
+            laplacian_function=laplacian_function,
             **self.rwparams_inf
             )
         
@@ -507,9 +490,11 @@ class SVMSegmenter(object):
 
         ## objective
         en_rw = rwsegment.energy_rw(
-            nim, y, seeds=self.seeds,weight_function=weight_function, **self.rwparams_inf)
+            nim, y, self.labelset,
+            seeds=self.seeds,laplacian_function=laplacian_function, **self.rwparams_inf)
         en_anchor = rwsegment.energy_anchor(
-            nim, y, anchor_api, seeds=self.seeds, **self.rwparams_inf)
+            nim, y, anchor_api, self.labelset,
+            seeds=self.seeds, **self.rwparams_inf)
         obj = en_rw + en_anchor
         logger.info('Objective = {:.3}'.format(obj))
 
@@ -575,7 +560,17 @@ class SVMSegmenter(object):
         else:
             prior,mask = self.comm.bcast(None,root=0)
         
-        self.prior = prior
+        ## instantiate models
+        imask = prior['imask']
+        average = prior['data']
+        variance = prior['variance']
+        im_avg, im_var = prior['intensity']
+        
+        self.prior_models[0]['api'] = models.Constant(imask, average)
+        self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
+        self.prior_models[2]['api'] = models.Intensity(im_avg, im_var)
+        
+        ## seeds
         self.seeds = (-1)*mask.astype(int)
         
         ## training set
@@ -589,15 +584,13 @@ class SVMSegmenter(object):
 
             ## instantiate functors
             self.svm_rwmean_api = SVMRWMeanAPI(
-                self.prior, 
                 self.laplacian_functions, 
+                self.prior_models,
+                self.seeds,
                 self.labelset,
                 self.rwparams_svm,
-                prior_models=self.prior_functions,   
-                seeds=self.seeds,
-                **self.svm_api_params
-            )           
-
+                **self.svm_api_params)
+                
             if self.isroot:
                 w,xi = self.train_svm(test,outdir=outdir)
                 if self.debug:

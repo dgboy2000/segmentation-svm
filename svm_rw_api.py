@@ -11,7 +11,8 @@ logger = utils_logging.get_logger('svm_rw_api',utils_logging.DEBUG)
 
 import svm_rw_functions
 reload(svm_rw_functions)
-              
+
+
 class SVMRWMeanAPI(object):
     def __init__(
             self, 
@@ -25,7 +26,6 @@ class SVMRWMeanAPI(object):
         self.laplacian_functions = laplacian_functions
         self.prior_models  = prior_models
         self.labelset = labelset
-        self.weights = np.ones(self.anchor.shape)
         self.nlabel   = len(labelset)
 
         self.loss_type = kwargs.pop('loss_type','squareddiff')
@@ -47,13 +47,13 @@ class SVMRWMeanAPI(object):
             logger.warning('negative (<-1e-6) values in y_. min = {:.3}'.format(miny))
 
         if self.loss_type in ['ideal', 'none']:
-            loss = loss_functions.ideal_loss(z,y_,mask=mask)
+            loss = loss_functions.ideal_loss(z,y_,mask=flat_mask)
         elif self.loss_type=='squareddiff':
-            loss = loss_functions.anchor_loss(z,y_,mask=mask)
+            loss = loss_functions.anchor_loss(z,y_,mask=flat_mask)
         elif self.loss_type=='laplacian':
-            loss = loss_functions.laplacian_loss(z,y_,mask=mask)
+            loss = loss_functions.laplacian_loss(z,y_,mask=flat_mask)
         elif self.loss_type=='linear':
-            loss = loss_function.linear_loss(z,y,mask=mask)
+            loss = loss_function.linear_loss(z,y,mask=flat_mask)
         else:
            raise Exception('wrong loss type')
            sys.exit(1)
@@ -63,6 +63,7 @@ class SVMRWMeanAPI(object):
     def compute_psi(self, x, y, **kwargs):
         ''' - sum(a){Ea(x,y)} '''
         islices = kwargs.pop('islices', slice(None))
+        shape = kwargs.pop('shape', x.shape)
 
         ## energy value for each weighting function
         psi = []
@@ -71,77 +72,75 @@ class SVMRWMeanAPI(object):
             function = laplacian_function['func']
             psi.extend( 
                 rwsegment.energy_rw(
-                    x, y,
-                    seeds=seeds[islices],
+                    x, y, self.labelset,
+                    seeds=self.seeds[islices],
                     laplacian_function=function,
                     **self.rwparams))
                 
         ## energy for each prior models
-        for model in self.prior_model:
+        for model in self.prior_models:
             name = model['name']
             anchor_api = svm_rw_functions.AnchorReslice(
-               x.shape, model['api'], islices=islices)
+               shape, model['api'], islices=islices)
             psi.extend(
                 rwsegment.energy_anchor(
-                    x, y, anchor_api,
-                    seeds=seeds[islices],
+                    x, y, anchor_api, self.labelset,
+                    seeds=self.seeds[islices],
                     **self.rwparams))
         return psi
 
-    def full_lai(self, w,x,z, switch_loss=False, iter=-1, **kwargs):
+    def full_lai(self, w, x, z, switch_loss=False, iter=-1, **kwargs):
         ''' full Loss Augmented Inference '''
         labelset = self.labelset
         nlabel = len(labelset)
         nvar   = len(z[0])
         islices = kwargs.pop('islices', slice(None))
+        shape = kwargs.pop('shape', x.shape)
         mask  = self.mask[islices].ravel()
         flatmask = [mask for s in range(self.nlabel)]
 
         ## loss type
         addlin      = None
-        loss_anchor  = []
-        loss_weight = []
+        loss_anchor = []
+        loss_weights = []
         L_loss      = None
         
         loss_type = self.loss_type
         if loss_type in ['ideal', 'none']:
             pass
         elif loss_type=='squareddiff':
-            loss, loss_weight = loss_functions.compute_loss_anchor(seg, mask=flatmask)
-            loss_anchor = [BaseAnchorApi(
-               np.arange(nvar), loss)]
+            loss, loss_weight = loss_functions.compute_loss_anchor(z, mask=flatmask)
+            loss_anchor = [{'api':BaseAnchorAPI(np.arange(nvar), loss)}]
+            loss_weights = [loss_weight for s in range(nlabel)]
         elif loss_type=='laplacian':
-            L_loss = - loss_functions.compute_loss_laplacian(seg, mask=flatmask) *\
-                 self.loss_factor
+            L_loss = - loss_functions.compute_loss_laplacian(z, mask=flatmask)
+            L_loss = self.loss_factor*L_loss
         elif loss_type=='linear':
-            addlin, linw = loss_functions.compute_loss_linear(seg, mask=flatmask)
+            addlin, linw = loss_functions.compute_loss_linear(z, mask=flatmask)
             addlin *= linw * self.loss_factor
         else:
             raise Exception('did not recognize loss type {}'.format(loss_type))
             sys.exit(1)
 
         ## laplacian functions
-        nlaplacian = len(self.laplacian_functions]
+        nlaplacian = len(self.laplacian_functions)
         lweights = w[:nlabel*nlaplacian]
-        lfuncs = [f['func' for f in self.laplacian_functions]
         laplacian_function = svm_rw_functions.LaplacianWeights(
-            nlabel,lfuncs, lweights) 
+            nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
-        amodels  = []
-        for model in self.prior_models:
-            amodels.append(svm_rw_functions.AnchorReslice(
-                x.shape, model['api'], islice=islice))
-        amodels.append(loss_anchor)
-        aweights = w[nlabel*nlaplacian:] + loss_weight
-        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
+        amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
+        amodels.extend(loss_anchor)
+        aweights = w[nlabel*nlaplacian:] + loss_weights
+        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, weights=aweights)
+        #import ipdb; ipdb.set_trace()
         
         ## best y_ most different from y
         y_ = rwsegment.segment(
-            im, 
+            x,
             anchor_api,
             labelset,
-            seeds=seeds[islices],
+            seeds=self.seeds[islices],
             laplacian_function=laplacian_function,
             return_arguments=['y'],
             additional_laplacian=L_loss,
@@ -164,28 +163,25 @@ class SVMRWMeanAPI(object):
         labelset = self.labelset
         nlabel = len(labelset)
         islices = kwargs.pop('islices',slice(None))
+        shape = kwargs.pop('shape', x.shape)
          
         ## laplacian functions
-        nlaplacian = len(self.laplacian_functions]
+        nlaplacian = len(self.laplacian_functions)
         lweights = w[:nlabel*nlaplacian]
-        lfuncs = [f['func' for f in self.laplacian_functions]
         laplacian_function = svm_rw_functions.LaplacianWeights(
-            nlabel,lfuncs, lweights) 
+            nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
-        amodels  = []
-        for model in self.prior_models:
-            amodels.append(svm_rw_functions.AnchorReslice(
-                x.shape, model['api'], islice=islice))
+        amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlabel*nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
              
         ## annotation consistent inference
         y = rwsegment.segment(
             x, 
             anchor_api,
             labelset,
-            seeds=seeds[islices],
+            seeds=self.seeds[islices],
             laplacian_function=weight_function,
             return_arguments=['y'],
             ground_truth=z,
@@ -199,28 +195,25 @@ class SVMRWMeanAPI(object):
         labelset = self.labelset
         nlabel = len(labelset)
         islices = kwargs.pop('islices',slice(None))
+        shape = kwargs.pop('shape', x.shape)
          
         ## laplacian functions
-        nlaplacian = len(self.laplacian_functions]
+        nlaplacian = len(self.laplacian_functions)
         lweights = w[:nlabel*nlaplacian]
-        lfuncs = [f['func' for f in self.laplacian_functions]
         laplacian_function = svm_rw_functions.LaplacianWeights(
-            nlabel,lfuncs, lweights) 
+            nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
-        amodels  = []
-        for model in self.prior_models:
-            amodels.append(svm_rw_functions.AnchorReslice(
-                x.shape, model['api'], islice=islice))
+        amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlabel*nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
  
         ## unconstrained inference
         y_ = rwsegment.segment(
             x, 
             anchor_api,
             labelset,
-            seeds=seeds,
+            seeds=self.seeds,
             laplacian_function=weight_function,
             return_arguments=['y'],
             **self.rwparams
@@ -229,7 +222,7 @@ class SVMRWMeanAPI(object):
         ## fix correct labels
         gt = np.argmax(z,axis=0)
         icorrect = np.argmax(y_,axis=0)==gt
-        seeds_correct = -np.ones(seeds.shape, dtype=int)
+        seeds_correct = -np.ones(self.seeds.shape, dtype=int)
         seeds_correct.flat[icorrect] = labelset[gt[icorrect]]
 
         ## annotation consistent inference
@@ -255,23 +248,20 @@ class SVMRWMeanAPI(object):
         nlabel = len(labelset)
         nvar = len(z[0])
         islices = kwargs.pop('islices',slice(None))
+        shape = kwargs.pop('shape', x.shape)
         mask  = self.mask[islices].ravel()
         flatmask = [mask for s in range(self.nlabel)]
          
         ## laplacian functions
-        nlaplacian = len(self.laplacian_functions]
+        nlaplacian = len(self.laplacian_functions)
         lweights = w[:nlabel*nlaplacian]
-        lfuncs = [f['func' for f in self.laplacian_functions]
         laplacian_function = svm_rw_functions.LaplacianWeights(
-            nlabel,lfuncs, lweights) 
+            nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
-        amodels  = []
-        for model in self.prior_models:
-            amodels.append(svm_rw_functions.AnchorReslice(
-                x.shape, model['api'], islice=islice))
+        amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlabel*nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
  
         self.approx_aci_maxiter = 200
         self.approx_aci_maxstep = 1e-2
@@ -281,16 +271,17 @@ class SVMRWMeanAPI(object):
             logger.debug("approx aci, iter={}".format(i))
     
             ## add ground truth to anchor api
-            gtmnodel = BaseAnchorAPI(np.arange(nvar), z, weights=z_weights)
+            gtmodel = {'api': BaseAnchorAPI(np.arange(nvar), z, weights=z_weights)}
             modified_api = svm_rw_functions.MetaAnchorApi(
-                amodels + [gtmodel], aweights + [1] )
+                nlabel, amodels + [gtmodel], aweights + [1]*nlabel )
 
             ## inference
             y_ = rwsegment.segment(
                 x, 
                 modified_api,
-                seeds=seeds,
-                weight_function=weight_function,
+                labelset,
+                seeds=self.seeds[islices],
+                laplacian_function=laplacian_function,
                 return_arguments=['y'],
                 **self.rwparams
                 )
