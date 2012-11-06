@@ -25,7 +25,7 @@ class PriorGenerator:
         self.labelset = np.asarray(labelset)
         
         
-    def add_training_data(self, atlas, image=None):
+    def add_training_data(self, atlas, image=None, **kwargs):
         a = np.asarray(atlas, dtype=int)
         
         ## set unwanted labels to background label (labelset[0])

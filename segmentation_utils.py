@@ -246,7 +246,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
             file_im = config.dir_reg + test + train + 'reggray.hdr'
             im = io_analyze.load(file_im)
             
-            generator.add_training_data(seg,image=im)
+            generator.add_training_data(seg,image=im, nrandom=5)
             ntrain += 1
 
         if not pca:
