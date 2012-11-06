@@ -114,9 +114,9 @@ if __name__=='__main__':
     # jobs
 
     make_job(
-        '2012.10.31.test_latent_Lsdloss_x1000_C{}'.format(100),
+        '2012.11.06.test_2_latent_Lsdloss_x1000_C{}'.format(100),
         'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
-            '--parallel --crop 5 '\
+            '--parallel --crop 7  -t 0 '\
             '--loss squareddiff --loss_factor 1000 '\
             '--latent --one_iter --approx_aci -C {} '.format(100),
         queue='icetestq')
@@ -125,30 +125,32 @@ if __name__=='__main__':
     #for c in C:
     #    pass
     #    make_job(
-    #        '2012.10.31.exp_latent_DACI_crop10_Lsdloss_x1000_C{}'.format(c),
+    #        '2012.11.06.exp_perlab_latent_DACI_crop7_Lsdloss_x1000_C{}'.format(c),
     #        'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
-    #            '--parallel --crop 10 '\
+    #            '--parallel --crop 7 '\
     #            '--loss squareddiff --loss_factor 1000 '\
     #            '--latent --approx_aci -C {} '.format(c))
     #
-    #    for cprime in C:
+    #    #for cprime in C:
+    #    for cprime in [1e2]:
     #        make_job(
-    #            '2012.10.31.exp_latent_DACI_crop10_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+    #            '2012.11.05.exp_perlab_latent_DACI_crop7_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
     #            'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
-    #                '--parallel --crop 10 '\
+    #                '--parallel --crop 7 '\
     #                '--loss none --loss_factor 1000 '\
     #                '--latent --approx_aci --Cprime {} -C {} '.format(cprime, c))
  
     #    make_job(
-    #        '2012.10.31.exp_baseline_Lsdloss_x1000_C{}'.format(c),
+    #        '2012.11.06.exp_perlab_baseline_Lsdloss_x1000_C{}'.format(c),
     #        'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #            '--parallel '\
     #            '--loss squareddiff --loss_factor 1000 '\
     #            '-C {} '.format(c))
 
-    #    for cprime in C:
+    #    #for cprime in C:
+    #    for cprime in [1e2]:
     #        make_job(
-    #            '2012.10.31.exp_baseline_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+    #            '2012.11.06.exp_perlab_baseline_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
     #            'mpiexec_mpt -n $NP python learn_svm_batch.py '\
     #                '--parallel '\
     #                '--loss none --loss_factor 1000 '\
