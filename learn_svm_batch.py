@@ -79,11 +79,11 @@ class SVMSegmenter(object):
            self.slice_step = ncrop
 
         ntrain = kwargs.pop('ntrain', 'all')
-        if ntrain in ['all']:
-             self.select_vol = slice(None)
-        elif ntrain.isdigit():
+        if ntrain.isdigit():
              n = int(ntrain)
              self.select_vol = slice(n,n+1)
+        else:
+             self.select_vol = slice(None)
                
         ## parameters for rw learning
         self.rwparams_svm = {

@@ -563,16 +563,16 @@ def energy_rw(
     '''    
         
     ## compute energy
-    en = 0.0
+    energy = 0.0
     for label in range(nlabel):
         X = np.asmatrix(x[label][unknown]).T
-        en += X.T * list_Lu[label] * X
+        energy += float(X.T * list_Lu[label] * X)
         
         ## seeds !!
         xm = seeds.ravel()[border]==labelset[label]
-        en += X.T * list_B[label] * np.mat(xm.reshape((-1,1)))
-    return float(en)
-
+        energy += float(
+            X.T * list_B[label] * np.mat(xm.reshape((-1,1))) )
+    return energy
     
 ##------------------------------------------------------------------------------
 def compute_laplacians(
