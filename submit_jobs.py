@@ -112,15 +112,15 @@ if __name__=='__main__':
 
 
     # jobs
-    make_job(
-        '2012.11.06.test_pca_syn',
-        'python batch_rwpca.py -s',
-        queue='icetestq')
+    #make_job(
+    #    '2012.11.06.test_pca_syn',
+    #    'python batch_rwpca.py -s',
+    #    queue='icetestq')
      
-    make_job(
-        '2012.11.06.pca_syn',
-        'python batch_rwpca.py -s',
-        queue='icemem48gbq')
+    #make_job(
+    #    '2012.11.06.pca_syn',
+    #    'python batch_rwpca.py -s',
+    #    queue='icemem48gbq')
         
 
     #make_job(
@@ -140,7 +140,8 @@ if __name__=='__main__':
     #        'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #            '--parallel --crop 7 '\
     #            '--loss squareddiff --loss_factor 1000 '\
-    #            '--latent --approx_aci -C {} '.format(c))
+    #            '--latent --approx_aci --one_iter '\
+    #            '-C {} '.format(c))
     #
     #    #for cprime in C:
     #    for cprime in [1e2]:
@@ -149,7 +150,8 @@ if __name__=='__main__':
     #            'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #                '--parallel --crop 7 '\
     #                '--loss none --loss_factor 1000 '\
-    #                '--latent --approx_aci --Cprime {} -C {} '.format(cprime, c))
+    #                '--latent --approx_aci --one_iter '\
+    #                ' --Cprime {} -C {} '.format(cprime, c))
  
     #    make_job(
     #        '2012.11.06.exp_baseline_Lsdloss_x1000_C{}'.format(c),

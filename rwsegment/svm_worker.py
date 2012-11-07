@@ -132,3 +132,5 @@ class SVMWorker(object):
                 sys.exit(0)
                 
             gc.collect()
+
+
