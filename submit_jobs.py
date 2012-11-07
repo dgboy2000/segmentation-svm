@@ -114,7 +114,7 @@ if __name__=='__main__':
     # jobs
 
     make_job(
-        '2012.11.06.test_2_latent_Lsdloss_x1000_C{}'.format(100),
+        '2012.11.06.test_3_latent_Lsdloss_x1000_C{}'.format(100),
         'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
             '--parallel --crop 7  -t 0 '\
             '--loss squareddiff --loss_factor 1000 '\
@@ -129,7 +129,8 @@ if __name__=='__main__':
     #        'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #            '--parallel --crop 7 '\
     #            '--loss squareddiff --loss_factor 1000 '\
-    #            '--latent --approx_aci -C {} '.format(c))
+    #            '--latent --approx_aci --one_iter '\
+    #            '-C {} '.format(c))
     #
     #    #for cprime in C:
     #    for cprime in [1e2]:
@@ -138,7 +139,8 @@ if __name__=='__main__':
     #            'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #                '--parallel --crop 7 '\
     #                '--loss none --loss_factor 1000 '\
-    #                '--latent --approx_aci --Cprime {} -C {} '.format(cprime, c))
+    #                '--latent --approx_aci --one_iter '\
+    #                '--Cprime {} -C {} '.format(cprime, c))
  
     #    make_job(
     #        '2012.11.06.exp_perlab_baseline_Lsdloss_x1000_C{}'.format(c),

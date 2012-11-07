@@ -251,13 +251,14 @@ class SVMSegmenter(object):
                 if len(images) == self.select_vol.stop:
                     break 
 
-            if self.select_vol.stop is not None:
-                ## random select 50 training images
-                iselect = np.arange(len(images))[self.select_vol]
+            nmaxvol = 100
+            if len(images) > nmaxvol:
+                iselect = np.arange(len(images))
                 iselect = iselect[np.random.randint(
                     0,len(iselect),
-                    np.minimum(50,len(iselect)),
+                    np.minimum(nmaxvol, len(iselect)),
                     )]
+                iselect = np.sort(iselect)
                 logger.info('selected training: {}'.format(iselect))
                 images = [images[i] for i in iselect]
                 segmentations = [segmentations[i] for i in iselect]
@@ -267,7 +268,6 @@ class SVMSegmenter(object):
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
             self.training_set = (images, segmentations, metadata) 
-
 
  
     def train_svm(self,test,outdir=''):
@@ -324,9 +324,9 @@ class SVMSegmenter(object):
                         np.save(outdir + 'ys.npy', ys)
                         
                         #logger.warning('Exiting program. Run script again to continue.')
-                        if self.use_parallel:
-                            for n in range(1, self.MPI_size):
-                                self.comm.send(('stop',1, {}),dest=n)
+                        #if self.use_parallel:
+                        #    for n in range(1, self.MPI_size):
+                        #        self.comm.send(('stop',1, {}),dest=n)
                         logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
 
                 else:
