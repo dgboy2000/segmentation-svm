@@ -38,10 +38,12 @@ class LoggerInfo:
         return keys.__iter__()
 
     def __init__(self):
-        try:
+        #try:
+        if 0:
             import psutil
             self._format_free_memory = self._psutil_format_free_memory
-        except ImportError:
+        #except ImportError:
+        else:
             self._format_free_memory = self._no_psutil_format_free_memory
     
     def _no_psutil_format_free_memory(self):
@@ -60,13 +62,10 @@ class LoggerInfo:
 LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
 
-try:
-    from mpi4py import MPI
-    RANK = MPI.COMM_WORLD.Get_rank()
-    HOST = MPI.Get_processor_name()
-except ImportError:
-    RANK = 0
-    HOST = ''
+import mpi
+RANK = mpi.RANK
+HOST = mpi.HOST
+
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)

@@ -272,7 +272,8 @@ class SVMSegmenter(object):
  
     def train_svm(self,test,outdir=''):
         images, segmentations, metadata = self.training_set
-        try:
+        #try:
+        if 1:
             import time                
             ## learn struct svm
             logger.debug('started root learning')
@@ -356,12 +357,14 @@ class SVMSegmenter(object):
                     images, segmentations, metadata, 
                     w0=w0, wref=wref, **self.trainparams)
 
-        except Exception as e:
+        #except Exception as e:
+        else:
             import traceback
             logger.error('{}: {}'.format(e.message, e.__class__.__name__))
             traceback.print_exc()
             #import ipdb; ipdb.set_trace()
-        finally:
+        #finally:
+        if 1:
             ##kill signal
             if self.use_parallel:
                 logger.info('root finished training svm on {}. about to kill workers'\

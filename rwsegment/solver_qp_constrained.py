@@ -104,13 +104,13 @@ class ConstrainedSolver(object):
  
         ## test inequality constraints
         inconst = np.min(self.get_cond(x0).A)
-        try:
-            assert inconst > 0
-        except:
-            import sys
-            logger.error('Inequality constraint not satisfied, by {:.3}'.format(inconst))
-            import ipdb; ipdb.set_trace()
-            sys.exit(1)
+        #try:
+        #    assert inconst > 0
+        #except:
+        #    import sys
+        #    logger.error('Inequality constraint not satisfied, by {:.3}'.format(inconst))
+        #    import ipdb; ipdb.set_trace()
+        #    sys.exit(1)
         
         for iter in range(self.maxiter):
             ## solve with currant t

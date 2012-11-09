@@ -114,11 +114,12 @@ if __name__=='__main__':
     # jobs
 
     make_job(
-        '2012.11.06.test_3_latent_Lsdloss_x1000_C{}'.format(100),
+        '2012.11.07.test_2_latent_Lsdloss_x1000_C{}'.format(100),
         'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
             '--parallel --crop 7  -t 0 '\
             '--loss squareddiff --loss_factor 1000 '\
-            '--latent --one_iter --approx_aci -C {} '.format(100),
+            '--latent --one_iter --approx_aci '\
+            '-C {} '.format(100),
         queue='icetestq')
    
     #C = [0.01, 0.1, 1, 10, 100, 1e3, 1e4, 1e5]
