@@ -112,23 +112,23 @@ if __name__=='__main__':
 
 
     # jobs
-    #make_job(
-    #    '2012.11.06.test_pca_syn',
-    #    'python batch_rwpca.py -s',
-    #    queue='icetestq')
+    make_job(
+        '2012.11.09.test_pca_syn',
+        'python batch_rwpca.py -s --no-mpi',
+        queue='icetestq')
      
     #make_job(
     #    '2012.11.06.pca_syn',
-    #    'python batch_rwpca.py -s',
+    #    'python batch_rwpca.py -s --no-mpi',
     #    queue='icemem48gbq')
         
 
     #make_job(
-    #    '2012.11.06.test_Lsdloss_x1000_C{}'.format(100),
+    #    '2012.11.07.test_Lsdloss_x1000_C{}'.format(100),
     #    'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
     #        '--parallel --crop 5 -t 0 '\
     #        '--loss squareddiff --loss_factor 1000 '\
-    #        #'--latent --one_iter --approx_aci '\
+    #        '--latent --one_iter --approx_aci '\
     #        '-C {} '.format(100),
     #    queue='icetestq')
    

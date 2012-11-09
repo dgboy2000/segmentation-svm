@@ -382,7 +382,7 @@ class SVMSegmenter(object):
                     w0=w0, wref=wref, **self.trainparams)
 
         #except Exception as e:
-        else::
+        else:
             import traceback
             logger.error('{}: {}'.format(e.message, e.__class__.__name__))
             traceback.print_exc()

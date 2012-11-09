@@ -63,14 +63,17 @@ LOG_OUTPUT_DIR = None
 ADD_EXTRA_LOGGING_INFO = True
 
 #try:
-if 1:
-    from mpi4py import MPI
-    RANK = MPI.COMM_WORLD.Get_rank()
-    HOST = MPI.Get_processor_name()
-#except ImportError:
-else:
-    RANK = 0
-    HOST = ''
+import mpi
+RANK = mpi.RANK
+HOST = mpi.HOST
+#if 1:
+#    from mpi4py import MPI
+#    RANK = MPI.COMM_WORLD.Get_rank()
+#    HOST = MPI.Get_processor_name()
+##except ImportError:
+#else:
+#    RANK = 0
+#    HOST = ''
 def get_logger(name, log_level):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
