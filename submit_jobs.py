@@ -112,15 +112,15 @@ if __name__=='__main__':
 
 
     # jobs
-    make_job(
-        '2012.11.09.test_pca_syn',
-        'python batch_rwpca.py -s --no-mpi',
-        queue='icetestq')
-     
     #make_job(
-    #    '2012.11.06.pca_syn',
+    #    '2012.11.09.test_pca_syn',
     #    'python batch_rwpca.py -s --no-mpi',
-    #    queue='icemem48gbq')
+    #    queue='icetestq')
+     
+    make_job(
+        '2012.11.09.pca_syn',
+        'python batch_rwpca.py -s --no-mpi',
+        queue='icemem48gbq')
         
 
     #make_job(
