@@ -99,7 +99,7 @@ class SegmentationBatch(object):
         logger.info('Dice: {}'.format(dice))
   
         dice_pca    = compute_dice_coef(impca, seg, labelset=self.labelset)
-        logger.info('Dice: {}'.format(dice_pca))
+        logger.info('Dice pca only: {}'.format(dice_pca))
          
 
         if not config.debug:

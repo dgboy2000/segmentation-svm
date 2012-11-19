@@ -225,13 +225,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
    
-    if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
-        mask  = io_analyze.load(file_mask).astype(bool)
-        prior = dict(np.load(file_prior))
-        if pca:
-            U = np.load(file_U)
-            prior['eigenvectors'] = U
-    else:
+    if force_recompute or not (os.path.exists(file_prior) and os.path.exists(file_mask)):
         if pca:
             _prior, mask = load_or_compute_prior_and_mask(test, fold=fold)
             generator = rwsegment_pca_prior.PriorGenerator(labelset, mask=mask)
@@ -278,7 +272,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
         entropymap = entropymap / np.log(nlabel) * 2**15
         
         if 'eigenvectors' in prior:
-            U = prior.pop['eigenvectors']
+            U = prior.pop('eigenvectors')
             print 'size of U {}, dtype={}'.format(U.size, U.dtype)
             np.save(file_U, U)
         np.savez(file_prior,**prior)
@@ -287,6 +281,11 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
         io_analyze.save(file_segprior, segprior.astype(np.int32))
         #io_analyze.save(file_entropymap, entropymap.astype(np.int32))
         
+    mask  = io_analyze.load(file_mask).astype(bool)
+    prior = dict(np.load(file_prior))
+    if pca:
+        U = np.load(file_U)
+        prior['eigenvectors'] = U
     return prior, mask
     
     

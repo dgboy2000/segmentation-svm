@@ -212,6 +212,13 @@ class SVMRWMeanAPI(object):
         ''' full Loss Augmented Inference
          y_ = arg min <w|-psi(x,y_)> - loss(y,y_) '''
 
+        if np.max(np.abs(w)) < 1e-10:
+            # if w=0, return z_tilde
+            y_ = np.random.random((len(z),len(z[0])))
+            y_[np.argmax(z, axis=0), np.arange(len(z[0]))] = 0
+            y_ = y_ /np.sum(y_,axis=0)
+            return y_
+         
         islices = kwargs.pop('islices',None)
         imask = kwargs.pop('imask',None)
         iimask = kwargs.pop('iimask',None)

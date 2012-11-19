@@ -96,8 +96,8 @@ class Intensity(BaseAnchorAPI):
         avg,var = self.anchor['intensity']
         diff = self.image.flat - np.c_[avg]
         norm = 1./np.sqrt(2*np.pi*var)
-        a = np.c_[norm] * np.exp( - diff**2 * np.c_[1./var] )
-        A = np.sum(a, axis=0)
+        a = np.c_[norm] * np.exp( - 0.5*diff**2 * np.c_[1./var] )
+        A = np.clip(np.sum(a, axis=0),1e-10,np.inf)
         self.data = (1./A)*a
         self.intensity = np.tile(A, (nlabel,1))
         
