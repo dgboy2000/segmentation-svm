@@ -208,6 +208,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
         test_name = test
         fold = [test]
      
+    #import ipdb; ipdb.set_trace()
     labelset = np.asarray(config.labelset)
     if pca:
         outdir = config.dir_pca_prior + test_name
@@ -227,8 +228,9 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
     if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
         mask  = io_analyze.load(file_mask).astype(bool)
         prior = dict(np.load(file_prior))
-        U = np.load(file_U)
-        prior['eigenvectors'] = U
+        if pca:
+            U = np.load(file_U)
+            prior['eigenvectors'] = U
     else:
         if pca:
             _prior, mask = load_or_compute_prior_and_mask(test, fold=fold)
