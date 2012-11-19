@@ -45,7 +45,10 @@ class PriorGenerator:
         
         ## if im is provided, compute average and std of intensity
         if image is not None:
-            nim = image/np.std(image)
+            nim = image
+            if self.mask is not None:
+                nim = nim[self.mask]
+            nim = nim/np.std(nim)
             if self.im_ntrain is None:
                 self.im_avg    = np.zeros(len(self.labelset))
                 self.im_avg2   = np.zeros(len(self.labelset))
