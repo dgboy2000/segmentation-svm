@@ -27,8 +27,8 @@ pip-log.txt
 .mr.developer.cfg
 
 
-rwsegment/lfunctions/build*
-rwsegment/ffd/build*
+rwsegment/lfunctions/build*/**
+rwsegment/ffd/build*/**
 
 segmentation/*
 learning/*

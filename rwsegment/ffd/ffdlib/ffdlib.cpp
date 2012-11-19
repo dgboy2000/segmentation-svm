@@ -27,7 +27,10 @@ extern "C" {
 /** Move points according to the position of the control points
     P = sum(c) sum(i,j,k) CI^i CJ^j CK^k s^i t^j u^k (1-s)^(I-i) (1-t)^(J-j) (1 - u)^(K-k) Pcijk
  */
-//extern __declspec(dllexport) 
+
+#ifdef OSWIN
+  extern __declspec(dllexport) 
+#endif
 int deform_3d(
     unsigned int npoint, 
     double const *coords,
@@ -123,7 +126,9 @@ int deform_3d(
 
 
 ///-----------------------------------------------------------------------------
-//extern __declspec(dllexport) 
+#ifdef OSWIN
+  extern __declspec(dllexport) 
+#endif
 int get_coords_3d(
     unsigned int npoint, 
     double const *points,

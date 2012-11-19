@@ -1,6 +1,11 @@
 PROJECT(FFDLIB)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
+IF(WIN32)
+  add_definitions( -DOSWIN )
+ENDIF(WIN32)
+
+
 ADD_LIBRARY( ffdlib SHARED
     ffdlib.cpp
   )
