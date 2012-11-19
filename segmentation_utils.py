@@ -220,12 +220,15 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
     prior = None
     file_mask  = outdir + 'mask.hdr'
     file_prior = outdir + 'prior.npz'
+    file_U = outdir + 'eigenvectors.npy'
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
    
     if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
         mask  = io_analyze.load(file_mask).astype(bool)
-        prior = np.load(file_prior)
+        prior = dict(np.load(file_prior))
+        U = np.load(file_U)
+        prior['eigenvectors'] = U
     else:
         if pca:
             _prior, mask = load_or_compute_prior_and_mask(test, fold=fold)
@@ -271,12 +274,16 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
             np.log(prior['data'] + 1e-10)*prior['data'],
             axis=0)
         entropymap = entropymap / np.log(nlabel) * 2**15
-            
+        
+        if 'eigenvectors' in prior:
+            U = prior.pop['eigenvectors']
+            print 'size of U {}, dtype={}'.format(U.size, U.dtype)
+            np.save(file_U, U)
         np.savez(file_prior,**prior)
         
         io_analyze.save(file_mask, mask.astype(np.int32))
         io_analyze.save(file_segprior, segprior.astype(np.int32))
-        io_analyze.save(file_entropymap, entropymap.astype(np.int32))
+        #io_analyze.save(file_entropymap, entropymap.astype(np.int32))
         
     return prior, mask
     

@@ -231,11 +231,16 @@ if __name__=='__main__':
     #sample_list = ['01/']
     #sample_list = ['02/']
     #sample_list = config.vols
-   
+
+    ## registration
+    segmenter = SegmentationBatch()
+    segmenter.compute_mean_segmentation(config.vols)
+      
+ 
     # entropy
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0, 0, 0], name='entropy1e-2')
-    for fold in config.folds:
-        segmenter.process_all_samples(fold, fold=fold)
+    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0, 0, 0], name='entropy1e-2')
+    #for fold in config.folds:
+    #    segmenter.process_all_samples(fold, fold=fold)
 
     ## constant prior
     #segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
