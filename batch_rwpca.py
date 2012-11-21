@@ -26,7 +26,7 @@ class SegmentationBatch(object):
     def __init__(self, prior_weights, name='constant1'):
         
         self.labelset  = np.asarray(config.labelset)
-        self.force_recompute_prior = True
+        self.force_recompute_prior = False
         self.model_name = name
         
         self.params  = {
@@ -53,11 +53,11 @@ class SegmentationBatch(object):
             .format(self.model_name, self.prior_weights))
        
         
-    def process_sample(self,test):
+    def process_sample(self,test, fold=None):
 
         ## get prior
         prior, mask = load_or_compute_prior_and_mask(
-            test,force_recompute=self.force_recompute_prior, pca=True)
+            test,force_recompute=self.force_recompute_prior, pca=True, fold=fold)
         seeds   = (-1)*mask
         mask = mask.astype(bool)       
  
@@ -103,8 +103,13 @@ class SegmentationBatch(object):
          
 
         if not config.debug:
+            if fold is not None:
+                test_name = 'f{}_{}'.format(fold[0][:2],test)
+            else:
+                test_name = test
             outdir = config.dir_seg + \
-                '/{}/{}'.format(self.model_name,test)
+                '/{}/{}'.format(self.model_name,test_name)
+
             logger.info('saving data in: {}'.format(outdir))
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
@@ -117,9 +122,9 @@ class SegmentationBatch(object):
             np.savetxt(
                 outdir + 'dice_pca.txt', np.c_[dice.keys(),dice_pca.values()],fmt='%d %.8f')
         
-    def process_all_samples(self,sample_list):
+    def process_all_samples(self,sample_list, fold=None):
         for test in sample_list:
-            self.process_sample(test)
+            self.process_sample(test, fold=fold)
             
 
             
@@ -130,11 +135,24 @@ if __name__=='__main__':
     if '-s' not in sys.argv: sys.exit(0)
 
     ''' start script '''
-    sample_list = config.vols
-    
-    ## constant prior
-    segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
-    segmenter.process_all_samples(['01/'])
+    for fold in config.folds:
+        for w in [1e-3, 1e-2, 1e-1, 1e0, 1e1]:
+            segmenter = SegmentationBatch(prior_weights=[w, 0, 0, 0,0], name='constant{}'.format(w))
+            segmenter.process_all_samples(fold)
+            segmenter = SegmentationBatch(prior_weights=[0, w, 0, 0,0], name='entropy{}'.format(w))
+            segmenter.process_all_samples(fold)
+            segmenter = SegmentationBatch(prior_weights=[1e-2, 0, w, 0,0], name='entropy1e-2_intensity{}'.format(w))
+            segmenter.process_all_samples(fold)
+            segmenter = SegmentationBatch(prior_weights=[0, 0, 0, w, 0], name='variance}'.format(w))
+            segmenter.process_all_samples(fold)
+            segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, w], name='variance_cmap{}'.format(w))
+            segmenter.process_all_samples(fold)
+
+
+
+
+
+
     ## constant prior
     #segmenter = SegmentationBatch(prior_weights=[1e-1, 0, 0, 0,0], name='constant1e-1')
     #segmenter.process_all_samples(['01/'])

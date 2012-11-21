@@ -1,3 +1,1 @@
-D:/data_pyb/1_data/segmentation_svm/rwsegment/ffd/build64/CMakeFiles/ALL_BUILD.dir
-D:/data_pyb/1_data/segmentation_svm/rwsegment/ffd/build64/CMakeFiles/ZERO_CHECK.dir
-D:/data_pyb/1_data/segmentation_svm/rwsegment/ffd/build64/CMakeFiles/ffdlib.dir
+/home/baudinpy/segmentation-svm/rwsegment/ffd/build64/CMakeFiles/ffdlib.dir

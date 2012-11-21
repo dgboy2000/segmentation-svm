@@ -275,6 +275,7 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
             U = prior.pop('eigenvectors')
             print 'size of U {}, dtype={}'.format(U.size, U.dtype)
             np.save(file_U, U)
+            prior['eigenvectors'] = U
         np.savez(file_prior,**prior)
         
         io_analyze.save(file_mask, mask.astype(np.int32))
