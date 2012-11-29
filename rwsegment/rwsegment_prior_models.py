@@ -35,7 +35,7 @@ class Entropy_no_D(Entropy):
 class Variance(BaseAnchorAPI):
     def __init__(self, ianchor, anchor, variance):
         weights = 1. / (1. + variance) 
-        super(Entropy,self).__init__(ianchor, anchor, weights=weights)
+        super(Variance,self).__init__(ianchor, anchor, weights=weights)
   
 class Variance_no_D(Variance):
     def get_anchor_and_weights(self, i, D, **kwargs):
@@ -64,7 +64,7 @@ class Intensity(object):
        
     def get_anchor_and_weights(self, i, D, **kwargs):
         image = kwargs.pop('image')
-        nlabel = len(D)
+        nlabel = len(self.im_avg)
         ## classify image
         diff = image.flat[i] - np.c_[self.im_avg]
         norm = 1./np.sqrt(2*np.pi*self.im_var)

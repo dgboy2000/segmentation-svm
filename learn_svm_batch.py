@@ -67,7 +67,6 @@ class SVMSegmenter(object):
         self.one_iteration = kwargs.pop('one_iteration', False)
         self.start_script  = kwargs.pop('start_script', '')       
         self.use_mosek     = kwargs.pop('use_mosek',True)
-        #switch_loss        = kwargs.pop('switch_loss', False)
 
         crop = kwargs.pop('crop','none')
         if crop=='none':
@@ -212,8 +211,6 @@ class SVMSegmenter(object):
 
                 if self.crop:
                     ## if split training images into smaller sets
-                    #pmask = -1 * np.ones(seg.shape, dtype=int)
-                    #pmask.flat[self.prior['imask']] = np.arange(len(self.prior['imask']))
                     nslice = im.shape[0]
                     for i in range(nslice/self.slice_step):    
                         istart = i*self.slice_step
@@ -226,14 +223,10 @@ class SVMSegmenter(object):
                             continue
                         logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
-                        #pmaski = pmask[islices]
-                        #imask  = np.where(pmaski.ravel()>0)[0]
-                        #iimask = pmaski.flat[imask]
                         
                         ## append to training set
                         images.append(im[islices])
                         segmentations.append(bin)
-                        #metadata.append({'islices': islices, 'imask':imask , 'iimask': iimask, 'shape': im.shape})
                         metadata.append({'islices': islices, 'shape': im.shape})
 
                         ## break loop
@@ -253,11 +246,7 @@ class SVMSegmenter(object):
 
             nmaxvol = 100
             if len(images) > nmaxvol:
-                iselect = np.arange(len(images))
-                iselect = iselect[np.random.randint(
-                    0,len(iselect),
-                    np.minimum(nmaxvol, len(iselect)),
-                    )]
+                select = np.random.permutation(np.arange(len(images)))[:nmaxvol] 
                 iselect = np.sort(iselect)
                 logger.info('selected training: {}'.format(iselect))
                 images = [images[i] for i in iselect]
@@ -272,7 +261,6 @@ class SVMSegmenter(object):
  
     def train_svm(self,test,outdir=''):
         images, segmentations, metadata = self.training_set
-        #try:
         if 1:
             import time                
             ## learn struct svm

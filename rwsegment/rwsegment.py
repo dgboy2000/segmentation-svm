@@ -23,10 +23,10 @@ class BaseAnchorAPI(object):
 
     def get_anchor_and_weights(self, i, D, **kwargs):
         indices = kwargs.pop('indices', i)
-        nlabel = len(D)
+        nlabel = len(self.anchor)
         inter = np.in1d(self.ianchor, indices, assume_unique=True)
         ## compute anchor weights
-        weights = np.asarray(D) * self.weights[:, inter]
+        weights = np.tile(D, (nlabel,1)) * self.weights[:, inter]
         ## get anchor at indices
         anchor = self.anchor[:, inter]
         return anchor, weights
@@ -69,20 +69,16 @@ def segment(
     
     ## compute laplacian
     logger.debug('compute laplacian')
-    list_Lu, list_B, list_D, border = compute_laplacians(
+    Lu, B, D, border = compute_laplacians(
         image,
         marked=marked,
         beta=beta, 
         weight_function=laplacian_function,
         )
-    if len(list_Lu)==1:
-        list_Lu = [list_Lu[0] for i in range(nlabel)]
-        list_B  = [list_B[0]  for i in range(nlabel)]
-        list_D  = [list_D[0]  for i in range(nlabel)]
         
     ## anchor function
     list_x0, list_Omega = anchor_api.get_anchor_and_weights(
-        unknown, list_D, image=image)
+        unknown, D, image=image)
        
     ## per label lists of vectors
     list_xm, list_GT, list_GT_init = [],[],[]
@@ -124,14 +120,14 @@ def segment(
     ## solve RW system
     if ground_truth is not None or not per_label:
         x = solve_at_once(
-            list_Lu, list_B, list_xm, list_Omega, list_x0, 
+            Lu, B, list_xm, list_Omega, list_x0, 
             list_GT=list_GT, list_GT_init=list_GT_init, 
             additional_laplacian=addL,
             additional_linear=addq,
             **kwargs)
     else:
         x = solve_per_label(
-            list_Lu,list_B,list_xm,list_Omega,list_x0,**kwargs)
+            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
     
     ## normalize x
     x = np.clip(x, 0,1)
@@ -154,13 +150,13 @@ def segment(
     else: return tuple(rargs)
     
     
-def solve_at_once(list_Lu, list_B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
+def solve_at_once(Lu, B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     nlabel = len(list_xm)
     
     ## intermediary matrices
-    LL = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,Lu)] for i,Lu in enumerate(list_Lu)])
-    BB = sparse.bmat([[sparse.kron(np.arange(nlabel)==i,B)]  for i,Lu in enumerate(list_B)])
+    LL = sparse.kron(np.eye(nlabel), Lu)
+    BB = sparse.kron(np.eye(nlabel), B)
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
@@ -221,7 +217,7 @@ def solve_at_once(list_Lu, list_B, list_xm, list_Omega, list_x0, list_GT=[], **k
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
-def solve_per_label(list_Lu, list_B, list_xm, list_Omega, list_x0, **kwargs):
+def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     nlabel = len(list_xm)
     
@@ -238,8 +234,6 @@ def solve_per_label(list_Lu, list_B, list_xm, list_Omega, list_x0, **kwargs):
     rtol = kwargs.pop('rtol', 1e-6)
     
     for s in range(nlabel - 1):## don't need to solve the last one !
-        Lu = list_Lu[s]
-        B  = list_B[s]
         
         ## prior
         Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
@@ -513,29 +507,6 @@ def energy_rw(
         list_Lu = [list_Lu[0] for i in range(nlabel)]
         list_B  = [list_B[0]  for i in range(nlabel)]
     
-    '''
-    try:
-        L, border, B, D = compute_laplacian(
-            image,
-            marked=marked,
-            beta=beta, 
-            weight_function=weight_function,
-            )
-    except MemoryError as e:
-        import gc
-        import mpi
-        gc.collect()
-        logger.error(
-            'Memory error computing Laplacian in process #{}'\
-            .format(mpi.RANK))
-        L, border, B, D = compute_laplacian(
-            image,
-            marked=marked,
-            beta=beta, 
-            weight_function=weight_function,
-            )
-    '''    
-        
     ## compute energy
     energy = []
     for label in range(nlabel):
@@ -602,31 +573,27 @@ def compute_laplacians(
         weight_function = lambda x,i,j: weight_std(x,i,j,beta=beta)
         
     ## weight function may depend on label
-    list_Lu, list_B, list_D = [], [], []
-    for data in  weight_function(im,i,j):
-        ## affinity matrix
-        logger.debug('laplacian matrix')
-        A = sparse.coo_matrix((data, (i,j)), shape=(npix,npix))
-        A = A + A.T
-        
-        ## laplacian matrix
-        L = (sparse.spdiags(A.sum(axis=0),0,npix,npix) - A).tocsr()
-        
-        ## return laplacian
-        if marked is None:
-            Lu = L 
-            B  = sparse.coo_matrix((0,0))
-            D  = np.asarray(A.sum(axis=0))
-        else:
-            Lu = L[unknown,:][:,unknown]
-            B  = L[unknown,:][:,border]
-            D = np.asarray(A.sum(axis=0)).flat[unknown]
-        
-        list_Lu.append(Lu)
-        list_B.append(B)
-        list_D.append(D)
-        
-    return list_Lu, list_B, list_D, border
+    data =  weight_function(im,i,j)
+
+    ## affinity matrix
+    logger.debug('laplacian matrix')
+    A = sparse.coo_matrix((data, (i,j)), shape=(npix,npix))
+    A = A + A.T
+    
+    ## laplacian matrix
+    L = (sparse.spdiags(A.sum(axis=0),0,npix,npix) - A).tocsr()
+    
+    ## return laplacian
+    if marked is None:
+        Lu = L 
+        B  = sparse.coo_matrix((0,0))
+        D  = np.asarray(A.sum(axis=0))
+    else:
+        Lu = L[unknown,:][:,unknown]
+        B  = L[unknown,:][:,border]
+        D = np.asarray(A.sum(axis=0)).flat[unknown]
+    
+    return Lu, B, D, border
     
 ##------------------------------------------------------------------------------
 def weight_std(image, i, j, beta=1.0):
@@ -637,5 +604,5 @@ def weight_std(image, i, j, beta=1.0):
     '''
     im = np.asarray(image)
     wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
-    return [wij]
+    return wij
     

@@ -15,7 +15,7 @@ def weight_std(image, i, j, beta=1.0):
     '''
     im = np.asarray(image)
     wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
-    return [wij]
+    return wij
 
 ##------------------------------------------------------------------------------
 def weight_inv(image, i, j, beta=1., offset=1.):
@@ -23,7 +23,7 @@ def weight_inv(image, i, j, beta=1., offset=1.):
     im = np.asarray(image)
     data = np.abs(image.flat[i] - image.flat[j])
     wij = 1. / (offset + beta*data)
-    return [wij]
+    return wij
     
 ##------------------------------------------------------------------------------
 def weight_patch_diff(
