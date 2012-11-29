@@ -124,14 +124,14 @@ class SVMRWMeanAPI(object):
 
         ## laplacian functions
         nlaplacian = len(self.laplacian_functions)
-        lweights = w[:nlabel*nlaplacian]
+        lweights = w[:nlaplacian]
         laplacian_function = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         amodels.extend(loss_anchor)
-        aweights = w[nlabel*nlaplacian:] + loss_weights
+        aweights = w[nlaplacian:] + loss_weights
         anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, weights=aweights)
         #import ipdb; ipdb.set_trace()
         
@@ -167,13 +167,13 @@ class SVMRWMeanAPI(object):
          
         ## laplacian functions
         nlaplacian = len(self.laplacian_functions)
-        lweights = w[:nlabel*nlaplacian]
+        lweights = w[:nlaplacian]
         laplacian_function = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
-        aweights = w[nlabel*nlaplacian:]
+        aweights = w[nlaplacian:]
         anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
              
         ## annotation consistent inference
@@ -182,7 +182,7 @@ class SVMRWMeanAPI(object):
             anchor_api,
             labelset,
             seeds=self.seeds[islices],
-            laplacian_function=weight_function,
+            laplacian_function=laplacian_function,
             return_arguments=['y'],
             ground_truth=z,
             ground_truth_init=y0,
@@ -199,13 +199,13 @@ class SVMRWMeanAPI(object):
          
         ## laplacian functions
         nlaplacian = len(self.laplacian_functions)
-        lweights = w[:nlabel*nlaplacian]
+        lweights = w[:nlaplacian]
         laplacian_function = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
-        aweights = w[nlabel*nlaplacian:]
+        aweights = w[nlaplacian:]
         anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
  
         ## unconstrained inference
@@ -214,7 +214,7 @@ class SVMRWMeanAPI(object):
             anchor_api,
             labelset,
             seeds=self.seeds,
-            laplacian_function=weight_function,
+            laplacian_function=laplacian_function,
             return_arguments=['y'],
             **self.rwparams
             )
@@ -254,17 +254,20 @@ class SVMRWMeanAPI(object):
          
         ## laplacian functions
         nlaplacian = len(self.laplacian_functions)
-        lweights = w[:nlabel*nlaplacian]
+        lweights = w[:nlaplacian]
         laplacian_function = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions, lweights) 
  
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
-        aweights = w[nlabel*nlaplacian:]
+        aweights = w[nlaplacian:]
         anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
  
+        laplacian = None
         self.approx_aci_maxiter = 200
-        self.approx_aci_maxstep = 1e-2
+        self.approx_aci_maxstep = 1e-1
+        self.approx_aci_weight = 1e1
+        update = 1
         z_weights = np.zeros(np.asarray(z).shape)
         z_label = np.argmax(z,axis=0)
         for i in range(self.approx_aci_maxiter):
@@ -274,15 +277,25 @@ class SVMRWMeanAPI(object):
             gtmodel = {'api': BaseAnchorAPI(np.arange(nvar), z, weights=z_weights)}
             modified_api = svm_rw_functions.MetaAnchorApi(
                 nlabel, amodels + [gtmodel], aweights + [1]*nlabel )
-
+                
+            # mod = amodels[0]['api']
+            # a0,w0 = modified_api.get_anchor_and_weights(np.arange(x.size),1, image=x)
+            # ia0 = labelset[np.argmax(a0, axis=0)].reshape(x.shape)
+            # from rwsegment import io_analyze
+            # io_analyze.save('ia0.hdr', ia0.astype(np.int32))
+            #imask = flatmask[0].reshape(x.shape)
+            #io_analyze.save('imask.hdr', imask.astype(np.int32))
+            #import ipdb; ipdb.set_trace()
+            
             ## inference
-            y_ = rwsegment.segment(
+            y_, laplacian = rwsegment.segment(
                 x, 
                 modified_api,
                 labelset,
                 seeds=self.seeds[islices],
                 laplacian_function=laplacian_function,
-                return_arguments=['y'],
+                return_arguments=['y','laplacian'],
+                laplacian=laplacian,
                 **self.rwparams
                 )
 
@@ -293,10 +306,13 @@ class SVMRWMeanAPI(object):
                 break
             
             ## update weights
-            delta = np.max(y_ - y_[z_label, np.arange(y_.shape[1])], axis=0)
-            delta = np.clip(delta, 0, self.approx_aci_maxstep)
-            z_weights += delta
+            ny = y_.shape[1]
+            delta = np.max(y_ - y_[z_label, np.arange(ny)], axis=0)
+            update = update*np.power(1.3, np.sign(delta))
+            z_weights += update*delta
+            
 
+        import ipdb; ipdb.set_trace()
         return y_        
 
 

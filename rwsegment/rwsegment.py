@@ -24,11 +24,13 @@ class BaseAnchorAPI(object):
     def get_anchor_and_weights(self, i, D, **kwargs):
         indices = kwargs.pop('indices', i)
         nlabel = len(self.anchor)
-        inter = np.in1d(self.ianchor, indices, assume_unique=True)
+        inter1 = np.in1d(self.ianchor, indices, assume_unique=True)
+        inter2 = np.in1d(indices, self.ianchor, assume_unique=True)
         ## compute anchor weights
-        weights = np.tile(D, (nlabel,1)) * self.weights[:, inter]
-        ## get anchor at indices
-        anchor = self.anchor[:, inter]
+        anchor = 1./nlabel * np.ones((nlabel,len(indices)))
+        weights = np.ones((nlabel,len(indices)))
+        anchor[:,inter2]  = self.anchor[:, inter1]
+        weights[:,inter2] = np.tile(D, (nlabel,1)) * self.weights[:, inter1] 
         return anchor, weights
         
 ##------------------------------------------------------------------------------
@@ -69,12 +71,15 @@ def segment(
     
     ## compute laplacian
     logger.debug('compute laplacian')
-    Lu, B, D, border = compute_laplacians(
-        image,
-        marked=marked,
-        beta=beta, 
-        weight_function=laplacian_function,
-        )
+    laplacian = kwargs.pop('laplacian', None)
+    if laplacian is None:
+        Lu, B, D, border = compute_laplacians(
+            image,
+            marked=marked,
+            beta=beta, 
+            weight_function=laplacian_function,
+            )
+    else: Lu, B, D, border = laplacian
         
     ## anchor function
     list_x0, list_Omega = anchor_api.get_anchor_and_weights(
@@ -143,7 +148,7 @@ def segment(
     for arg in return_arguments:
         if   arg=='image':  rargs.append(sol)
         elif arg=='y':      rargs.append(y)
-        elif arg=='laplacian': rargs.append((L,border,B))
+        elif arg=='laplacian': rargs.append((Lu,B,D, border))
         else: pass
     
     if len(rargs)==1: return rargs[0]
@@ -222,7 +227,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
     nlabel = len(list_xm)
     
     ## compute separately for each label (best)
-    nvar = list_Lu[0].shape[0]
+    nvar = Lu.shape[0]
     x = np.zeros((nlabel,nvar))
 
     ## solver
@@ -468,7 +473,7 @@ def energy_anchor(
     '''       
  
     list_x0, list_Omega = anchor_api.get_anchor_and_weights(
-         unknown, np.ones((nlabel,nunknown)), image=image) ## D ?
+         unknown, np.ones(nunknown), image=image) ## D ?
     
     energy = []
     for label in range(nlabel):
@@ -497,25 +502,22 @@ def energy_rw(
     
     ## compute laplacian
     logger.debug('compute laplacian')
-    list_Lu, list_B, list_D, border = compute_laplacians(
+    Lu, B, D, border = compute_laplacians(
         image,
         marked=marked,
         beta=beta, 
         weight_function=laplacian_function,
         )
-    if len(list_Lu)==1:
-        list_Lu = [list_Lu[0] for i in range(nlabel)]
-        list_B  = [list_B[0]  for i in range(nlabel)]
-    
+        
     ## compute energy
     energy = []
     for label in range(nlabel):
         X = np.asmatrix(x[label][unknown]).T
-        en = X.T * list_Lu[label] * X
+        en = X.T * Lu * X
         
         ## seeds !!
         xm = seeds.ravel()[border]==labelset[label]
-        en += X.T * list_B[label] * np.mat(xm.reshape((-1,1)))
+        en += X.T * B * np.mat(xm.reshape((-1,1)))
         energy.append(float(en))
     return energy
 

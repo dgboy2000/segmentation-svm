@@ -29,6 +29,7 @@ from segmentation_utils import compute_dice_coef
 import svm_rw_api
 reload(svm_rw_api)
 import svm_rw_functions
+reload(svm_rw_functions)
 from svm_rw_api import SVMRWMeanAPI
 from rwsegment import mpi
 
@@ -266,7 +267,7 @@ class SVMSegmenter(object):
             ## learn struct svm
             logger.debug('started root learning')
             nlabel = len(self.labelset)
-            wref = [f['default'] for f in self.laplacian_functions for s in range(nlabel)] + \
+            wref = [f['default'] for f in self.laplacian_functions] + \
                    [m['default'] for m in self.prior_models for s in range(nlabel)]
             w0 = wref
             if self.use_latent:
@@ -393,14 +394,14 @@ class SVMSegmenter(object):
         ## laplacian functions
         nlabel = len(self.labelset)
         nlaplacian = len(self.laplacian_functions)
-        lweights = w[:nlabel*nlaplacian]
+        lweights = w[:nlaplacian]
         laplacian_function = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions, weights=lweights) 
         laplacian_function_h = svm_rw_functions.LaplacianWeights(
             nlabel,self.laplacian_functions) 
         
         ## anchor weights        
-        aweights = w[nlabel*nlaplacian:]
+        aweights = w[nlaplacian:]
             
         ## test training data ?
         inference_train = True
@@ -459,8 +460,8 @@ class SVMSegmenter(object):
                 loss1 = loss_functions.anchor_loss(tz,ty,mask=tflatmask)
                 logger.info('SDloss (hand-tuned) = {}'.format(loss1))
                 ## loss3: laplacian loss
-                loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
-                logger.info('LAPloss (hand-tuned) = {}'.format(loss2))
+                # loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
+                # logger.info('LAPloss (hand-tuned) = {}'.format(loss2))
                 break
  
         ## prior
@@ -504,8 +505,8 @@ class SVMSegmenter(object):
         logger.info('SDloss = {}'.format(loss1))
         
         ## loss3: laplacian loss
-        loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
-        logger.info('LAPloss = {}'.format(loss2))
+        # loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
+        # logger.info('LAPloss = {}'.format(loss2))
 
         ## loss4: linear loss
         loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
@@ -520,9 +521,6 @@ class SVMSegmenter(object):
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
                 
-            #io_analyze.save(outdir + 'im.hdr',im.astype(np.int32))
-            #np.save(outdir + 'y.npy',y)        
-            #io_analyze.save(outdir + 'sol.hdr',sol.astype(np.int32))
             np.savetxt(outdir + 'objective.txt', [obj])
             np.savetxt(
                 outdir + 'dice.txt', 
@@ -531,7 +529,7 @@ class SVMSegmenter(object):
             f = open(outdir + 'losses.txt', 'w')
             f.write('ideal_loss\t{}\n'.format(loss0))
             f.write('anchor_loss\t{}\n'.format(loss1))
-            f.write('laplacian_loss\t{}\n'.format(loss2))
+            # f.write('laplacian_loss\t{}\n'.format(loss2))
             f.close()
         
     def process_sample(self, test, fold=None):
