@@ -247,7 +247,7 @@ class SVMSegmenter(object):
 
             nmaxvol = 100
             if len(images) > nmaxvol:
-                select = np.random.permutation(np.arange(len(images)))[:nmaxvol] 
+                iselect = np.random.permutation(np.arange(len(images)))[:nmaxvol] 
                 iselect = np.sort(iselect)
                 logger.info('selected training: {}'.format(iselect))
                 images = [images[i] for i in iselect]

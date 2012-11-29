@@ -311,8 +311,6 @@ class SVMRWMeanAPI(object):
             update = update*np.power(1.3, np.sign(delta))
             z_weights += update*delta
             
-
-        import ipdb; ipdb.set_trace()
         return y_        
 
 
