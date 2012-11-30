@@ -28,13 +28,17 @@ logger = utils_logging.get_logger('segmentation_batch',utils_logging.INFO)
 
 class SegmentationBatch(object):
     
-    def __init__(self, prior_weights=[1.,0,0], name='constant1'):
+    def __init__(
+            self, 
+            anchor_weights=None, 
+            **kwargs):
+
         self.labelset  = np.asarray(config.labelset)
-        self.model_name = name
+        self.model_name = kwargs.pop('name', None)
         self.force_recompute_prior = False
         
         self.params  = {
-            'beta'             : 50,     # contrast parameter
+            'beta'             : 100,     # contrast parameter
             'return_arguments' :['image','y'],
             # optimization parameter
             'per_label': True,
@@ -43,20 +47,19 @@ class SegmentationBatch(object):
             'maxiter'   : 2e3,
             }
         
-        laplacian_type = 'std_b50'
-        logger.info('laplacian type is: {}'.format(laplacian_type))
         
-        self.weight_functions = {
-            'std_b10'     : lambda im: wflib.weight_std(im, beta=10),
-            'std_b50'     : lambda im: wflib.weight_std(im, beta=50),
-            'std_b100'    : lambda im: wflib.weight_std(im, beta=100),
-            'inv_b100o1'  : lambda im: wflib.weight_inv(im, beta=100, offset=1),
-            'pdiff_r1b10': lambda im: wflib.weight_patch_diff(im, r0=1, beta=10),
-            'pdiff_r2b10': lambda im: wflib.weight_patch_diff(im, r0=2, beta=10),
-            'pdiff_r1b50' : lambda im: wflib.weight_patch_diff(im, r0=1, beta=50),
-            }
-        self.weight_function = self.weight_functions[laplacian_type]
-       
+        self.laplacian_function = \
+           lambda im,i,j: wflib.weight_std(im,i,j, beta=100)
+
+        self.prior_models = [
+           {'name': 'constant',  'default': 0},
+           {'name': 'entropy',   'default': 0},
+           {'name': 'intensity', 'default': 0.0},
+           {'name': 'variance',  'default': 0.0},
+           {'name': 'variance cmap', 'default': 0.0},
+           ]
+
+          
         self.prior_models = [
             prior_models.Constant,
             prior_models.Entropy_no_D,
@@ -89,15 +92,26 @@ class SegmentationBatch(object):
            
         ## normalize image
         nim = im/np.std(im)
-            
+
+        ## laplacian functions
+        nlabel = len(self.labelset)
+
+        ## instantiate models
+        imask = prior['imask']
+        average = prior['data']
+        variance = prior['variance']
+        im_avg, im_var = prior['intensity']
+        
+        self.prior_models['constant']['api']  = models.Constant(imask, average)
+        self.prior_models['entropy']['api']   = models.Entropy_no_D(imask, average)
+        self.prior_models['intensity']['api'] = models.Intensity(im_avg, im_var)
+        self.prior_models['variance']['api']  = models.Variance_no_D(imask, average, variance=variance)
+        self.prior_models['variance cmap']['api'] = models.Variance_no_D_cmap(imask, average, variance=variance)
+ 
         ## init anchor_api
-        anchor_api = MetaAnchor(
-            prior=prior,
-            prior_models=self.prior_models,
-            prior_weights=self.prior_weights,
-            image=nim,
-            )
-           
+        anchor_api = svm_rw_functions.MetaAnchorApi(
+            nlabel, self.prior_models, weights=self.anchor_weights)
+
         ## start segmenting
         #import ipdb; ipdb.set_trace()
         sol,y = rwsegment.segment(
@@ -105,7 +119,7 @@ class SegmentationBatch(object):
             anchor_api,
             seeds=seeds, 
             labelset=self.labelset, 
-            weight_function=self.weight_function,
+            laplacian_function=self.laplacian_function,
             **self.params
             )
 
@@ -116,19 +130,7 @@ class SegmentationBatch(object):
         ## loss 0 : 1 - Dice(y,z)
         loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
         logger.info('Tloss = {}'.format(loss0))
-        
-        ## loss2: squared difference with ztilde
-        loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
-        logger.info('SDloss = {}'.format(loss1))
-        
-        ## loss3: laplacian loss
-        loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
-        logger.info('LAPloss = {}'.format(loss2))
- 
-        ## loss4: linear loss
-        loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
-        logger.info('LINloss = {}'.format(loss3))
-        
+       
         ## compute Dice coefficient per label
         dice    = compute_dice_coef(sol, seg,labelset=self.labelset)
         logger.info('Dice: {}'.format(dice))
@@ -136,8 +138,7 @@ class SegmentationBatch(object):
         if not config.debug:
             if fold is not None:
                 test_name = 'f{}_{}'.format(fold[0][:2], test)
-            else:
-                test_name = test
+            else: test_name = test
             outdir = config.dir_seg + \
                 '/{}/{}'.format(self.model_name,test_name)
             logger.info('saving data in: {}'.format(outdir))
@@ -146,26 +147,22 @@ class SegmentationBatch(object):
         
             f = open(outdir + 'losses.txt', 'w')
             f.write('ideal_loss\t{}\n'.format(loss0))
-            f.write('anchor_loss\t{}\n'.format(loss1))
-            f.write('laplacian_loss\t{}\n'.format(loss2))
             f.close()
             
             io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32)) 
             np.savetxt(
                 outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
         
-    def compute_mean_segmentation(self, list):
+    def compute_mean_segmentation(self, list, fold=None):
         for test in list:
             file_gt = config.dir_reg + test + 'seg.hdr'
             seg     = io_analyze.load(file_gt)
             seg.flat[~np.in1d(seg, self.labelset)] = self.labelset[0]
            
-
             ## get prior
             prior, mask = load_or_compute_prior_and_mask(
-                test,force_recompute=self.force_recompute_prior)
+                test,force_recompute=self.force_recompute_prior, fold=fold)
             mask = mask.astype(bool)            
-           
 
             y = np.zeros((len(self.labelset),seg.size))
             y[:,0] = 1
@@ -182,37 +179,20 @@ class SegmentationBatch(object):
             loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
             logger.info('Tloss = {}'.format(loss0))
             
-            ## loss2: squared difference with ztilde
-            #loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
-            #logger.info('SDloss = {}'.format(loss1))
-            
-            ## loss3: laplacian loss
-            #loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
-            #logger.info('LAPloss = {}'.format(loss2))
- 
-            ## loss4: linear loss
-            #loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
-            #logger.info('LINloss = {}'.format(loss3))
-            
-            ## compute Dice coefficient per label
+           ## compute Dice coefficient per label
             dice    = compute_dice_coef(sol, seg,labelset=self.labelset)
             logger.info('Dice: {}'.format(dice))
             
             if not config.debug:
+                if fold is not None:
+                    test_name = 'f{}_{}'.format(fold[0][:2], test)
+                else: test_name = test
                 outdir = config.dir_seg + \
-                    '/{}/{}'.format('mean',test)
+                    '/{}/{}'.format('mean',test_name)
                 logger.info('saving data in: {}'.format(outdir))
                 if not os.path.isdir(outdir):
                     os.makedirs(outdir)
-            
-                #f = open(outdir + 'losses.txt', 'w')
-                #f.write('ideal_loss\t{}\n'.format(loss0))
-                #f.write('anchor_loss\t{}\n'.format(loss1))
-                #f.write('laplacian_loss\t{}\n'.format(loss2))
-                #f.close()
-                
                 io_analyze.save(outdir + 'sol.hdr', sol.astype(np.int32)) 
-
                 np.savetxt(
                     outdir + 'dice.txt', np.c_[dice.keys(),dice.values()],fmt='%d %.8f')
  
@@ -228,64 +208,15 @@ if __name__=='__main__':
     if not '-s' in sys.argv:
         sys.exit()
 
-    #sample_list = ['01/']
-    #sample_list = ['02/']
-    #sample_list = config.vols
-   
-    # entropy
-    segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0, 0, 0], name='entropy1e-2')
-    for fold in config.folds:
+    labelset = config.labelset
+    n = len(labelset)
+
+    # 
+    segmenter = SegmentationBatch(
+        prior_weights=[1e-2] + [0]*n + [0]*n + [0]*n + [0]*n, 
+        name='constant1e-2')
+    #for fold in config.folds:
+    for fold in ['F26/']:
         segmenter.process_all_samples(fold, fold=fold)
 
-    ## constant prior
-    #segmenter = SegmentationBatch(prior_weights=[1e-2, 0, 0, 0,0], name='constant1e-2')
-    #segmenter.process_all_samples(['01/'])
-    #
-    ## entropy prior
-    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 0,0,0], name='entropy1e-2')
-    #segmenter.process_all_samples(['01/'])
-    #
-    ## entropy prior
-    #segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 0,0,0], name='entropy1e-3') 
-    #segmenter.process_all_samples(['01/'])
 
-    ## intensity prior
-    ##segmenter = SegmentationBatch(anchor_weight=1.0,    model_type='intensity')
-    ##segmenter.process_all_samples(sample_list)
-    #
-
-    ## combine entropy / intensity
-    #segmenter = SegmentationBatch(prior_weights=[0, 1e-2, 1e-2], name='entropy1e-2_intensity1e-2')
-    #segmenter.process_all_samples(sample_list)
-    #
-    ## combine entropy / intensity
-    #segmenter = SegmentationBatch(prior_weights=[0, 1e-3, 1e-2], name='entropy1e-3_intensity1e-2')
-    ##segmenter.process_all_samples(sample_list)
-    
-    
-    # variance+cmap
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-1], name='variancecmap1e-1')
-    ##segmenter.compute_mean_segmentation(sample_list)
-    #segmenter.process_all_samples(sample_list)
- 
-    ## variance
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 1e-1, 0], name='variance1e-1')
-    #segmenter.process_all_samples(sample_list)
-    #
-    ## variance+cmap
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-0], name='variancecmap1e-0')
-    #segmenter.process_all_samples(sample_list)
-    #
-    ## variance
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-0, 0], name='variance1e-0')
-    #segmenter.process_all_samples(sample_list)
-    #
-    # # variance+cmap
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0, 0, 1e-2], name='variancecmap1e-2')
-    #segmenter.process_all_samples(sample_list)
-    #
-    ## variance
-    #segmenter = SegmentationBatch(prior_weights=[0, 0, 0,  1e-2, 0], name='variance1e-2')
-    #segmenter.process_all_samples(sample_list)
-    
-    
