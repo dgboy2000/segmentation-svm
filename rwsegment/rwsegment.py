@@ -28,7 +28,7 @@ class BaseAnchorAPI(object):
         inter2 = np.in1d(indices, self.ianchor, assume_unique=True)
         ## compute anchor weights
         anchor = 1./nlabel * np.ones((nlabel,len(indices)))
-        weights = np.ones((nlabel,len(indices)))
+        weights = np.zeros((nlabel,len(indices)))
         anchor[:,inter2]  = self.anchor[:, inter1]
         weights[:,inter2] = np.tile(D, (nlabel,1)) * self.weights[:, inter1] 
         return anchor, weights
@@ -237,7 +237,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
     
     ## compute tolerance depending on the Laplacian
     rtol = kwargs.pop('rtol', 1e-6)
-    
+
     for s in range(nlabel - 1):## don't need to solve the last one !
         
         ## prior
@@ -256,6 +256,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
         xm = np.asmatrix(np.c_[list_xm[s]].astype(float))
         
         ## solve
+        #import ipdb; ipdb.set_trace()
         P = Lu + Omega
         q = B*xm - Omega*x0
         

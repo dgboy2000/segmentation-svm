@@ -7,8 +7,10 @@ from rwsegment import rwsegment
 from rwsegment import weight_functions as wflib
 from rwsegment import rwsegment_prior_models as prior_models
 from rwsegment import loss_functions
-from rwsegment.rwsegment import  BaseAnchorAPI
-from svm_rw_api import MetaAnchor
+from rwsegment import rwsegment_prior_models as models
+reload(models)
+import svm_rw_functions
+from svm_rw_functions import MetaAnchorApi
 reload(rwsegment)
 reload(loss_functions)
 reload(prior_models)
@@ -36,6 +38,8 @@ class SegmentationBatch(object):
         self.labelset  = np.asarray(config.labelset)
         self.model_name = kwargs.pop('name', None)
         self.force_recompute_prior = False
+        self.sweights = kwargs.pop('sweights', 1)
+        omega = kwargs.pop('omega', 0)
         
         self.params  = {
             'beta'             : 100,     # contrast parameter
@@ -49,28 +53,21 @@ class SegmentationBatch(object):
         
         
         self.laplacian_function = \
-           lambda im,i,j: wflib.weight_std(im,i,j, beta=100)
+           lambda im,i,j: wflib.weight_std(im,i,j, beta=100, omega=omega)
 
         self.prior_models = [
            {'name': 'constant',  'default': 0},
-           {'name': 'entropy',   'default': 0},
+           #{'name': 'entropy',   'default': 0},
+           {'name': 'spatial',   'default': 0},
            {'name': 'intensity', 'default': 0.0},
            {'name': 'variance',  'default': 0.0},
            {'name': 'variance cmap', 'default': 0.0},
            ]
 
-          
-        self.prior_models = [
-            prior_models.Constant,
-            prior_models.Entropy_no_D,
-            prior_models.Intensity,
-            prior_models.Variance_no_D,
-            prior_models.Variance_no_D_Cmap,
-            ]
-        self.prior_weights = prior_weights
+        self.anchor_weights = anchor_weights
 
         logger.info('Model name = {}, using prior weights={}'\
-            .format(self.model_name, self.prior_weights))
+            .format(self.model_name, self.anchor_weights))
     
     def process_sample(self,test,fold=None):
 
@@ -102,11 +99,12 @@ class SegmentationBatch(object):
         variance = prior['variance']
         im_avg, im_var = prior['intensity']
         
-        self.prior_models['constant']['api']  = models.Constant(imask, average)
-        self.prior_models['entropy']['api']   = models.Entropy_no_D(imask, average)
-        self.prior_models['intensity']['api'] = models.Intensity(im_avg, im_var)
-        self.prior_models['variance']['api']  = models.Variance_no_D(imask, average, variance=variance)
-        self.prior_models['variance cmap']['api'] = models.Variance_no_D_cmap(imask, average, variance=variance)
+        self.prior_models[0]['api'] = models.Constant(imask, average)
+        #self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
+        self.prior_models[1]['api'] = models.Spatial(imask, average, sweights=self.sweights)
+        self.prior_models[2]['api'] = models.Intensity(im_avg, im_var)
+        self.prior_models[3]['api'] = models.Variance_no_D(imask, average, variance=variance)
+        self.prior_models[4]['api'] = models.Variance_no_D_Cmap(imask, average, variance=variance)
  
         ## init anchor_api
         anchor_api = svm_rw_functions.MetaAnchorApi(
@@ -211,12 +209,23 @@ if __name__=='__main__':
     labelset = config.labelset
     n = len(labelset)
 
-    # 
+    #
+    weights = [1e-2]*n
+    #weights[0] = 1e-4
+    #weights[8] = 1.
+    #weights[9] = 1.
+    omega = 0#1e-4
+    sweights = [1]*n
+    sweights[0] = 1e-2
+    
+    #segmenter = SegmentationBatch(
+    #    anchor_weights=weights + [0]*n + [0]*n + [0]*n + [0]*n, 
+    #    name='constant1e-2', omega=omega)
     segmenter = SegmentationBatch(
-        prior_weights=[1e-2] + [0]*n + [0]*n + [0]*n + [0]*n, 
-        name='constant1e-2')
+        anchor_weights=[0]*n + weights + [0]*n + [0]*n + [0]*n, 
+        name='entropy1e-2', omega=omega, sweights=sweights)
     #for fold in config.folds:
-    for fold in ['F26/']:
+    for fold in [['F26/']]:
         segmenter.process_all_samples(fold, fold=fold)
 
 

@@ -7,14 +7,14 @@ import utils_logging
 logger = utils_logging.get_logger('weigth_functions',utils_logging.INFO)
 
 
-def weight_std(image, i, j, beta=1.0):
+def weight_std(image, i, j, beta=1.0, omega=0):
     ''' standard weight function 
     
         for touching pixel pair (i,j),
             wij = exp (- beta (image.flat[i] - image.flat[j])^2)
     '''
     im = np.asarray(image)
-    wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
+    wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2) + omega
     return wij
 
 ##------------------------------------------------------------------------------

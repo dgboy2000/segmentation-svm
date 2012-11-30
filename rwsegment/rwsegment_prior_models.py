@@ -51,11 +51,23 @@ class Variance_no_D_Cmap(Variance):
         return cmap
 
     def get_anchor_and_weights(self, i, D, image=None, **kwargs):
-        anchor, weights = super(Variance_no_D, self).get_anchor_and_weights(i, D_, **kwargs)
+        D_ = np.ones(np.asarray(D).shape)
+        anchor, weights = super(Variance_no_D_Cmap, self).get_anchor_and_weights(i, D_, **kwargs)
         if image is not None:
             weights *= self.make_cmap(image)[i]
         return anchor, weights
 
+        
+class Spatial(Constant):
+    def __init__(self, ianchor, anchor, sweights=1.):
+        nlabel = len(anchor)
+        sw = np.ones(nlabel)*sweights
+        #smap = sum([ (1-anchor[s])*(1-sw[s]) + anchor[s]*sw[s] for s in range(nlabel)]) / (nlabel - np.sum(sw) + 1)
+        smap = np.clip(np.min((1-anchor) + np.c_[sw], axis=0),0,1)
+        #import ipdb; ipdb.set_trace()
+        weights = np.tile(smap, (nlabel,1))
+        super(Spatial,self).__init__(ianchor, anchor, weights=weights)
+    
    
 class Intensity(object):
     def __init__(self, im_avg, im_var):
@@ -73,5 +85,7 @@ class Intensity(object):
         anchor = (1./A)*a
         weights = np.tile(A, (nlabel,1))
         return anchor, weights
+
+        
 
         

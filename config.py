@@ -191,7 +191,7 @@ if basis=='default':
     labelset = [0,13,14,15,16]
 elif basis=='allmuscles':
     dir_prior = dir_work + '/prior_allm/'
-    dir_prior = dir_work + '/prior_pca_allm/'
+    dir_pca_prior = dir_work + '/prior_pca_allm/'
     dir_prior_edges = dir_work + '/prior_edges_allm/'
     vols = {
         'F23/': {'AB':39},
