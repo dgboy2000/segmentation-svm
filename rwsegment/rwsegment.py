@@ -482,7 +482,7 @@ def energy_anchor(
         xu = x[label][unknown]
         energy += float(
             np.sum(list_Omega[label] * (xu - list_x0[label])**2))
-    return energy
+    return float(energy)
     
 ##------------------------------------------------------------------------------
 def energy_rw(
@@ -519,8 +519,8 @@ def energy_rw(
         
         ## seeds !!
         xm = seeds.ravel()[border]==labelset[label]
-        energy += X.T * B * np.mat(xm.reshape((-1,1)))
-    return energy
+        energy += float(X.T * B * np.mat(xm.reshape((-1,1))))
+    return float(energy)
 
     
 ##------------------------------------------------------------------------------

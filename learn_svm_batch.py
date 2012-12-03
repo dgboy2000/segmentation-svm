@@ -359,13 +359,7 @@ class SVMSegmenter(object):
             
         #finally:
         if 1:
-            ##kill signal
-            if self.use_parallel:
-                logger.info('root finished training svm on {}. about to kill workers'\
-                    .format(fold))
-                for n in range(1, self.MPI_size):
-                    logger.debug('sending kill signal to worker #{}'.format(n))
-                    self.comm.send(('stop',None,{}),dest=n)
+
             return w,xi
             #logger.debug('worker #{} about to exit'.format(rank))
   
@@ -374,6 +368,8 @@ class SVMSegmenter(object):
         ## w
         strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
         logger.debug('w=[{}]'.format(strw))    
+    
+        #import ipdb; ipdb.set_trace()
     
         ## laplacian functions
         nlabel = len(self.labelset)
@@ -530,18 +526,18 @@ class SVMSegmenter(object):
                 f.close()
         
         
-    def get_prior_and_seeds(self, test, fold):
+    def get_prior_and_seeds(self, test, fold, bcast=False):
         if self.isroot:
             prior, mask = load_or_compute_prior_and_mask(
                 test, 
                 force_recompute=self.force_recompute_prior, 
                 fold=fold)
             
-            if self.use_parallel:
+            if bcast and self.use_parallel:
                 # have only the root process compute the prior 
                 # and pass it to the other processes
                 self.comm.bcast((dict(prior.items()),mask),root=0)    
-        else:
+        elif bcast:
             prior,mask = self.comm.bcast(None,root=0)
         
         ## instantiate models
@@ -573,7 +569,7 @@ class SVMSegmenter(object):
         fold_dir = 'f{}/'.format(fold[0][:2])
         outdir = self.dir_svm + fold_dir
 
-        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold)
+        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold, bcast=True)
         self.svm_rwmean_api = api
         self.seeds = seeds
         
@@ -607,6 +603,13 @@ class SVMSegmenter(object):
             self.w = w
             self.run_svm_inference(fold,w,fold_dir)
         
+        ##kill signal
+        if self.isroot and self.use_parallel:
+            logger.info('root finished training svm on {}. about to kill workers'\
+                .format(fold))
+            for n in range(1, self.MPI_size):
+                logger.debug('sending kill signal to worker #{}'.format(n))
+                self.comm.send(('stop',None,{}),dest=n)
         
     
     def process_all_samples(self,fold):
