@@ -211,19 +211,19 @@ if __name__=='__main__':
 
     #
     weights = [1e-2]*n
-    #weights[0] = 1e-4
+    weights[0] = 1e-4
     #weights[8] = 1.
     #weights[9] = 1.
     omega = 0#1e-4
     sweights = [1]*n
-    sweights[0] = 1e-1 #5e-1
+    sweights[0] = 1e-2 #run segmentation_batch.py --basis allmuscles --folder 2012.11.30.test -s
     
-    #segmenter = SegmentationBatch(
-    #    anchor_weights=weights + [0]*n + [0]*n + [0]*n + [0]*n, 
-    #    name='constant1e-2', omega=omega)
     segmenter = SegmentationBatch(
-        anchor_weights=[0]*n + weights + [0]*n + [0]*n + [0]*n, 
-        name='entropy1e-2', omega=omega, sweights=sweights)
+       anchor_weights=weights + [0]*n + [0]*n + [0]*n + [0]*n, 
+       name='constant1e-2', omega=omega)
+    # segmenter = SegmentationBatch(
+        # anchor_weights=[0]*n + weights + [0]*n + [0]*n + [0]*n, 
+        # name='entropy1e-2', omega=omega, sweights=sweights)
     #for fold in config.folds:
     for fold in [['F26/']]:
         segmenter.process_all_samples(fold, fold=fold)

@@ -63,13 +63,15 @@ class Spatial(Constant):
         nlabel = len(anchor)
         sw = np.ones(nlabel)*sweights
         #smap = sum([ (1-anchor[s])*(1-sw[s]) + anchor[s]*sw[s] for s in range(nlabel)]) / (nlabel - np.sum(sw) + 1)
-        smap = np.clip(np.min((1-anchor) + np.c_[sw], axis=0),0,1)
+        #smap = np.clip(np.min((1-anchor) + np.c_[sw], axis=0),0,1)
+        #smap = np.clip((1-anchor[0]) + sw[0], 0, 1)
         #weights = np.tile(smap, (nlabel,1))
-        anchor2 = anchor * smap + (1 - smap)/float(nlabel)
+        #anchor2 = anchor * smap + (1 - smap)/float(nlabel)
         #anchor2 = anchor * np.c_[sweights]
         #anchor2 = anchor2/np.sum(anchor2, axis=0)
-        import pdb; pdb.set_trace()
-        super(Spatial,self).__init__(ianchor, anchor2)
+        #import ipdb; ipdb.set_trace()
+        super(Spatial,self).__init__(ianchor, anchor)
+        #super(Spatial,self).__init__(ianchor, anchor2)
     
    
 class Intensity(object):

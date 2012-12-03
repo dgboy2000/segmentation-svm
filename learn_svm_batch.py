@@ -148,7 +148,7 @@ class SVMSegmenter(object):
                 ]
             self.prior_models = [
                 {'name': 'constant',  'default': 0.0},
-                {'name': 'entropy',   'default': 1e-2},
+                {'name': 'entropy',   'default': 1.0}, #1e-2 is better
                 {'name': 'intensity', 'default': 0.0},
                 ]
 
@@ -183,10 +183,8 @@ class SVMSegmenter(object):
             else:
                 logger.info('writing svm output to: {}'.format(self.dir_svm))
 
-    def make_training_set(self,test, fold=None):
-        if fold is None:
-            fold = [test]
-
+    def make_training_set(self, fold, seeds):
+    
         ## training images and segmentations
         if self.isroot:
             slice_border = 20 # do not consider top and bottom slices
@@ -199,8 +197,8 @@ class SVMSegmenter(object):
                 logger.info('loading training data: {}'.format(train))
                  
                 ## file names
-                file_seg = self.dir_reg + test + train + 'regseg.hdr'
-                file_im  = self.dir_reg + test + train + 'reggray.hdr'
+                file_seg = self.dir_reg + fold[0] + train + 'regseg.hdr'
+                file_im  = self.dir_reg + fold[0] + train + 'reggray.hdr'
                 
                 ## load image
                 im  = io_analyze.load(file_im)
@@ -220,7 +218,7 @@ class SVMSegmenter(object):
                             continue
                         islices = np.arange(istart, iend)
                         if np.all(seg[islices]==self.labelset[0]) or \
-                           np.all(self.seeds[islices]>=0):
+                           np.all(seeds[islices]>=0):
                             continue
                         logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
@@ -260,24 +258,29 @@ class SVMSegmenter(object):
             self.training_set = (images, segmentations, metadata) 
 
  
-    def train_svm(self,test,outdir=''):
+    def train_svm(self, fold, outdir=''):
+        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold)
+        
+        ## training set
+        self.make_training_set(fold, seeds)
         images, segmentations, metadata = self.training_set
+        
         if 1:
             import time                
             ## learn struct svm
             logger.debug('started root learning')
             nlabel = len(self.labelset)
             wref = [f['default'] for f in self.laplacian_functions] + \
-                   [m['default'] for m in self.prior_models for s in range(nlabel)]
+                   [m['default'] for m in self.prior_models ]
             w0 = wref
             if self.use_latent:
                 if self.one_iteration:
                     self.svmparams.pop('latent_niter_max',0) # remove kwarg
                     self.svm = latent_svm.LatentSVM(
-                        self.svm_rwmean_api.compute_loss,
-                        self.svm_rwmean_api.compute_psi,
-                        self.svm_rwmean_api.compute_mvc,
-                        self.svm_rwmean_api.compute_aci,
+                        api.compute_loss,
+                        api.compute_psi,
+                        api.compute_mvc,
+                        api.compute_aci,
                         one_iteration=self.one_iteration,
                         latent_niter_max=1,
                         **self.svmparams
@@ -288,7 +291,7 @@ class SVMSegmenter(object):
                         ## continue previous work
                         niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
                         ys = np.load(outdir + 'ys.npy')
-                        w = np.loadtxt(outdir + 'w_{}.txt'.format(niter))
+                        w = np.loadtxt(outdir + 'w_{}.txt'.format(niter)).tolist()
                         
                         curr_iter = niter + 1
                         logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
@@ -322,10 +325,10 @@ class SVMSegmenter(object):
                 else:
                     ## do all iterations
                     self.svm = latent_svm.LatentSVM(
-                        self.svm_rwmean_api.compute_loss,
-                        self.svm_rwmean_api.compute_psi,
-                        self.svm_rwmean_api.compute_mvc,
-                        self.svm_rwmean_api.compute_aci,
+                        api.compute_loss,
+                        api.compute_psi,
+                        api.compute_mvc,
+                        api.compute_aci,
                         one_iteration=self.one_iteration,
                         **self.svmparams
                         )
@@ -337,9 +340,9 @@ class SVMSegmenter(object):
             else:
                 ## baseline: use binary ground truth with struct SVM
                 self.svm = struct_svm.StructSVM(
-                    self.svm_rwmean_api.compute_loss,
-                    self.svm_rwmean_api.compute_psi,
-                    self.svm_rwmean_api.compute_mvc,
+                    api.compute_loss,
+                    api.compute_psi,
+                    api.compute_mvc,
                     **self.svmparams
                     )
                 w,xi,info = self.svm.train( 
@@ -365,32 +368,11 @@ class SVMSegmenter(object):
             #logger.debug('worker #{} about to exit'.format(rank))
   
         
-    def run_svm_inference(self,test,w, test_dir):
-        logger.info('running inference on: {}'.format(test))
-        
-        ## normalize w
+    def run_svm_inference(self, fold, w, fold_dir):
+        ## w
         strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
-        logger.debug('w=[{}]'.format(strw))
-   
-        '''
-        ## segment test image with trained w
-        weight_function = MetaLaplacianFunction(
-            weights_laplacians,
-            self.laplacian_functions)
-        
-        weight_function_h = MetaLaplacianFunction(
-            weights_laplacians_h,
-            self.laplacian_functions)
-        '''
-        
-        ## load images and ground truth
-        file_seg = self.dir_reg + test + 'seg.hdr'
-        file_im  = self.dir_reg + test + 'gray.hdr'
-        im  = io_analyze.load(file_im)
-        seg = io_analyze.load(file_seg)
-        seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
-        nim = im/np.std(im) # normalize image by std
-        
+        logger.debug('w=[{}]'.format(strw))    
+    
         ## laplacian functions
         nlabel = len(self.labelset)
         nlaplacian = len(self.laplacian_functions)
@@ -402,21 +384,21 @@ class SVMSegmenter(object):
         
         ## anchor weights        
         aweights = w[nlaplacian:]
-            
-        ## test training data ?
+        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold)
+        
         inference_train = True
-        if inference_train:
+        if inference_train and hasattr(self, "training_set"):
             train_ims, train_segs, train_metas = self.training_set
             for tim, tz, tmeta in zip(train_ims, train_segs, train_metas): 
                 islices = tmeta.pop('islices', slice(None))
                 shape = tmeta.pop('shape', tim.shape)
                 tseg = self.labelset[np.argmax(tz,axis=0)].reshape(tim.shape)
-                tseeds = self.seeds[islices]
+                tseeds = seeds[islices]
                 tflatmask = (tseeds<0).ravel()*np.ones((len(self.labelset),1))
 
                 ## anchors
-                amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
-                anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, weights=aweights)
+                amodels  = svm_rw_functions.reslice_models(shape, prior_models, islices=islices)
+                anchor_api = svm_rw_functions.MetaAnchorApi(amodels, weights=aweights)
                 
                 ## segment
                 tsol,ty = rwsegment.segment(
@@ -441,7 +423,7 @@ class SVMSegmenter(object):
                 logger.info('LAPloss = {}'.format(loss2))
 
                 ## hand tuned parameters
-                anchor_api_h = svm_rw_functions.MetaAnchorApi(nlabel, amodels)
+                anchor_api_h = svm_rw_functions.MetaAnchorApi(amodels)
 
                 tsol,ty = rwsegment.segment(
                     tim, 
@@ -463,84 +445,95 @@ class SVMSegmenter(object):
                 # loss2 = loss_functions.laplacian_loss(tz,ty,mask=tflatmask)
                 # logger.info('LAPloss (hand-tuned) = {}'.format(loss2))
                 break
- 
-        ## prior
-        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, self.prior_models, weights=aweights)
-    
-        sol,y = rwsegment.segment(
-            nim, 
-            anchor_api, 
-            self.labelset,
-            seeds=self.seeds,
-            laplacian_function=laplacian_function,
-            **self.rwparams_inf
-            )
-        
-        ## compute Dice coefficient
-        dice = compute_dice_coef(sol, seg,labelset=self.labelset)
-        logger.info('Dice coefficients: \n{}'.format(dice))
+   
+   
+        for test in fold:
+            logger.info('running inference on: {}'.format(fold))
+            ## load images and ground truth
+            file_seg = self.dir_reg + test + 'seg.hdr'
+            file_im  = self.dir_reg + test + 'gray.hdr'
+            im  = io_analyze.load(file_im)
+            seg = io_analyze.load(file_seg)
+            seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
+            nim = im/np.std(im) # normalize image by std
 
-        ## objective
-        en_rw = rwsegment.energy_rw(
-            nim, y, self.labelset,
-            seeds=self.seeds,laplacian_function=laplacian_function, **self.rwparams_inf)
-        en_anchor = rwsegment.energy_anchor(
-            nim, y, anchor_api, self.labelset,
-            seeds=self.seeds, **self.rwparams_inf)
-        obj = en_rw + en_anchor
-        logger.info('Objective = {:.3}'.format(obj))
+            ## prior
+            api, prior_models, seeds = self.get_prior_and_seeds(test, fold)
+            anchor_api = svm_rw_functions.MetaAnchorApi(prior_models, weights=aweights)
+        
+            sol,y = rwsegment.segment(
+                nim, 
+                anchor_api, 
+                self.labelset,
+                seeds=seeds,
+                laplacian_function=laplacian_function,
+                **self.rwparams_inf
+                )
+            
+            ## compute Dice coefficient
+            dice = compute_dice_coef(sol, seg,labelset=self.labelset)
+            logger.info('Dice coefficients: \n{}'.format(dice))
 
-        
-        ## compute losses
-        z = seg.ravel()==np.c_[self.labelset]
-        mask = self.seeds < 0
-        flatmask = mask.ravel()*np.ones((len(self.labelset),1))
-        
-        ## loss 0 : 1 - Dice(y,z)
-        loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
-        logger.info('Tloss = {}'.format(loss0))
-        
-        ## loss2: squared difference with ztilde
-        loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
-        logger.info('SDloss = {}'.format(loss1))
-        
-        ## loss3: laplacian loss
-        # loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
-        # logger.info('LAPloss = {}'.format(loss2))
+            ## objective
+            en_rw = rwsegment.energy_rw(
+                nim, y, self.labelset,
+                seeds=seeds,laplacian_function=laplacian_function, **self.rwparams_inf)
+            en_anchor = rwsegment.energy_anchor(
+                nim, y, anchor_api, self.labelset,
+                seeds=seeds, **self.rwparams_inf)
+            obj = en_rw + en_anchor
+            logger.info('Objective = {:.3}'.format(obj))
 
-        ## loss4: linear loss
-        loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
-        logger.info('LINloss = {}'.format(loss3))
-       
-        ## saving
-        if self.debug:
-            pass
-        elif self.isroot:
-            outdir = self.dir_inf + test_dir
-            logger.info('saving data in: {}'.format(outdir))
-            if not os.path.isdir(outdir):
-                os.makedirs(outdir)
+            
+            ## compute losses
+            z = seg.ravel()==np.c_[self.labelset]
+            mask = seeds < 0
+            flatmask = mask.ravel()*np.ones((len(self.labelset),1))
+            
+            ## loss 0 : 1 - Dice(y,z)
+            loss0 = loss_functions.ideal_loss(z,y,mask=flatmask)
+            logger.info('Tloss = {}'.format(loss0))
+            
+            ## loss2: squared difference with ztilde
+            loss1 = loss_functions.anchor_loss(z,y,mask=flatmask)
+            logger.info('SDloss = {}'.format(loss1))
+            
+            ## loss3: laplacian loss
+            # loss2 = loss_functions.laplacian_loss(z,y,mask=flatmask)
+            # logger.info('LAPloss = {}'.format(loss2))
+
+            ## loss4: linear loss
+            loss3 = loss_functions.linear_loss(z,y,mask=flatmask)
+            logger.info('LINloss = {}'.format(loss3))
+           
+            ## saving
+            if self.debug:
+                pass
+            elif self.isroot:
+                outdir = fold_dir + '.{}'.format(test)
                 
-            np.savetxt(outdir + 'objective.txt', [obj])
-            np.savetxt(
-                outdir + 'dice.txt', 
-                np.c_[dice.keys(),dice.values()],fmt='%d %f')
+                logger.info('saving data in: {}'.format(outdir))
+                if not os.path.isdir(outdir):
+                    os.makedirs(outdir)
+                    
+                np.savetxt(outdir + 'objective.txt', [obj])
+                np.savetxt(
+                    outdir + 'dice.txt', 
+                    np.c_[dice.keys(),dice.values()],fmt='%d %f')
+            
+                f = open(outdir + 'losses.txt', 'w')
+                f.write('ideal_loss\t{}\n'.format(loss0))
+                f.write('anchor_loss\t{}\n'.format(loss1))
+                # f.write('laplacian_loss\t{}\n'.format(loss2))
+                f.close()
         
-            f = open(outdir + 'losses.txt', 'w')
-            f.write('ideal_loss\t{}\n'.format(loss0))
-            f.write('anchor_loss\t{}\n'.format(loss1))
-            # f.write('laplacian_loss\t{}\n'.format(loss2))
-            f.close()
         
-    def process_sample(self, test, fold=None):
-        if fold is not None:
-            test_dir = 'f{}_{}'.format(fold[0][:2], test)
-        else:
-            test_dir = test
- 
+    def get_prior_and_seeds(self, test, fold):
         if self.isroot:
             prior, mask = load_or_compute_prior_and_mask(
-                test,force_recompute=self.force_recompute_prior, fold=fold)
+                test, 
+                force_recompute=self.force_recompute_prior, 
+                fold=fold)
             
             if self.use_parallel:
                 # have only the root process compute the prior 
@@ -555,33 +548,37 @@ class SVMSegmenter(object):
         variance = prior['variance']
         im_avg, im_var = prior['intensity']
         
-        self.prior_models[0]['api'] = models.Constant(imask, average)
-        self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
-        self.prior_models[2]['api'] = models.Intensity(im_avg, im_var)
+        prior_models = [dict(p) for p in self.prior_models]
+        prior_models[0]['api'] = models.Constant(imask, average)
+        prior_models[1]['api'] = models.Entropy_no_D(imask, average)
+        prior_models[2]['api'] = models.Intensity(im_avg, im_var)       
         
         ## seeds
-        self.seeds = (-1)*mask.astype(int)
+        seeds = (-1)*mask.astype(int)
         
-        ## training set
-        self.make_training_set(test, fold=fold)
+        api = SVMRWMeanAPI(
+            self.laplacian_functions, 
+            prior_models,
+            seeds,
+            self.labelset,
+            self.rwparams_svm,
+            **self.svm_api_params)
+        
+        return api, prior_models, seeds
+        
+        
+    def process_sample(self, fold):
+        fold_dir = 'f{}/'.format(fold[0][:2])
+        outdir = self.dir_svm + fold_dir
 
         ## training
         if self.retrain:
-            outdir = self.dir_svm + test_dir
+            
             if not self.debug and not os.path.isdir(outdir):
                 os.makedirs(outdir)
 
-            ## instantiate functors
-            self.svm_rwmean_api = SVMRWMeanAPI(
-                self.laplacian_functions, 
-                self.prior_models,
-                self.seeds,
-                self.labelset,
-                self.rwparams_svm,
-                **self.svm_api_params)
-                
             if self.isroot:
-                w,xi = self.train_svm(test,outdir=outdir)
+                w,xi = self.train_svm(fold, outdir=outdir)
                 if self.debug:
                     pass
                 elif self.isroot:
@@ -595,28 +592,21 @@ class SVMSegmenter(object):
                 worker.work()
 
         else:
-            if self.isroot and not self.retrain:    
-                outdir = self.dir_svm + test
+            if self.isroot:
                 logger.warning('Not retraining svm')
                 w = np.loadtxt(outdir + 'w')
         
         ## inference
-        if self.isroot: 
+        if self.isroot:
             self.w = w
-            self.run_svm_inference(test,w, test_dir=test_dir)
+            self.run_svm_inference(fold,w,fold_dir)
         
         
     
-    def process_all_samples(self,sample_list,fold=None):
-        for test in sample_list:
-            if self.isroot:
-                logger.info('--------------------------')
-                logger.info('test data: {}'.format(test))
-            self.process_sample(test, fold)
-        #if self.isroot:
-        #   for n in range(1, self.MPI_size):
-        #       logger.debug('sending kill signal to worker #{}'.format(n))
-        #       self.comm.send(('stop',None,{}),dest=n)
+    def process_all_samples(self,fold):
+        logger.info('--------------------------')
+        logger.info('test data: {}'.format(fold))
+        self.process_sample(fold)
     
 ##------------------------------------------------------------------------------
 
@@ -759,6 +749,7 @@ if __name__=='__main__':
         
     #sample_list = ['01/']
     for fold in config.folds:
-        svm_segmenter.process_all_samples(fold, fold=fold) 
+        svm_segmenter.process_all_samples(fold) 
+        break
     sys.exit(1)
     

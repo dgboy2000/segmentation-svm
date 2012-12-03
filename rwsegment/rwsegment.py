@@ -273,6 +273,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
                 raise Exception(
                     'Did not recognize solver: {}'.format(optim_solver))
         x[s] = _x.ravel()
+    #import ipdb; ipdb.set_trace()
     
     ## last label
     x[-1] = 1 - np.sum(x,axis=0)
@@ -476,11 +477,11 @@ def energy_anchor(
     list_x0, list_Omega = anchor_api.get_anchor_and_weights(
          unknown, np.ones(nunknown), image=image) ## D ?
     
-    energy = []
+    energy = 0
     for label in range(nlabel):
         xu = x[label][unknown]
-        energy.append(float(
-            np.sum(list_Omega[label] * (xu - list_x0[label])**2)))
+        energy += float(
+            np.sum(list_Omega[label] * (xu - list_x0[label])**2))
     return energy
     
 ##------------------------------------------------------------------------------
@@ -511,15 +512,14 @@ def energy_rw(
         )
         
     ## compute energy
-    energy = []
+    energy = 0
     for label in range(nlabel):
         X = np.asmatrix(x[label][unknown]).T
-        en = X.T * Lu * X
+        energy = X.T * Lu * X
         
         ## seeds !!
         xm = seeds.ravel()[border]==labelset[label]
-        en += X.T * B * np.mat(xm.reshape((-1,1)))
-        energy.append(float(en))
+        energy += X.T * B * np.mat(xm.reshape((-1,1)))
     return energy
 
     

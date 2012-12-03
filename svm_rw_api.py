@@ -70,7 +70,7 @@ class SVMRWMeanAPI(object):
         for laplacian_function in self.laplacian_functions:
             name = laplacian_function['name']
             function = laplacian_function['func']
-            psi.extend( 
+            psi.append( 
                 rwsegment.energy_rw(
                     x, y, self.labelset,
                     seeds=self.seeds[islices],
@@ -82,7 +82,7 @@ class SVMRWMeanAPI(object):
             name = model['name']
             anchor_api = svm_rw_functions.AnchorReslice(
                shape, model['api'], islices=islices)
-            psi.extend(
+            psi.append(
                 rwsegment.energy_anchor(
                     x, y, anchor_api, self.labelset,
                     seeds=self.seeds[islices],
@@ -132,7 +132,7 @@ class SVMRWMeanAPI(object):
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         amodels.extend(loss_anchor)
         aweights = w[nlaplacian:] + loss_weights
-        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, weights=aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, weights=aweights)
         #import ipdb; ipdb.set_trace()
         
         ## best y_ most different from y
@@ -174,7 +174,7 @@ class SVMRWMeanAPI(object):
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
              
         ## annotation consistent inference
         y = rwsegment.segment(
@@ -206,7 +206,7 @@ class SVMRWMeanAPI(object):
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
  
         ## unconstrained inference
         y_ = rwsegment.segment(
@@ -261,7 +261,7 @@ class SVMRWMeanAPI(object):
         ## anchors
         amodels  = svm_rw_functions.reslice_models(shape, self.prior_models, islices=islices)
         aweights = w[nlaplacian:]
-        anchor_api = svm_rw_functions.MetaAnchorApi(nlabel, amodels, aweights)
+        anchor_api = svm_rw_functions.MetaAnchorApi(amodels, aweights)
  
         laplacian = None
         self.approx_aci_maxiter = 200
@@ -270,13 +270,14 @@ class SVMRWMeanAPI(object):
         update = 1
         z_weights = np.zeros(np.asarray(z).shape)
         z_label = np.argmax(z,axis=0)
+
         for i in range(self.approx_aci_maxiter):
             logger.debug("approx aci, iter={}".format(i))
     
             ## add ground truth to anchor api
             gtmodel = {'api': BaseAnchorAPI(np.arange(nvar), z, weights=z_weights)}
             modified_api = svm_rw_functions.MetaAnchorApi(
-                nlabel, amodels + [gtmodel], aweights + [1]*nlabel )
+                amodels + [gtmodel], aweights + [1] )
                 
             # mod = amodels[0]['api']
             # a0,w0 = modified_api.get_anchor_and_weights(np.arange(x.size),1, image=x)

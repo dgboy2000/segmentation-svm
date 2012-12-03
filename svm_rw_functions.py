@@ -37,28 +37,24 @@ class AnchorReslice(object):
         
 ## combine all prior models
 class MetaAnchorApi(object):
-    def __init__(self, nlabel, models, weights=None):
+    def __init__(self, models, weights=None):
         self.models = models
         self.weights = weights
-        self.nlabel = nlabel
         if weights is None:
-            self.weights = \
-                [m['default'] for m in models for s in range(nlabel)]
+            self.weights = [m['default'] for m in models]
                 
     def get_anchor_and_weights(self, i, D, **kwargs):
-        nlabel = self.nlabel
-        tot_anchor  = [0 for s in range(nlabel)]
-        tot_weights = [0 for s in range(nlabel)]
+        tot_anchor  = 0
+        tot_weights = 0
         
         ## prior models
         for k, model in enumerate(self.models):
             api = model['api']
-            #import ipdb; ipdb.set_trace()
             anchor, weights = api.get_anchor_and_weights(i, D, **kwargs)
-            w = self.weights[nlabel * k : nlabel * (k+1)]
-            tot_anchor = [tot_anchor[s]   + w[s] * weights[s] * anchor[s]  for s in range(nlabel)]
-            tot_weights = [tot_weights[s] + w[s] * weights[s] for s in range(nlabel)]
-        tot_anchor = [tot_anchor[s]/(tot_weights[s] + 1e-10) for s in range(nlabel)]
+            w = self.weights[k]
+            tot_anchor = tot_anchor   + w * weights * anchor
+            tot_weights = tot_weights + w * weights
+        tot_anchor = tot_anchor/(tot_weights + 1e-10)
         return tot_anchor, tot_weights 
 
 
