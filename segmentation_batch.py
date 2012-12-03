@@ -216,7 +216,7 @@ if __name__=='__main__':
     #weights[9] = 1.
     omega = 0#1e-4
     sweights = [1]*n
-    sweights[0] = 1e-2
+    sweights[0] = 1e-1 #5e-1
     
     #segmenter = SegmentationBatch(
     #    anchor_weights=weights + [0]*n + [0]*n + [0]*n + [0]*n, 
