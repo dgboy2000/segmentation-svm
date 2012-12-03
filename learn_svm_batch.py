@@ -259,7 +259,8 @@ class SVMSegmenter(object):
 
  
     def train_svm(self, fold, outdir=''):
-        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold)
+        api = self.svm_rwmean_api
+        seeds = self.seeds
         
         ## training set
         self.make_training_set(fold, seeds)
@@ -355,12 +356,13 @@ class SVMSegmenter(object):
             logger.error('{}: {}'.format(e.message, e.__class__.__name__))
             traceback.print_exc()
             #import ipdb; ipdb.set_trace()
+            
         #finally:
         if 1:
             ##kill signal
             if self.use_parallel:
                 logger.info('root finished training svm on {}. about to kill workers'\
-                    .format(test))
+                    .format(fold))
                 for n in range(1, self.MPI_size):
                     logger.debug('sending kill signal to worker #{}'.format(n))
                     self.comm.send(('stop',None,{}),dest=n)
@@ -571,6 +573,10 @@ class SVMSegmenter(object):
         fold_dir = 'f{}/'.format(fold[0][:2])
         outdir = self.dir_svm + fold_dir
 
+        api, prior_models, seeds = self.get_prior_and_seeds(fold[0], fold)
+        self.svm_rwmean_api = api
+        self.seeds = seeds
+        
         ## training
         if self.retrain:
             
