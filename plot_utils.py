@@ -5,9 +5,118 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
 
-import config
-labelset = [13,14,15,16]
-muscles = ['Rectus\nfemoris', 'vastus\nlateralis', 'vastus\nintermedius', 'vastus\nmedialis']
+''' input: list of dicts {'name': 'Constant', 'values':{1:[...]}} 
+'''
+def plot_dice_labels( 
+        dices_list,
+        perlabel=True, 
+        labelset=[],
+        figsize=10,
+        space_l=0.15,
+        space_t=0.1,
+        ratio=1):
+        
+    ## make figure
+    size = [figsize,int(ratio*figsize)]
+    fig = pyplot.figure(figsize=size)
+    ax1 = fig.add_subplot(111)
+    dpi = fig.get_dpi()
+    size_p = [size[0]*dpi, size[1]*dpi]
+    
+    ## prepare boxes
+    nmethod = len(dices_list)
+    width = 0.8/(nmethod)
+    
+    if perlabel: 
+        nbox = len(labelset)
+        yticks = [muscles[l] for l in labelset]
+    else:
+        nbox = 1
+        yticks = ['allmuscles']
+    
+    ## init
+    legends = []
+    
+    for imethod in range(nmethod):
+        method = dices_list[imethod]
+        title = method['name']
+        if perlabel:
+            values = []
+            for label in labelset:
+                values.append(method['values'][label])
+        else:
+            values = [[]]
+            for label in labelset:
+                values.extend(method['values'][label])
+                
+        ## boxplot    
+        positions = [i + -0.4 + (imethod + 0.5)*width for i in range(nbox)]
+        bp = pyplot.boxplot(
+            values,
+            positions=positions,
+            widths=width,
+            vert=0,
+            whis=1.5,
+            notch=1,
+            bootstrap=1000,
+            )
+            
+        ## improve boxes
+        pyplot.setp(bp['boxes'],    color=colors[imethod], zorder=0)
+        pyplot.setp(bp['medians'],  color=colors[imethod])
+        pyplot.setp(bp['whiskers'], color='black')
+        pyplot.setp(bp['fliers'],   color='red', marker='+')
+        for box in bp['boxes']:
+            pyplot.fill(box.get_xdata(), box.get_ydata(), color=colors[imethod], alpha=0.3)
+        
+        ## make legend
+        r = pyplot.Rectangle(
+            (0,0),0,0,
+            facecolor=colors[imethod], 
+            edgecolor=colors[imethod],
+            alpha=0.3)
+        legends.append((title,r))
+    
+    pyplot.title(r'$\mathrm{Dice\ coefficients}$')
+    pyplot.yticks(range(nbox), yticks, rotation=0)
+    
+    pyplot.subplots_adjust(left=space_l, right=0.95, top=1-space_t, bottom=0.1)
+    
+    ## plot grid
+    from matplotlib.ticker import MultipleLocator
+    minorLocator   = MultipleLocator(0.05)
+    ax1.xaxis.set_minor_locator(minorLocator) 
+    ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
+
+    pyplot.axis([0, 1, nbox-0.5, -0.5])
+    pyplot.legend(
+        [l[1] for l in legends], 
+        [l[0] for l in legends], 
+        loc=3, prop={'size':12})
+    
+    return fig
+
+labelset = [1,3,4,5,7,8,10,11,12,13,14,15,16]
+muscles = [
+   '',
+   'tensor\nfasciae\nlatae',
+   '',
+   'semiten-\ndinosus',
+   'semimem-\nbranosus',
+   'adductor\nmagnus',
+   '',
+   'adductor\nbrevis',
+   '',
+   'sartorius',
+   'biceps\nfemoris (L)',
+   'biceps\nfemoris (S)',
+   'gracilis',
+   'rectus\nfemoris',
+   'vastus\nlateralis',
+   'vastus\nintermedius',
+   'vastus\nmedialis',
+   ]
+
 ''' colormap '''
 colorlist = np.asarray([
     [0,0,0,0],
@@ -32,93 +141,8 @@ from matplotlib.colors import ListedColormap
 mycmap = ListedColormap(colorlist[:,:3], 'segmentation')
 mycmap.set_bad(color=(0,0,0,0))
 
-vols = config.vols.keys()
-
-class GetDices(object):
-    def __init__(self, dir, title):
-        self.dir = dir
-        self.title = title
-        self.dices = {'title': self.title}
-        self.nsample = 0
-    def __call__(self, args, dirnames, fnames):
-        dir = self.dir
-        file_dice = args #args.pop('file_dice','dice_labels.txt')
-        if file_dice in fnames:
-            path = os.path.normpath(dirnames).split(os.sep)
-            if dir in path:
-                #print 'loading file {}'.format(dirnames + '/' + file_dice)
-                dice = np.loadtxt(dirnames + '/' + file_dice)
-                labels, coefs = dice[:,0].astype(int), dice[:,1]
-                for label, coef in zip(labels, coefs):
-                    if not self.dices.has_key(label): self.dices[label] = []
-                    self.dices[label].append(coef)
-                self.nsample += 1
-            self.dices['nsample'] = self.nsample
-
-
 colors = [r'blue', r'green', r'red', r'yellow', r'purple', r'orange']
 
-def plot_dices(dices_list, all=True, ratio=1):
-    figsize = [10,10]
-    figsize[1] = int(ratio*figsize[0])
-    print figsize
-    fig = pyplot.figure(figsize=figsize)
-    ax1 = fig.add_subplot(111)
-    nbox = len(dices_list)
-    width = 0.8/(nbox) 
-    legends   = []
-    legends_box   = []
-
-    if all:
-        set = [labelset]
-        yticks = ['All muscles']
-    else:
-        set = [[i] for i in labelset]
-        yticks = [muscles[i] for i in range(len(labelset))]
-        
-    nset = len(set)
-    for iset, s in enumerate(set):
-        for i, dices in enumerate(dices_list):
-            values = []
-            for label in dices:
-                if label in s:
-                    values.extend(dices[label])
-            legend = dices['title']
-            print 'nsample:',dices['nsample']
-            #print [-0.4 + (i+0.5)*width],
-            bp = pyplot.boxplot(
-                [values],
-                positions = [iset + -0.4 + (i+0.5)*width],
-                widths    = [width],
-                vert=0,
-                whis=1.5,
-                notch=1,
-                bootstrap=10000,
-                )
-            pyplot.setp(bp['boxes'],    color=colors[i], zorder=0)
-            pyplot.setp(bp['medians'],  color=colors[i])
-            pyplot.setp(bp['whiskers'], color='black')
-            pyplot.setp(bp['fliers'],   color='red', marker='+')
-
-            for box in bp['boxes']:
-                pyplot.fill(box.get_xdata(), box.get_ydata(), color=colors[i], alpha=0.3)
-            
-            if iset==0:
-                legends.append(legend)
-                r = pyplot.Rectangle((0,0),0,0,facecolor=colors[i], edgecolor=colors[i],alpha=0.3)
-                legends_box.append(r)
-    
-    pyplot.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
-    pyplot.title(r'$\mathrm{Dice\ coefficients}$')
-    pyplot.yticks(range(nset), yticks, rotation=90)
-    from matplotlib.ticker import MultipleLocator
-    minorLocator   = MultipleLocator(0.05)
-    ax1.xaxis.set_minor_locator(minorLocator) 
-    ax1.xaxis.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
-
-    pyplot.axis([0.5,1,nset -  0.5,-0.5])
-    pyplot.legend(legends_box, legends, loc=3, prop={'size':12})
-    return fig
 
 
 def plot_dices_per_slice(dices_list):
@@ -206,83 +230,13 @@ def plot_cross(gray, sol, seg):
     pyplot.subplots_adjust(left=0, right=1, top=1, bottom=0)
     print 'done cross'
 
+
+''' test script '''
 if __name__=='__main__':
-    import sys
-
-    dir1 = '/workdir/baudinpy/segmentation_out/segmentation/2012.09.10.segmentation_all//'
-    dir2 = '/workdir/baudinpy/segmentation_out/segmentation/2012.09.25.segmentation_variance_allm//'
-    dir3 = '/workdir/baudinpy/segmentation_out/segmentation/2012.09.26.segmentation_variance_allm//'
-    
-    methods = {
-        'cst1': ['Constant 1e-2', 'constant1e-2', dir1],
-        'enty1': ['Entropy 1e-1', 'entropy1e-1', dir1],
-        'enty2': ['Entropy 1e-2', 'entropy1e-2', dir1],
-        'entyint1': ['Entropy 1e-2 / Intensity 1e-2', 'entropy1e-2_intensity1e-2', dir1],
-        'entyint2': ['Entropy 1e-3 / Intensity 1e-2', 'entropy1e-3_intensity1e-2', dir1],
-        'var0': ['Variance', 'variance1e-0', dir2],
-        'var1': ['Variance', 'variance1e-1', dir2],
-        'varcmap0': ['Variance + CMap', 'variancecmap1e-0', dir2],
-        'varcmap1': ['Variance + CMap', 'variancecmap1e-1', dir2],
-        'mean': ['Registration', 'mean', dir3],
-       }
-
-    if '--dice' in sys.argv:
-        dices_list = []
-        #selected_methods = ['cst1', 'enty2', 'entyint1']
-        selected_methods = ['mean', 'var1','varcmap1']
-        #selected_methods = ['mean','var1', 'varcmap1']
-        for method in selected_methods:
-            get_dices = GetDices(methods[method][1], methods[method][0])
-            os.path.walk(methods[method][2], get_dices, 'dice_labels.txt')
-            dices = get_dices.dices
-            dices_list.append(dices)
+    dices = [
+        {'name': 'thing1', 'values': {1: np.random.random(100), 2: np.random.random(100)**2 }},
+        {'name': 'thing2', 'values': {1: np.random.random(100)/2, 2: np.random.random(100)/2+0.5}},
+        ]
         
-            get_dices2 = GetDices(methods[method][1], methods[method][0])
-            os.path.walk(methods[method][2], get_dices2, 'dice_slices.txt')
-            dices2 = get_dices2.dices
-        
-            #bar = plot_dices_per_slice([dices2])
-            #pyplot.savefig('../plots/dices_slice_{}.png'.format(method), dpi=300)
-        
-        box = plot_dices(dices_list, all=False)
-        strmethods = '-'.join(selected_methods)
-        pyplot.savefig('/home/baudinpy/plots/dices_{}.png'.format(strmethods), dpi=300)
-        box_all = plot_dices(dices_list, all=True, ratio=0.4)
-        pyplot.savefig('/home/baudinpy/plots/dices_{}_all.png'.format(strmethods), dpi=300)
-
-
-    if '--cross' in sys.argv:
-        method = 'enty2'
-        test = '01/'
-        islice = 40
-        use_gt = False
-        if '--gt' in sys.argv:
-           use_gt = True
-        if '--method' in sys.argv:
-            i = sys.argv.index('--method')
-            method = sys.argv[i+1]
-        if '--slice' in sys.argv:
-            i = sys.argv.index('--slice')
-            islice = int(sys.argv[i+1])
-        if '--test' in sys.argv:
-            i = sys.argv.index('--test')
-            test = sys.argv[i+1] + '/'
-        print sys.argv
-
-
-        from rwsegment import io_analyze
-        dir = methods[method][2] + methods[method][1] + '/'
-        print dir
-        print test
-        print islice
-        sol = io_analyze.load(dir + test + 'sol.hdr')[islice]
-        seg = io_analyze.load(config.dir_reg + test + 'seg.hdr')[islice]
-        gray = io_analyze.load(config.dir_reg + test + 'gray.hdr')[islice]
-        if use_gt:
-            method = 'gt'
-            plot_cross(gray, seg, seg)
-        else:
-            plot_cross(gray, sol, seg)
-        pyplot.savefig('/home/baudinpy/plots/cross_{}_{}_{}.png'.format(method, test[:-1], islice))
-        print 'saving to: {}'.format('/home/baudinpy/plots/cross_{}_{}_{}.png'.format(method, test[:-1], islice))
-
+    fig = plot_dice_labels(dices, perlabel=True, labelset=[1,2])
+    pyplot.show()

@@ -287,7 +287,6 @@ def solve_qp(P,q,**kwargs):
     
 ##------------------------------------------------------------------------------
 def solve_qp_ground_truth(P,q,list_GT,nlabel,**kwargs):
-   
     GT = np.asarray(list_GT).T
     
     ''' Ax >= b '''
