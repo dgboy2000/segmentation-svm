@@ -1,16 +1,17 @@
 import os
 import numpy as np
 
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from matplotlib import pyplot
 
-''' input: list of dicts {'name': 'Constant', 'values':{1:[...]}} 
-'''
+
+labelset = [1,3,4,5,7,8,10,11,12,13,14,15,16]
+
 def plot_dice_labels( 
         dices_list,
+        labelset=labelset,
         perlabel=True, 
-        labelset=[],
         figsize=10,
         space_l=0.15,
         space_t=0.1,
@@ -47,9 +48,10 @@ def plot_dice_labels(
         else:
             values = [[]]
             for label in labelset:
-                values.extend(method['values'][label])
+                values[0].extend(method['values'][label])
                 
-        ## boxplot    
+        ## boxplot
+        import ipdb; ipdb.set_trace()
         positions = [i + -0.4 + (imethod + 0.5)*width for i in range(nbox)]
         bp = pyplot.boxplot(
             values,
@@ -76,7 +78,7 @@ def plot_dice_labels(
             edgecolor=colors[imethod],
             alpha=0.3)
         legends.append((title,r))
-    
+     
     pyplot.title(r'$\mathrm{Dice\ coefficients}$')
     pyplot.yticks(range(nbox), yticks, rotation=0)
     
@@ -95,8 +97,88 @@ def plot_dice_labels(
         loc=3, prop={'size':12})
     
     return fig
+    
+def plot_dice_series( 
+        dices_series_list,
+        labelset=labelset,
+        figsize=10,
+        space_l=0.15,
+        space_t=0.1,
+        ratio=1):
+        
+    ## make figure
+    size = [figsize,int(ratio*figsize)]
+    fig = pyplot.figure(figsize=size)
+    ax1 = fig.add_subplot(111)
+    dpi = fig.get_dpi()
+    size_p = [size[0]*dpi, size[1]*dpi]
+    
+    ## prepare boxes
+    nseries = len(dices_series_list)
+    
+    ## init
+    legends = []
+    bounds = [np.inf,-np.inf,np.inf,-np.inf]
+    
+    for iseries in range(nseries):
+        series = dices_series_list[iseries]
+        title = series['title']
+        
+        xs = []
+        avg = []
+        std = []
+        for method in series['methods']:
+            values = []
+            for label in labelset:
+                values.extend(method['values'][label])
+            avg.append(np.mean(values))
+            std.append(np.std(values))
+            xs.append(method['x'])
+            
+        if np.min(xs) < bounds[0]: bounds[0] = np.min(xs)
+        if np.max(xs) > bounds[1]: bounds[1] = np.max(xs)
+        if (np.min(avg)-np.max(std)) < bounds[2]: bounds[2] = np.min(avg)-np.max(std)
+        if (np.max(avg)+np.max(std)) > bounds[3]: bounds[3] = np.max(avg)+np.max(std)
+            
+        ## boxplot    
+        p = pyplot.errorbar(
+            xs,
+            avg,
+            yerr=std,
+            color=colors[iseries],
+            linestyle='-',
+            )
+            
+        ## make legend
+        r = pyplot.Rectangle(
+            (0,0),0,0,
+            facecolor=colors[iseries], 
+            edgecolor=colors[iseries],
+            alpha=0.3)
+        legends.append((title,r))
+    
+    pyplot.title(r'$\mathrm{Dice\ coefficients}$')
+    #pyplot.yticks(range(nbox), yticks, rotation=0)
+    
+    pyplot.subplots_adjust(left=space_l, right=0.95, top=1-space_t, bottom=0.1)
+    
+    ## plot grid
+    from matplotlib.ticker import MultipleLocator
+    minorLocator   = MultipleLocator(0.05)
+    ax1.xaxis.set_minor_locator(minorLocator) 
+    ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
 
-labelset = [1,3,4,5,7,8,10,11,12,13,14,15,16]
+    bounds = [b - 0.1*(-1)**i for i,b in enumerate(bounds)]
+    print bounds
+    pyplot.axis(bounds)
+    pyplot.legend(
+        [l[1] for l in legends], 
+        [l[0] for l in legends], 
+        loc=3, prop={'size':12})
+    
+    return fig
+
+
 muscles = [
    '',
    'tensor\nfasciae\nlatae',
