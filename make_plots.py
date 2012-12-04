@@ -7,6 +7,7 @@ from matplotlib import pyplot
 def get_dices_from_path(path, filename='dice.txt'):
 
     def func(args, dirname, fnames):
+        print dirname
         if filename in fnames:
             file = '{}/{}'.format(dirname, filename)
             list = np.loadtxt(file)
@@ -23,13 +24,14 @@ def get_dices_from_path(path, filename='dice.txt'):
 if __name__=='__main__':
     
     methods = [
-        {'name':'Constant 1e-2', 'path':'segmentation/2012.11.30.test/constant1e-2/'},
-        {'name':'Entropy 1e-2',  'path':'segmentation/2012.11.30.test/entropy1e-2/'},
+        {'name': 'test', 'title':'Test', 'path':'/home/baudinpy/code_temp/f01/'},
         ]
     
     for i in range(len(methods)):
         methods[i]['values'] = get_dices_from_path(methods[i]['path'])
     
-fig = plot_utils.plot_dice_labels(methods, labelset=[13,14,15,16], perlabel=True)
-
-pyplot.show()
+    outdir = '/home/baudinpy/plots/'
+    fname = 'dice_' + '_'.join([m['name'] for m in methods])
+    fig = plot_utils.plot_dice_labels(methods, labelset=[13,14,15,16], perlabel=True)
+    pyplot.savefig('{}{}.png'.format(outdir, fname))
+    #pyplot.show()

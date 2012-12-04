@@ -39,7 +39,7 @@ def plot_dice_labels(
     
     for imethod in range(nmethod):
         method = dices_list[imethod]
-        title = method['name']
+        title = method['title']
         if perlabel:
             values = []
             for label in labelset:

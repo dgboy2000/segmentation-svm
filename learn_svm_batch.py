@@ -243,7 +243,7 @@ class SVMSegmenter(object):
                 if len(images) == self.select_vol.stop:
                     break 
 
-            nmaxvol = 100
+            nmaxvol = 200
             if len(images) > nmaxvol:
                 iselect = np.random.permutation(np.arange(len(images)))[:nmaxvol] 
                 iselect = np.sort(iselect)
@@ -364,7 +364,7 @@ class SVMSegmenter(object):
             #logger.debug('worker #{} about to exit'.format(rank))
   
         
-    def run_svm_inference(self, fold, w, fold_dir):
+    def run_svm_inference(self, fold, w):
         ## w
         strw = ' '.join('{:.3}'.format(val) for val in np.asarray(w))
         logger.debug('w=[{}]'.format(strw))    
@@ -508,7 +508,8 @@ class SVMSegmenter(object):
             if self.debug:
                 pass
             elif self.isroot:
-                outdir = fold_dir + '.{}'.format(test)
+                fold_dir = 'f{}_{}/'.format(fold[0][:2], test)
+                outdir = self.dir_inf + fold_dir
                 
                 logger.info('saving data in: {}'.format(outdir))
                 if not os.path.isdir(outdir):
@@ -601,7 +602,7 @@ class SVMSegmenter(object):
         ## inference
         if self.isroot:
             self.w = w
-            self.run_svm_inference(fold,w,fold_dir)
+            self.run_svm_inference(fold,w)
         
         ##kill signal
         if self.isroot and self.use_parallel:
