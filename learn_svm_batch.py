@@ -274,6 +274,7 @@ class SVMSegmenter(object):
             wref = [f['default'] for f in self.laplacian_functions] + \
                    [m['default'] for m in self.prior_models ]
             w0 = wref
+            wbad = [0,0,0,1,0,0,1] ## rubish init for struct  svm
             if self.use_latent:
                 if self.one_iteration:
                     self.svmparams.pop('latent_niter_max',0) # remove kwarg
@@ -284,6 +285,7 @@ class SVMSegmenter(object):
                         api.compute_aci,
                         one_iteration=self.one_iteration,
                         latent_niter_max=1,
+                        winit=wbad,
                         **self.svmparams
                         )
 
@@ -301,7 +303,7 @@ class SVMSegmenter(object):
                             segmentations, 
                             metadata, 
                             w0=w,
-                            wref=wref, 
+                            wref=wref,
                             init_latents=ys, 
                             **self.trainparams)
                     else:

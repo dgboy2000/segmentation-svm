@@ -1,11 +1,12 @@
 import os
 import numpy as np
+import glob
 import plot_utils
 import platform
 reload(plot_utils)
 from matplotlib import pyplot
 
-def get_dices_from_path(path, filename='dice.txt'):
+def get_dices(method, filename='dice.txt'):
     def func(args, dirname, fnames):
         print dirname
         if filename in fnames:
@@ -16,9 +17,12 @@ def get_dices_from_path(path, filename='dice.txt'):
             for label, value in zip(labels, values):
                 if not dices.has_key(label): dices[label] = []
                 dices[label].append(value)
-    dices = {}        
-    os.path.walk(path, func, dices)
-    return dices
+
+    paths = glob.glob(method['path']) 
+    dices = {}
+    for path in paths:
+        os.path.walk(path, func, dices)
+    method['values'] = dices    
 
 
 if __name__=='__main__':
@@ -34,28 +38,51 @@ if __name__=='__main__':
         for c in [1e-2, 1e0, 1e2, 1e4]]
     methods_bLs = [{'name':'bLsC{}'.format(c), 'path':path_l+'2012.12.04.exp_baseline_crop10_Lsdloss_x1000_C{}'.format(c), 'x':c}\
         for c in [1e-2, 1e0, 1e2, 1e4]]
+
+    methods_lLnC1e_2 = [{'name':'lLnCp{}C{}'.format(cp,c), 'path':path_l+'2012.12.04.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cp,c), 'x':cp}\
+        for c in [1e-2] for cp in  [1e-2, 1e2, 1e6, 1e10]]
     methods_lLnC1e0 = [{'name':'lLnCp{}C{}'.format(cp,c), 'path':path_l+'2012.12.04.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cp,c), 'x':cp}\
         for c in [1e0] for cp in  [1e-2, 1e2, 1e6, 1e10]]
+    methods_lLnC1e2 = [{'name':'lLnCp{}C{}'.format(cp,c), 'path':path_l+'2012.12.04.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cp,c), 'x':cp}\
+        for c in [1e2] for cp in  [1e-2, 1e2, 1e6, 1e10]]
+    methods_lLnC1e4 = [{'name':'lLnCp{}C{}'.format(cp,c), 'path':path_l+'2012.12.04.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cp,c), 'x':cp}\
+        for c in [1e4] for cp in  [1e-2, 1e2, 1e6, 1e10]]
+
     methods_bLnC1e0 = [{'name':'bLnCp{}C{}'.format(cp,c), 'path':path_l+'2012.12.04.exp_baseline_crop10_Lnone_x1000_Cp{}_C{}'.format(cp,c), 'x':cp}\
         for c in [1e0] for cp in  [1e-2, 1e2, 1e6, 1e10]]
-    
+   
+    ## handtuned
+    method_enty1e_2 = {'name':'enty1e_2', 'path':'/workdir/baudinpy/segmentation_out/segmentation/2012.11.19.segmentation/entropy0.01/f01*', 'x':''} 
+    method_enty1e0 = {'name':'enty1e0', 'path':'/workdir/baudinpy/segmentation_out/segmentation/2012.11.19.segmentation/entropy1.0/f01*', 'x':''} 
+
     series = [
         #{'name': 'test', 'title': 'Test series', 'methods':methods}
-        {'name':'bLs', 'title': 'Baseline sdloss crop10', 'methods':methods_bLs},
-        {'name':'lLs', 'title': 'Latent sdloss aACI crop2', 'methods':methods_lLs},
-        {'name':'bLnC1e0', 'title': 'Baseline crop10 C=1e0', 'methods':methods_bLnC1e0},
+        #{'name':'bLs', 'title': 'Baseline sdloss crop10', 'methods':methods_bLs},
+        #{'name':'lLs', 'title': 'Latent sdloss aACI crop2', 'methods':methods_lLs},
+        #{'name':'bLnC1e0', 'title': 'Baseline crop10 C=1e0', 'methods':methods_bLnC1e0},
+        #{'name':'lLnC1e0', 'title': 'Latent aACI crop2 C=1e0', 'methods':methods_lLnC1e0},
+        {'name':'lLnC1e_2', 'title': 'Latent aACI crop2 C=1e-2', 'methods':methods_lLnC1e_2},
         {'name':'lLnC1e0', 'title': 'Latent aACI crop2 C=1e0', 'methods':methods_lLnC1e0},
+        {'name':'lLnC1e2', 'title': 'Latent aACI crop2 C=1e2', 'methods':methods_lLnC1e2},
+        {'name':'lLnC1e4', 'title': 'Latent aACI crop2 C=1e4', 'methods':methods_lLnC1e4},
+        {'name':'handtuned1', 'title': 'Handtuned (best)', 'methods':[method_enty1e_2]},
+        {'name':'handtuned2', 'title': 'Handtuned (init)', 'methods':[method_enty1e0]},
         ]
-    #import ipdb; ipdb.set_trace()
-    
+
     ## get dices
-    for i in range(len(methods)):
+    #for i in range(len(methods)):
         #methods[i]['values'] = get_dices_from_path(methods[i]['path'], filename='dice.txt')
-        methods_lLs[i]['values'] = get_dices_from_path(methods_lLs[i]['path'], filename='dice.txt')
-        methods_bLs[i]['values'] = get_dices_from_path(methods_bLs[i]['path'], filename='dice.txt')
-        methods_lLnC1e0[i]['values'] = get_dices_from_path(methods_lLnC1e0[i]['path'], filename='dice.txt')
-        methods_bLnC1e0[i]['values'] = get_dices_from_path(methods_bLnC1e0[i]['path'], filename='dice.txt')
-    
+    #[get_dices(method, filename='dice.txt') for method in  methods_lLs]
+    #[get_dices(method, filename='dice.txt') for method in  methods_bLs]
+    #[get_dices(method, filename='dice.txt') for method in  methods_lLnC1e0]
+    #[get_dices(method, filename='dice.txt') for method in  methods_bLnC1e_2]
+    [get_dices(method, filename='dice.txt') for method in  methods_lLnC1e_2]
+    [get_dices(method, filename='dice.txt') for method in  methods_lLnC1e0]
+    [get_dices(method, filename='dice.txt') for method in  methods_lLnC1e2]
+    [get_dices(method, filename='dice.txt') for method in  methods_lLnC1e4]
+    get_dices(method_enty1e_2, filename='dice.txt')
+    get_dices(method_enty1e0, filename='dice.txt')
+
     ## make plot
     #fig = plot_utils.plot_dice_labels(methods, labelset=[13,14,15,16], perlabel=False)
     fig = plot_utils.plot_dice_series(series, labelset=[13,14,15,16])
@@ -67,6 +94,9 @@ if __name__=='__main__':
         pyplot.show()
     else:
         outdir = '/home/baudinpy/plots/'    
-        fname = 'dice_' + '_'.join([m['name'] for m in methods])
+        #fname = 'dice_' + '_'.join([m['name'] for m in methods])
+        fname = 'dice_series_' + '_'.join([m['name'] for m in series])
+        #fname = 'test'
+        print fname
         pyplot.savefig('{}{}.png'.format(outdir, fname))
     

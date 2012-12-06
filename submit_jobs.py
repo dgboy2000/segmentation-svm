@@ -113,22 +113,22 @@ if __name__=='__main__':
 
     # jobs
 
-    make_job(
-        '2012.12.04.test_latent_DACI_crop2_Lnone_x1000_Cp10_C100',
-        'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
-            '--parallel --crop 2 '\
-            '--loss none --loss_factor 1000 '\
-            '--latent --approx_aci --one_iter '\
-            '--Cprime 10 -C 100 ',
-        queue='icetestq')
+    #make_job(
+    #    '2012.12.04.exp_baseline_crop10_Lnone_x1000_Cp1000000.0_C1.0',
+    #    'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
+    #        '--parallel --crop 10 '\
+    #        '--loss none --loss_factor 1000 '\
+    #        #'--latent --approx_aci --one_iter '\
+    #        '--Cprime 1000000.0 -C 1.0 ',
+    #    queue='icetestq')
 
 
-    C = [1e-2, 1e0, 1e2, 1e4]
-    Cp = [1e-2, 1e2, 1e6, 1e10]
+    C = [1e0, 1e3, 1e2, 1e3, 1e4]
+    Cp = [1e-2, 1e0, 1e2, 1e6]
     for c in C:
         pass
         make_job(
-            '2012.12.04.exp_latent_DACI_crop2_Lsdloss_x1000_C{}'.format(c),
+            '2012.12.06.exp_latent_DACI_crop2_Lsdloss_x1000_C{}'.format(c),
             'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
                 '--parallel --crop 2 '\
                 '--loss squareddiff --loss_factor 1000 '\
@@ -136,9 +136,8 @@ if __name__=='__main__':
                 '-C {} '.format(c))
     
         for cprime in Cp:
-        #for cprime in [1e2]:
             make_job(
-                '2012.12.04.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                '2012.12.06.exp_latent_DACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
                     '--parallel --crop 2 '\
                     '--loss none --loss_factor 1000 '\
@@ -146,16 +145,15 @@ if __name__=='__main__':
                     ' --Cprime {} -C {} '.format(cprime, c))
 
         make_job(
-            '2012.12.04.exp_baseline_crop10_Lsdloss_x1000_C{}'.format(c),
+            '2012.12.06.exp_baseline_crop10_Lsdloss_x1000_C{}'.format(c),
             'mpiexec_mpt -n $NP python learn_svm_batch.py ' \
                 '--parallel --crop 10 '\
                 '--loss squareddiff --loss_factor 1000 '\
                 '-C {} '.format(c))
 
         for cprime in Cp:
-        #for cprime in [1e2]:
             make_job(
-                '2012.12.04.exp_baseline_crop10_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                '2012.12.06.exp_baseline_crop10_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 'mpiexec_mpt -n $NP python learn_svm_batch.py '\
                     '--parallel --crop 10 '\
                     '--loss none --loss_factor 1000 '\

@@ -37,10 +37,11 @@ def plot_dice_labels(
     
     ## init
     legends = []
-    
+     
     for imethod in range(nmethod):
         method = dices_list[imethod]
         title = method['title']
+        print title
         if perlabel:
             values = []
             for label in labelset:
@@ -119,22 +120,30 @@ def plot_dice_series(
     ## init
     legends = []
     bounds = [np.inf,-np.inf,np.inf,-np.inf]
-    
+   
+    xticks = []
+    nticks = 0
     for iseries in range(nseries):
         series = dices_series_list[iseries]
         title = series['title']
-        
-        xs = []
+       
+        xvals = [] 
         avg = []
         std = []
         for method in series['methods']:
             values = []
+            print method['name']
             for label in labelset:
+                if not label in method['values']: continue
                 values.extend(method['values'][label])
             avg.append(np.mean(values))
             std.append(np.std(values))
-            xs.append(method['x'])
-            
+            xvals.append(method['x'])
+
+        xs = np.arange(len(xvals)) + iseries*5e-2
+        if nticks < len(xs): nticks = len(xs)
+        xticks.append(xvals)
+
         if np.min(xs) < bounds[0]: bounds[0] = np.min(xs)
         if np.max(xs) > bounds[1]: bounds[1] = np.max(xs)
         if (np.min(avg)-np.max(std)) < bounds[2]: bounds[2] = np.min(avg)-np.max(std)
@@ -147,6 +156,7 @@ def plot_dice_series(
             yerr=std,
             color=colors[iseries],
             linestyle='-',
+            marker='o',
             )
             
         ## make legend
@@ -164,9 +174,21 @@ def plot_dice_series(
     
     ## plot grid
     from matplotlib.ticker import MultipleLocator
-    minorLocator   = MultipleLocator(0.05)
+    minorLocator   = MultipleLocator(0.5)
     ax1.xaxis.set_minor_locator(minorLocator) 
     ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
+
+    strticks = []
+    print xticks
+    for i in range(nseries):
+        ntick = len(xticks[i])
+        if len(strticks) < ntick: strticks += ['']*(ntick-len(strticks))
+        for j in range(ntick):
+            strticks[j] += '\n{}'.format( xticks[i][j])
+    print strticks
+    #strticks = ['\n'.join([str(xticks[i][j]) for i in range(nseries)]) for j in range(nticks)]
+    pyplot.xticks(range(nticks), strticks)
+    pyplot.xlabel(r'$C\ or\ C^{\prime}$')
 
     bounds = [b - 0.1*(-1)**i for i,b in enumerate(bounds)]
     print bounds
@@ -175,7 +197,7 @@ def plot_dice_series(
         [l[1] for l in legends], 
         [l[0] for l in legends], 
         loc=3, prop={'size':12})
-    
+
     return fig
 
 

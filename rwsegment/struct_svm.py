@@ -47,6 +47,7 @@ class StructSVM(object):
         self.epsilon = kwargs.pop('epsilon',1e-5)
         self.niter_max = kwargs.pop('nitermax',100)        
         self.use_parallel = kwargs.pop('use_parallel', False)
+        self.winit = kwargs.pop('winit', None)
 
         ## user provided functions 
         self.user_loss = loss_function
@@ -223,7 +224,7 @@ class StructSVM(object):
        
         ## parameters
         scale_only = kwargs.pop('scale_only', False)
-        w0 = kwargs.pop('w0', None)
+        w0 = kwargs.pop('w0', self.winit)
         wref = kwargs.pop('wref', None)
  
         ## log psis

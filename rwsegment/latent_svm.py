@@ -22,7 +22,7 @@ class LatentSVM(object):
         self.user_mvc  = most_violated_constraint
         self.user_aci  = annotation_consistent_inference
         self.struct_params = kwargs ## pass parameters to struct SVM
-        
+       
         ## set latent SVM specific parameters
         self.niter_max = kwargs.pop('latent_niter_max',100)
         self.epsilon = kwargs.pop('latent_epsilon',1e-3)
@@ -114,7 +114,7 @@ class LatentSVM(object):
                 most_violated_constraint=self.user_mvc,
                 **self.struct_params
                 )
-            w,xi,struct_info = struct_svm.train(xs, ys, metadata=metas, w0=w, **kwargs)
+            w,xi,struct_info = struct_svm.train(xs, ys, metadata=metas, w0=None, **kwargs)
 
             ## Stop condition
             svm_objective = struct_svm.objective(w,xi)
