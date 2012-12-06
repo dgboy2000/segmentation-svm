@@ -224,7 +224,8 @@ class StructSVM(object):
        
         ## parameters
         scale_only = kwargs.pop('scale_only', False)
-        w0 = kwargs.pop('w0', self.winit)
+        w0 = kwargs.pop('w0', None)
+        if w0 is None: w0 = self.winit
         wref = kwargs.pop('wref', None)
  
         ## log psis
@@ -243,7 +244,6 @@ class StructSVM(object):
             
             ## compute current solution (qp + constraints)
             logger.info("compute current solution")
-        
             w,xi = self.current_solution(W, gtpsis, w0=w0, scale_only=scale_only, wref=wref)
  
             ## logging

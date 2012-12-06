@@ -274,7 +274,7 @@ class SVMSegmenter(object):
             wref = [f['default'] for f in self.laplacian_functions] + \
                    [m['default'] for m in self.prior_models ]
             w0 = wref
-            wbad = [0,0,0,1,0,0,1] ## rubish init for struct  svm
+            wbad = [0.,0.,0.,1.,0.,0.,1.] ## rubish init for struct  svm
             if self.use_latent:
                 if self.one_iteration:
                     self.svmparams.pop('latent_niter_max',0) # remove kwarg
@@ -333,6 +333,7 @@ class SVMSegmenter(object):
                         api.compute_mvc,
                         api.compute_aci,
                         one_iteration=self.one_iteration,
+                        winit=wbad,
                         **self.svmparams
                         )
 
@@ -346,6 +347,7 @@ class SVMSegmenter(object):
                     api.compute_loss,
                     api.compute_psi,
                     api.compute_mvc,
+                    winit=wbad,
                     **self.svmparams
                     )
                 w,xi,info = self.svm.train( 
@@ -762,6 +764,6 @@ if __name__=='__main__':
     #sample_list = ['01/']
     for fold in config.folds:
         svm_segmenter.process_all_samples(fold) 
-        break
+        #break
     sys.exit(1)
     
