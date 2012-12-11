@@ -1,6 +1,7 @@
 import numpy as np
 import gc
 import mpi
+import duald
 
 import utils_logging
 logger = utils_logging.get_logger('svm_worker',utils_logging.INFO)
@@ -38,6 +39,17 @@ class SVMWorker(object):
         logger.info('Starting worker {}'.format(self.rank))
         self.cache_psi = {}
         
+    def do_duald(self, ndata, **kwargs):
+        duald_data = self.receive_n_items(ndata)
+        subp_list = [subp[1] for subp in duald_data]
+        ind_list = [subp[0] for subp in duald_data]
+        rdata = duald.solve_list_subproblems(subp_list)
+        ## send back data
+        for i, subp in zip(ind_list, rdata):
+            logger.debug('worker #{} sending back xk for subproblem #{}'\
+                .format(self.rank, i))
+            self.comm.send(subp, dest=0, tag=i)
+        gc.collect()
         
     def do_mvc(self, ndata, **kwargs):
         # Receive the specified number of tuples
@@ -121,6 +133,8 @@ class SVMWorker(object):
                 self.do_psi(ndata, **opts)
             elif task=='aci':
                 self.do_aci(ndata, **opts)
+            elif task=='duald':
+                self.do_duald(ndata, **opts)
             elif task=='stop':
                 logger.info('worker #{} received kill signal. Stopping.'\
                     .format(self.rank))

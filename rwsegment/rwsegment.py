@@ -10,6 +10,9 @@ import os
 import numpy as np
 from scipy import sparse
         
+import duald
+reload(duald)
+        
 import utils_logging
 logger = utils_logging.get_logger('rwsegment',utils_logging.INFO)
         
@@ -19,7 +22,7 @@ class BaseAnchorAPI(object):
         self.anchor  = anchor
         self.weights = weights
         if weights is None:
-            self.weights = np.ones((len(anchor), len(anchor[0])))
+            self.weights = np.ones(len(anchor[0]))
 
     def get_anchor_and_weights(self, i, D, **kwargs):
         indices = kwargs.pop('indices', i)
@@ -28,9 +31,10 @@ class BaseAnchorAPI(object):
         inter2 = np.in1d(indices, self.ianchor, assume_unique=True)
         ## compute anchor weights
         anchor = 1./nlabel * np.ones((nlabel,len(indices)))
-        weights = np.zeros((nlabel,len(indices)))
+        weights = np.zeros(len(indices))
         anchor[:,inter2]  = self.anchor[:, inter1]
-        weights[:,inter2] = np.tile(D, (nlabel,1)) * self.weights[:, inter1] 
+        # weights[:,inter2] = np.tile(D, (nlabel,1)) * self.weights[:, inter1] 
+        weights[inter2] = D * self.weights[inter1] 
         return anchor, weights
         
 ##------------------------------------------------------------------------------
@@ -82,7 +86,7 @@ def segment(
     else: Lu, B, D, border = laplacian
         
     ## anchor function
-    list_x0, list_Omega = anchor_api.get_anchor_and_weights(
+    list_x0, Omega = anchor_api.get_anchor_and_weights(
         unknown, D, image=image)
        
     ## per label lists of vectors
@@ -123,16 +127,22 @@ def segment(
         addq = None
 
     ## solve RW system
-    if ground_truth is not None or not per_label:
+    if ground_truth is not None:
+        x = solve_dd_ground_truth(
+            image.shape, marked, 
+            Lu, B, list_xm, Omega, list_x0, list_GT, 
+            **kwargs)
+            
+    elif not per_label:
         x = solve_at_once(
-            Lu, B, list_xm, list_Omega, list_x0, 
+            Lu, B, list_xm, Omega, list_x0, 
             list_GT=list_GT, list_GT_init=list_GT_init, 
             additional_laplacian=addL,
             additional_linear=addq,
             **kwargs)
     else:
         x = solve_per_label(
-            Lu,B,list_xm,list_Omega,list_x0,**kwargs)
+            Lu,B,list_xm,Omega,list_x0,**kwargs)
     
     ## normalize x
     x = np.clip(x, 0,1)
@@ -154,8 +164,47 @@ def segment(
     if len(rargs)==1: return rargs[0]
     else: return tuple(rargs)
     
+def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list_GT, **kwargs):
+
+    nlabel = len(list_xm)
+    n = Lu.shape[0]
     
-def solve_at_once(Lu, B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
+    #Omega = sparse.spdiags(omega, 0, n,n)
+    Omega_bar = sparse.spdiags(np.tile(omega,nlabel), 0, n*nlabel,n*nlabel)
+    
+    B_bar = sparse.kron(np.eye(nlabel), B)
+    
+    x0_bar = np.asmatrix(np.c_[list_x0].ravel()).T
+    xm_bar = np.asmatrix(np.c_[list_xm].ravel()).T
+    
+    gt_bar = np.asmatrix(np.c_[list_GT].ravel()).T
+    q_bar = B_bar*xm_bar - Omega_bar*x0_bar
+    
+    ## make subproblems
+    size_sub = (2,5,5)
+    subproblems = \
+        duald.decompose_with_image_connectivity(
+            im_shape, nlabel, 
+            size_sub=size_sub, marked=marked)
+    
+    ## solve qp with ground truth constraint with dd solver
+    niter = 50
+    gamma = 1e-2
+    epsilon = 1e-3
+    
+    logger.info('start dd solver (nb subp: {})'.format(len(subproblems)))
+    x,info = duald.dd_solver_gt(
+        nlabel, Lu, q_bar, gt_bar, 
+        subproblems, 
+        D=omega, 
+        niter=niter,
+        gamma=gamma,
+        epsilon=epsilon,
+        )
+    import ipdb; ipdb.set_trace()
+    return x.reshape((nlabel,-1))
+    
+def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     nlabel = len(list_xm)
     
@@ -165,7 +214,7 @@ def solve_at_once(Lu, B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
-    Omega = sparse.spdiags(np.c_[list_Omega].ravel(), 0, *LL.shape)
+    Omega = sparse.spdiags(np.tile(omega,nlabel), 0, *LL.shape)
 
     addL = kwargs.pop('additional_laplacian',None)
     if addL is None:
@@ -222,7 +271,7 @@ def solve_at_once(Lu, B, list_xm, list_Omega, list_x0, list_GT=[], **kwargs):
     return x.reshape((nlabel,-1))
     
 ##------------------------------------------------------------------------------
-def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
+def solve_per_label(Lu, B, list_xm, omega, list_x0, **kwargs):
     ''' xm,Omega,x0 are lists of length nlabel'''
     nlabel = len(list_xm)
     
@@ -241,7 +290,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
     for s in range(nlabel - 1):## don't need to solve the last one !
         
         ## prior
-        Omega = sparse.spdiags(np.c_[list_Omega[s]].ravel(), 0, *Lu.shape)
+        Omega = sparse.spdiags(omega, 0, *Lu.shape)
         x0 = np.asmatrix(np.c_[list_x0[s]])
         
         ## if no laplacian
@@ -249,7 +298,7 @@ def solve_per_label(Lu, B, list_xm, list_Omega, list_x0, **kwargs):
             x[s] = x0.ravel()
             
         ## set tolerance
-        tol = np.maximum(np.max(Lu.data),np.max(list_Omega[s]))*rtol
+        tol = np.maximum(np.max(Lu.data),np.max(omega))*rtol
         logger.debug('absolute CG tolerance = {}'.format(tol))
         
         ## seeds
@@ -473,14 +522,14 @@ def energy_anchor(
         list_D  = [list_D[0]  for i in range(nlabel)]
     '''       
  
-    list_x0, list_Omega = anchor_api.get_anchor_and_weights(
+    list_x0, omega = anchor_api.get_anchor_and_weights(
          unknown, np.ones(nunknown), image=image) ## D ?
     
     energy = 0
     for label in range(nlabel):
         xu = x[label][unknown]
         energy += float(
-            np.sum(list_Omega[label] * (xu - list_x0[label])**2))
+            np.sum(omega * (xu - list_x0[label])**2))
     return float(energy)
     
 ##------------------------------------------------------------------------------

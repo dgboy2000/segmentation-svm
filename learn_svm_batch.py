@@ -127,7 +127,7 @@ class SVMSegmenter(object):
             # latent
             'latent_niter_max': 100,
             'latent_epsilon': 1e-3,
-            'latent_use_parallel': self.use_parallel,
+            'latent_use_parallel': False,#self.use_parallel,
             }
 
         self.trainparams = {
@@ -162,7 +162,7 @@ class SVMSegmenter(object):
                 logger.warning('Found only one process. Not using parallel')
                 self.use_parallel = False
             self.svmparams['use_parallel'] = self.use_parallel
-            self.svmparams['latent_use_parallel'] = self.use_parallel
+            #self.svmparams['latent_use_parallel'] = self.use_parallel
         else:
             self.isroot = True
             
@@ -245,7 +245,8 @@ class SVMSegmenter(object):
 
             nmaxvol = 200
             if len(images) > nmaxvol:
-                iselect = np.random.permutation(np.arange(len(images)))[:nmaxvol] 
+                randomizer = np.random.RandomState(seed=0)
+                iselect = randomizer.permutation(np.arange(len(images)))[:nmaxvol] 
                 iselect = np.sort(iselect)
                 logger.info('selected training: {}'.format(iselect))
                 images = [images[i] for i in iselect]

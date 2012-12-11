@@ -110,11 +110,11 @@ class ConstrainedSolver(object):
         mosek.iparam.presolve_use = mosek.presolvemode.off
  
         # Attach a printer to the environment 
-        env.set_Stream (mosek.streamtype.log, streamprinter) 
+        #env.set_Stream (mosek.streamtype.log, streamprinter) 
         
         # Create a task 
         task = env.Task() 
-        task.set_Stream (mosek.streamtype.log, streamprinter)
+        #task.set_Stream (mosek.streamtype.log, streamprinter)
         
         NUMVAR = self.objective.nvar
         NUMCON = self.objective.nconst

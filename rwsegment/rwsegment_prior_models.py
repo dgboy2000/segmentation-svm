@@ -22,8 +22,9 @@ class Entropy(BaseAnchorAPI):
         nlabel = len(self.anchor)
         entropy = -np.sum(np.log(self.anchor + 1e-10)*self.anchor,axis=0)
         entropy[entropy<0] = 0
-        entropy = \
-            np.tile((np.log(nlabel) - entropy) / np.log(nlabel),(nlabel,1))
+        #entropy = \
+        #    np.tile((np.log(nlabel) - entropy) / np.log(nlabel),(nlabel,1))
+        entropy = (np.log(nlabel) - entropy) / np.log(nlabel)
         self.weights = entropy
 
 class Entropy_no_D(Entropy):
@@ -34,6 +35,7 @@ class Entropy_no_D(Entropy):
     
 class Variance(BaseAnchorAPI):
     def __init__(self, ianchor, anchor, variance):
+        1/0
         weights = 1. / (1. + variance) 
         super(Variance,self).__init__(ianchor, anchor, weights=weights)
   
@@ -88,7 +90,8 @@ class Intensity(object):
         a = np.c_[norm] * np.exp( - diff**2 * np.c_[1./self.im_var] )
         A = np.sum(a, axis=0)
         anchor = (1./A)*a
-        weights = np.tile(A, (nlabel,1))
+        #weights = np.tile(A, (nlabel,1))
+        weights = A
         return anchor, weights
 
         
