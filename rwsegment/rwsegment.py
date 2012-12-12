@@ -189,7 +189,7 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     
     ## solve qp with ground truth constraint with dd solver
     niter = 50
-    gamma = 1e-2
+    gamma = 1e0
     epsilon = 1e-3
     
     logger.info('start dd solver (nb subp: {})'.format(len(subproblems)))
@@ -201,7 +201,7 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
         gamma=gamma,
         epsilon=epsilon,
         )
-    import ipdb; ipdb.set_trace()
+    #import ipdb; ipdb.set_trace()
     return x.reshape((nlabel,-1))
     
 def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
@@ -647,13 +647,13 @@ def compute_laplacians(
     return Lu, B, D, border
     
 ##------------------------------------------------------------------------------
-def weight_std(image, i, j, beta=1.0):
+def weight_std(image, i, j, beta=1.0, offset=1e-8):
     ''' standard weight function 
     
         for touching pixel pair (i,j),
             wij = exp (- beta (image.flat[i] - image.flat[j])^2)
     '''
     im = np.asarray(image)
-    wij = np.exp(-beta * (image.flat[i] - image.flat[j])**2)
+    wij = (1-offset)*np.exp(-beta * (image.flat[i] - image.flat[j])**2) + offset
     return wij
     

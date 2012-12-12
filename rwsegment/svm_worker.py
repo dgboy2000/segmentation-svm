@@ -43,10 +43,13 @@ class SVMWorker(object):
         duald_data = self.receive_n_items(ndata)
         subp_list = [subp[1] for subp in duald_data]
         ind_list = [subp[0] for subp in duald_data]
+        logger.info('worker #{}: processing #{} subproblems'\
+            .format(self.rank, ndata))
+
         rdata = duald.solve_list_subproblems(subp_list)
         ## send back data
         for i, subp in zip(ind_list, rdata):
-            logger.debug('worker #{} sending back xk for subproblem #{}'\
+            logger.info('worker #{} sending back xk for subproblem #{}'\
                 .format(self.rank, i))
             self.comm.send(subp, dest=0, tag=i)
         gc.collect()

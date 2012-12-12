@@ -250,7 +250,9 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         ## compute average
         x = np.mat(np.zeros((nvar,1)))
         for xk,sub in zip(xks,subproblems_matrices):
-            if len(xk)!=len(sub[0]): import pdb; pdb.set_trace()
+            if len(xk)!=len(sub[0]): 
+                1/0
+                #import pdb; pdb.set_trace()
             x[sub[0]] += xk.A/np.c_[N_bar[sub[0]]]
 
         ## test stop condition
@@ -285,8 +287,8 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
             # import ipdb; ipdb.set_trace()
         stop = iter
         
-    if is_parallel:
-        Comm.scatter([[] for i in range(MPISIZE)], root=0)
+    #if is_parallel:
+    #    Comm.scatter([[] for i in range(MPISIZE)], root=0)
     
     info = {
         'primals': primals,
