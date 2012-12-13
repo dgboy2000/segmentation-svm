@@ -189,9 +189,9 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     
     ## solve qp with ground truth constraint with dd solver
     niter = 3
-    gamma = 1e1
+    gamma = 1e2
     epsilon = 1e-3
-    
+
     logger.info('start dd solver (nb subp: {})'.format(len(subproblems)))
     x,info = duald.dd_solver_gt(
         nlabel, Lu, q_bar, gt_bar, 
