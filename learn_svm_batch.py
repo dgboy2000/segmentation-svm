@@ -99,6 +99,10 @@ class SVMSegmenter(object):
             'logbarrier_modified': False,
             'logbarrier_maxiter': 10,
             'newton_maxiter': 50,
+            ## duald
+            'duald_gamma': kwargs.pop('duald_gamma'),
+            'duald_niter': kwargs.pop('duald_niter'),
+            'duald_epsilon': 1e-3, 
             }
         
         ## parameters for svm api
@@ -727,6 +731,16 @@ if __name__=='__main__':
         default=False, action="store_true",
         help='',
         )     
+    opt.add_option(
+        '--duald_niter', dest='duald_niter', 
+        default=10, type=int,
+        help='',
+        )     
+    opt.add_option(
+        '--duald_gamma', dest='duald_gamma', 
+        default=1e2, type=float,
+        help='',
+        )
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -759,6 +773,8 @@ if __name__=='__main__':
         approx_aci=options.approx_aci,
         use_mosek=(options.use_mosek in ['True', 'true', '1']),
         scale_only=options.scale_only,
+        duald_gamma=options.duald_gamma,
+        duald_niter=options.duald_niter,
         )
         
         

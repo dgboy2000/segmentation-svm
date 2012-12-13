@@ -184,7 +184,7 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     obj_d = 0.0
     for sub,Pk_bar,qk_bar in zip(subs,Pks,qks):
         obj_d += float(0.5 * xx[sub].T*Pk_bar*xx[sub] + xx[sub].T*qk_bar)
-    if np.abs(obj_0-obj_d)>1e-5:
+    if np.abs(obj_0-obj_d)>1e-1:
         print 'objective (original) = {}'.format(obj_0)
         print 'objective (DD) = {}'.format(obj_d)
         1/0
