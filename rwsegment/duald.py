@@ -4,6 +4,7 @@ Created on Dec 6, 2012
 @author: puneet
 '''
 import sys
+import gc
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as splinalg
@@ -244,6 +245,10 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         for k in range(len(subs)):
             lmbdas[k] = lmbdas[k] + alpha*(xks[k] - x[subs[k]])
         stop = iter
+        
+        ## garbage collect 
+        gc.collect()
+
     
     info = {
         'primals': primals,
