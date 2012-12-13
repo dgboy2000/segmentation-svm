@@ -89,15 +89,15 @@ def decompose_with_image_connectivity(shape, nlabel, size_sub=3, marked=[]):
 #            rdata = solve_list_subproblems(data)
 #            Comm.gather(rdata,root=0)
            
-def solve_list_subproblems(nlabels, Pks, qks, gtks, **kwargs):
-    xks = []
-    sub_duals = []
-    for nlabel,Pk_bar,qk_bar,gtk_bar in zip(nlabels,Pks,qks,gtks):
-        xk = solver_gt(nlabel, Pk_bar, qk_bar, gtk_bar, **kwargs)
-        dual = float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar)
-        xks.append((xk, par_dual))
-        sub_duals.append(dual)
-    return xks,sub_duals
+# def solve_list_subproblems(nlabels, Pks, qks, gtks, **kwargs):
+    # xks = []
+    # sub_duals = []
+    # for nlabel,Pk_bar,qk_bar,gtk_bar in zip(nlabels,Pks,qks,gtks):
+        # xk = solver_gt(nlabel, Pk_bar, qk_bar, gtk_bar, **kwargs)
+        # dual = float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar)
+        # xks.append((xk, par_dual))
+        # sub_duals.append(dual)
+    # return xks,sub_duals
     
 ##------------------------------------------------------------------------------
 def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
@@ -211,9 +211,9 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         else:
             for subk, Pk_bar, qk_bar, gtk_bar in zip(subs, Pks, qks, gtks):
                 qk_bar_ = qk_bar + lmbdas[k]
-                xk = solver_gt(nlabel, Pk_bar, qk_bar_, gtk_bar, **kwargs)
+                xk, energy = solver_gt(nlabel, Pk_bar, qk_bar_, gtk_bar, **kwargs)
                 xks.append(xk)
-                dual += float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar_)
+                dual += energy
         duals.append(dual)
         #print dual
         
@@ -294,7 +294,9 @@ def solver_gt(nlabel, P_bar, q_bar, gt_bar, **kwargs):
     constsolver = solver.ConstrainedSolver(objective)
     x = constsolver.solve(gt_bar) 
     
-    return x    
+    energy = float(0.5 * x.T*P*x + x.T*q)
+    
+    return x, energy
     
 ##------------------------------------------------------------------------------
 def compute_laplacian(
@@ -378,7 +380,7 @@ if __name__=='__main__':
        
     ## start workers
     if MPIRANK != 0:
-        worker = Worker()
+        worker = svm_worker.SVMWorker(None)
     else:
         import time
         ## load image
@@ -436,9 +438,9 @@ if __name__=='__main__':
         ## run standard solver
         print 'compute standard method'
         start_time = time.time()
-        x = solver_gt(nlabel, P_bar, q_bar, gt_bar)
+        x, energy = solver_gt(nlabel, P_bar, q_bar, gt_bar)
         time_taken = time.time() - start_time
-        print 'objective (standard method)', float(0.5 * x.T*P_bar*x + x.T*q_bar)
+        print 'objective (standard method)', energy
         print 'time spent: {}s'.format(time_taken)
         
         

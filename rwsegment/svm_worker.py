@@ -40,18 +40,20 @@ class SVMWorker(object):
         self.cache_psi = {}
         
     def do_duald(self, ndata, **kwargs):
-        duald_data = self.receive_n_items(ndata)
+        sub_list = self.receive_n_items(ndata)
         logger.info('worker #{}: processing #{} subproblems'\
             .format(self.rank, ndata))
         
-        nlabels, Pks, qks_, gtks = duald_data
-        xks, duals = duald.solve_list_subproblems(nlabels, Pks, qks_, gtks)
-
+        outdata = []
+        for ind,nlabel,Pk,qk,gtk in sub_list:
+            data = duald.solver_gt(nlabel,Pk,qk,gtk)
+            outdata.append((ind,data))
+            
         ## send back data
-        for i, xk, dual in zip(ind_list, xks, duals):
+        for i, data in outdata:
             logger.info('worker #{} sending back xk for subproblem #{}'\
                 .format(self.rank, i))
-            self.comm.send((xk,dual), dest=0, tag=i)
+            self.comm.send(data, dest=0, tag=i)
         gc.collect()
         
     def do_mvc(self, ndata, **kwargs):
