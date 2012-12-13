@@ -41,17 +41,17 @@ class SVMWorker(object):
         
     def do_duald(self, ndata, **kwargs):
         duald_data = self.receive_n_items(ndata)
-        subp_list = [subp[1] for subp in duald_data]
-        ind_list = [subp[0] for subp in duald_data]
         logger.info('worker #{}: processing #{} subproblems'\
             .format(self.rank, ndata))
+        
+        nlabels, Pks, qks_, gtks = duald_data
+        xks, duals = duald.solve_list_subproblems(nlabels, Pks, qks_, gtks)
 
-        rdata = duald.solve_list_subproblems(subp_list)
         ## send back data
-        for i, subp in zip(ind_list, rdata):
+        for i, xk, dual in zip(ind_list, xks, duals):
             logger.info('worker #{} sending back xk for subproblem #{}'\
                 .format(self.rank, i))
-            self.comm.send(subp, dest=0, tag=i)
+            self.comm.send((xk,dual), dest=0, tag=i)
         gc.collect()
         
     def do_mvc(self, ndata, **kwargs):

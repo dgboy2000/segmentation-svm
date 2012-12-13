@@ -126,16 +126,18 @@ def plot_dice_series(
     for iseries in range(nseries):
         series = dices_series_list[iseries]
         title = series['title']
+        print  'name of the series {} ({} methods)'.format(series['name'], len(series['methods']))
        
         xvals = [] 
         avg = []
         std = []
         for method in series['methods']:
             values = []
-            print method['name']
+            print 'name of the method {}'.format(method['name']),
             for label in labelset:
                 if not label in method['values']: continue
                 values.extend(method['values'][label])
+            print '({} samples)'.format(len(values))
             avg.append(np.mean(values))
             std.append(np.std(values))
             xvals.append(method['x'])
@@ -179,19 +181,19 @@ def plot_dice_series(
     ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
 
     strticks = []
-    print xticks
+    #print xticks
     for i in range(nseries):
         ntick = len(xticks[i])
         if len(strticks) < ntick: strticks += ['']*(ntick-len(strticks))
         for j in range(ntick):
             strticks[j] += '\n{}'.format( xticks[i][j])
-    print strticks
+    #print strticks
     #strticks = ['\n'.join([str(xticks[i][j]) for i in range(nseries)]) for j in range(nticks)]
     pyplot.xticks(range(nticks), strticks)
     pyplot.xlabel(r'$C\ or\ C^{\prime}$')
 
     bounds = [b - 0.1*(-1)**i for i,b in enumerate(bounds)]
-    print bounds
+    #print bounds
     pyplot.axis(bounds)
     pyplot.legend(
         [l[1] for l in legends], 

@@ -77,35 +77,27 @@ def decompose_with_image_connectivity(shape, nlabel, size_sub=3, marked=[]):
    
 
 ##------------------------------------------------------------------------------
-class Worker(object):
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-        
-        while 1:
-            #print 'waiting to receive data (rank={})'.format(MPIRANK)
-            data = Comm.scatter(None, root=0)
-            if len(data)==0:
-                break
-            rdata = solve_list_subproblems(data)
-            #print 'processing subproblems data (rank={})'.format(MPIRANK)
-            # rdata = []
-            # for subp in data:
-                # info, nlabel, Pk_bar, qk_bar, gtk_bar = subp
-                ##print '    processing subproblem {} (rank={})'.format(info, MPIRANK)
-                # xk = solver_gt(nlabel, Pk_bar, qk_bar, gtk_bar, **kwargs)
-                # par_dual = float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar)
-                # rdata.append((info,xk,par_dual))
-            #print 'sending back data (rank={})'.format(MPIRANK)
-            Comm.gather(rdata,root=0)
+#class Worker(object):
+#    def __init__(self, **kwargs):
+#        self.kwargs = kwargs
+#        
+#        while 1:
+#            #print 'waiting to receive data (rank={})'.format(MPIRANK)
+#            data = Comm.scatter(None, root=0)
+#            if len(data)==0:
+#                break
+#            rdata = solve_list_subproblems(data)
+#            Comm.gather(rdata,root=0)
            
-def solve_list_subproblems(subp_list, **kwargs):
-    rdata = []
-    for subp in subp_list:
-        info, nlabel, Pk_bar, qk_bar, gtk_bar = subp
+def solve_list_subproblems(nlabels, Pks, qks, gtks, **kwargs):
+    xks = []
+    sub_duals = []
+    for nlabel,Pk_bar,qk_bar,gtk_bar in zip(nlabels,Pks,qks,gtks):
         xk = solver_gt(nlabel, Pk_bar, qk_bar, gtk_bar, **kwargs)
-        par_dual = float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar)
-        rdata.append((info,xk,par_dual))
-    return rdata
+        dual = float(0.5*xk.T*Pk_bar*xk + xk.T*qk_bar)
+        xks.append((xk, par_dual))
+        sub_duals.append(dual)
+    return xks,sub_duals
     
 ##------------------------------------------------------------------------------
 def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
@@ -135,7 +127,8 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         pb = pb_bar[:len(pb_bar)/nlabel]
         N += np.in1d(np.arange(npixel), pb)
     
-    subproblems_matrices = []
+    #subproblems_matrices = []
+    Pks, qks, gtks, subs = [], [], [], []
     for ipb, pb_bar in enumerate(subproblems):
         
         ## decompose quadratic term
@@ -169,9 +162,12 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         gtk_bar = gt_bar[pb_bar]
         
         ## store subproblems
-        subproblems_matrices.append((pb_bar, Pk_bar, qk_bar, gtk_bar))
+        #subproblems_matrices.append((pb_bar, Pk_bar, qk_bar, gtk_bar))
+        Pks.append(Pk_bar)
+        qks.append(qk_bar)
+        gtks.append(gtk_bar)
+        subs.append(pb_bar)
         
-        #import ipdb; ipdb.set_trace()
         ## remove used edges 
         iek = np.where(
             np.in1d(ie, pb)&\
@@ -185,61 +181,35 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     xx = np.mat(np.random.random(nvar)).T
     obj_0 = float(0.5 * xx.T*P_bar*xx + xx.T*q_bar)
     obj_d = 0.0
-    for k, subp in enumerate(subproblems_matrices):
-        sub, Pk_bar, qk_bar, gtk_bar = subp
+    for sub,Pk_bar,qk_bar in zip(subs,Pks,qks):
         obj_d += float(0.5 * xx[sub].T*Pk_bar*xx[sub] + xx[sub].T*qk_bar)
     if np.abs(obj_0-obj_d)>1e-5:
         print 'objective (original) = {}'.format(obj_0)
         print 'objective (DD) = {}'.format(obj_d)
         1/0
-        #import ipdb; ipdb.set_trace()
        
     ## main loop
     lmbdas = [0]*nsub
     best_primal = +np.inf
     primals, duals, alphas, pdgaps = [], [], [], []
+    nlabels = [nlabel]*len(subs)
     for iter in range(niter):
         print 'iteration', iter
-        dual = 0
-        
+       
         ## solve each subproblem (parallel)
+        xks = []
+        dual = 0
         if is_parallel:
-            data = []
-            for k, subp in enumerate(subproblems_matrices):
-                sub, Pk_bar, qk_bar, gtk_bar = subp
-                qk_bar_ = qk_bar + lmbdas[k]
-                info = {'k': k}
-                data.append((info, nlabel, Pk_bar, qk_bar_, gtk_bar))
-            #import ipdb; ipdb.set_trace()
-            rdata = svm_worker.broadcast('duald',data)
-            xks = []
-            for info, xk, par_dual in rdata:
+            ## update qks
+            qks_ = []
+            for lmbdak,qk_bar in zip(lmbdas,qks):
+                qks_.append(qk_bar + lmbdak)
+            res = svm_worker.broadcast('duald', nlabels, Pks, qks_, gtks)
+            for xk,sub_dual in res:
                 xks.append(xk)
-                dual += par_dual
-            
-            # data = [[] for s in range(MPISIZE)]
-            # for k, subp in enumerate(subproblems_matrices):
-                # sub, Pk_bar, qk_bar, gtk_bar = subp
-                # qk_bar_ = qk_bar + lmbdas[k]
-                # k_MPI = np.mod(k,MPISIZE)
-                # info = {'k': k}
-                # data[k_MPI].append((info, nlabel, Pk_bar, qk_bar_, gtk_bar))
-            # data = Comm.scatter(data, root=0)            
-            # rdata = Worker.solve_list_subproblems(data)
-            # rdata = Comm.gather(rdata, root=0)
-            # orders = []
-            # xks_ = []
-            # for rdata_ in rdata:
-                # for info,xk,par_dual in rdata_:
-                    # orders.append(info['k'])
-                    # xks_.append(xk)
-                    # dual += par_dual
-            # xks = [xks_[i] for i in np.argsort(orders)]
-            
+                dual += sub_dual
         else:
-            xks = []
-            for k, subp in enumerate(subproblems_matrices):
-                sub, Pk_bar, qk_bar, gtk_bar = subp
+            for subk, Pk_bar, qk_bar, gtk_bar in zip(subs, Pks, qks, gtks):
                 qk_bar_ = qk_bar + lmbdas[k]
                 xk = solver_gt(nlabel, Pk_bar, qk_bar_, gtk_bar, **kwargs)
                 xks.append(xk)
@@ -249,11 +219,10 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         
         ## compute average
         x = np.mat(np.zeros((nvar,1)))
-        for xk,sub in zip(xks,subproblems_matrices):
-            if len(xk)!=len(sub[0]): 
+        for xk,sub in zip(xks,subs):
+            if len(xk)!=len(sub): 
                 1/0
-                #import pdb; pdb.set_trace()
-            x[sub[0]] += xk.A/np.c_[N_bar[sub[0]]]
+            x[sub] += xk.A/np.c_[N_bar[sub]]
 
         ## test stop condition
         primal = float(0.5*x.T*P_bar*x + x.T*q_bar)
@@ -272,23 +241,9 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         alphas.append(alpha)
         
         ## update lambdas
-        for k,sub in enumerate(subproblems_matrices):
-            lmbdas[k] = lmbdas[k] + alpha*(xks[k] - x[sub[0]])
-    
-        # for k,sub in enumerate(subproblems_matrices):
-            # seggt = np.argmax(gt_bar[sub[0]].reshape((nlabel,-1)), axis=0)
-            # segx = np.argmax(xks[k].reshape((nlabel,-1)), axis=0)
-            # if np.any(seggt!=segx):
-                # import ipdb; ipdb.set_trace()
-    
-        # seggt = np.argmax(gt_bar.reshape((nlabel,-1)), axis=0)
-        # segx = np.argmax(x.reshape((nlabel,-1)), axis=0)
-        # if np.any(seggt!=segx):
-            # import ipdb; ipdb.set_trace()
+        for k in range(len(subs)):
+            lmbdas[k] = lmbdas[k] + alpha*(xks[k] - x[subs[k]])
         stop = iter
-        
-    #if is_parallel:
-    #    Comm.scatter([[] for i in range(MPISIZE)], root=0)
     
     info = {
         'primals': primals,

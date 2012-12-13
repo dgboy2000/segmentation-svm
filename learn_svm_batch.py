@@ -127,7 +127,7 @@ class SVMSegmenter(object):
             # latent
             'latent_niter_max': 100,
             'latent_epsilon': 1e-3,
-            'latent_use_parallel': False,#self.use_parallel,
+            'latent_use_parallel': self.use_parallel & self.approx_aci,
             }
 
         self.trainparams = {

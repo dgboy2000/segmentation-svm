@@ -268,7 +268,7 @@ class SVMRWMeanAPI(object):
         self.approx_aci_maxstep = 1e-1
         self.approx_aci_weight = 1e1
         update = 1
-        z_weights = np.zeros(np.asarray(z).shape)
+        z_weights = np.zeros(len(z[0]))
         z_label = np.argmax(z,axis=0)
         for i in range(self.approx_aci_maxiter):
             logger.debug("approx aci, iter={}".format(i))
