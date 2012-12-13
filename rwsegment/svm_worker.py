@@ -51,7 +51,7 @@ class SVMWorker(object):
             
         ## send back data
         for i, data in outdata:
-            logger.info('worker #{} sending back xk for subproblem #{}'\
+            logger.debug('worker #{} sending back xk for subproblem #{}'\
                 .format(self.rank, i))
             self.comm.send(data, dest=0, tag=i)
         gc.collect()

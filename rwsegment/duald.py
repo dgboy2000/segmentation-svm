@@ -209,8 +209,8 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
                 xks.append(xk)
                 dual += sub_dual
         else:
-            for subk, Pk_bar, qk_bar, gtk_bar in zip(subs, Pks, qks, gtks):
-                qk_bar_ = qk_bar + lmbdas[k]
+            for lmbdak,subk, Pk_bar, qk_bar, gtk_bar in zip(lmbdas,subs, Pks, qks, gtks):
+                qk_bar_ = qk_bar + lmbdak
                 xk, energy = solver_gt(nlabel, Pk_bar, qk_bar_, gtk_bar, **kwargs)
                 xks.append(xk)
                 dual += energy

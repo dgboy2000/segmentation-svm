@@ -39,7 +39,7 @@ class LoggerInfo:
 
     def __init__(self):
         #try:
-        if 0:
+        if 1:
             import psutil
             self._format_free_memory = self._psutil_format_free_memory
         #except ImportError:
