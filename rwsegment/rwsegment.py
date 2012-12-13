@@ -188,8 +188,8 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
             size_sub=size_sub, marked=marked)
     
     ## solve qp with ground truth constraint with dd solver
-    niter = 50
-    gamma = 1e0
+    niter = 3
+    gamma = 1e1
     epsilon = 1e-3
     
     logger.info('start dd solver (nb subp: {})'.format(len(subproblems)))
