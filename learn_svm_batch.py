@@ -256,11 +256,15 @@ class SVMSegmenter(object):
                 images = [images[i] for i in iselect]
                 segmentations = [segmentations[i] for i in iselect]
                 metadata = [metadata[i] for i in iselect]
+		    
 
             ntrain = len(images)
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
-            self.training_set = (images, segmentations, metadata) 
+            self.training_set = (
+			    images[self.select_vol], 
+				segmentations[self.select_vol], 
+				metadata[self.select_vol]) 
 
  
     def train_svm(self, fold, outdir=''):

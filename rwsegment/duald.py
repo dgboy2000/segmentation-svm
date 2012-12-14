@@ -117,17 +117,15 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     L = sparse.spdiags(-L.sum(axis=0).A.ravel(), 0, npixel, npixel) + L
     ie, je = L.nonzero()
     Delta = D + (Lu - L)[np.arange(npixel),np.arange(npixel)].A.ravel()
-    
     P_bar = sparse.kron(np.eye(nlabel),L) + \
         sparse.spdiags(np.tile(Delta, nlabel), 0, nvar,nvar)
     
-
     # find number of times a node or an edge appears
     N = np.zeros(npixel, dtype=int)
     for pb_bar in subproblems:
         pb = pb_bar[:len(pb_bar)/nlabel]
         N += np.in1d(np.arange(npixel), pb)
-    
+       
     #subproblems_matrices = []
     Pks, qks, gtks, subs = [], [], [], []
     for ipb, pb_bar in enumerate(subproblems):
@@ -140,7 +138,7 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         Pk = Pk - sparse.spdiags(Pk[np.arange(npb), np.arange(npb)], 0, npb, npb)
         
         ## remove some nodes
-        inodes = np.where(np.abs(Pk.sum(axis=1).A.ravel() + Delta[pb])>1e-8)[0]
+        inodes = np.where(np.abs(-Pk.sum(axis=1).A.ravel() + Delta[pb])>1e-10)[0]
         rnodes = np.setdiff1d(pb, pb[inodes], assume_unique=True)
         Pk = Pk[inodes,:][:,inodes]
         pb = pb[inodes]
@@ -153,7 +151,8 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         Pk = Pk + sparse.spdiags(Delta[pb]/N[pb], 0, npb, npb)
         
         ## extend Pk
-        Pk_bar = sparse.kron(np.eye(nlabel), Pk)
+        Pk_bar = sparse.kron(sparse.eye(nlabel,nlabel), Pk).tocsr() ## careful: kron adds zero data
+        Pk_bar.eliminate_zeros() ## because Pk_bar.data does not match Pk_bar.nonzero() !!
         
         ## decompose linear term
         n_bar = np.tile(N[pb], nlabel)
@@ -163,7 +162,6 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
         gtk_bar = gt_bar[pb_bar]
         
         ## store subproblems
-        #subproblems_matrices.append((pb_bar, Pk_bar, qk_bar, gtk_bar))
         Pks.append(Pk_bar)
         qks.append(qk_bar)
         gtks.append(gtk_bar)
@@ -175,7 +173,13 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
             np.in1d(je, pb)&
             (ie!=je))[0]        
         L.data[iek] = 0
-        
+    
+    # AA = sparse.dok_matrix(P_bar.shape)
+    # for k in range(nsub):
+        # iP,jP = Pks[k].nonzero()
+        # for i,j,d in zip(iP,jP,Pks[k].data):
+            # AA[subs[k][i],subs[k][j]] += d
+
     N_bar = np.tile(N, nlabel)
        
     ## check subproblems sum to orignal problem
