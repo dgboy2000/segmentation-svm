@@ -117,8 +117,9 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     L = sparse.spdiags(-L.sum(axis=0).A.ravel(), 0, npixel, npixel) + L
     ie, je = L.nonzero()
     Delta = D + (Lu - L)[np.arange(npixel),np.arange(npixel)].A.ravel()
-    P_bar = sparse.kron(np.eye(nlabel),L) + \
+    P_bar = sparse.kron(np.eye(nlabel),L).tocsr() + \
         sparse.spdiags(np.tile(Delta, nlabel), 0, nvar,nvar)
+    P_bar.eliminate_zeros()
     
     # find number of times a node or an edge appears
     N = np.zeros(npixel, dtype=int)
@@ -183,6 +184,8 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     N_bar = np.tile(N, nlabel)
        
     ## check subproblems sum to orignal problem
+    
+    #for ii in range(30):
     xx = np.mat(np.random.random(nvar)).T
     obj_0 = float(0.5 * xx.T*P_bar*xx + xx.T*q_bar)
     obj_d = 0.0
@@ -191,8 +194,9 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
     if np.abs(obj_0-obj_d)>1e-1:
         print 'objective (original) = {}'.format(obj_0)
         print 'objective (DD) = {}'.format(obj_d)
-        1/0
-       
+        #1/0
+    
+    
     ## main loop
     lmbdas = [0]*nsub
     best_primal = +np.inf
@@ -431,8 +435,10 @@ if __name__=='__main__':
         Lu, B, D, border = compute_laplacian(im, marked, beta=50)
         
         ## extend matrices 
-        Lu_bar = sparse.kron(np.eye(nlabel),Lu)
-        B_bar = sparse.kron(np.eye(nlabel),B)
+        Lu_bar = sparse.kron(np.eye(nlabel),Lu).tocsr()
+        Lu_bar.eliminate_zeros()
+        B_bar = sparse.kron(np.eye(nlabel),B).tocsr()
+        B_bar.eliminate_zeros()
         xm_bar = np.zeros((nlabel,border.size))
         for il,label in enumerate(labelset):
             xm_bar[il,:] = (seeds.flat==label)[border]
