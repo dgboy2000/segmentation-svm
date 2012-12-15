@@ -103,6 +103,7 @@ class SVMSegmenter(object):
             'duald_gamma': kwargs.pop('duald_gamma'),
             'duald_niter': kwargs.pop('duald_niter'),
             'duald_epsilon': 1e-3, 
+            'duald_size_sub': (2,10,10),
             }
         
         ## parameters for svm api

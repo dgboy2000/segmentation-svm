@@ -182,7 +182,7 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     q_bar = B_bar*xm_bar - Omega_bar*x0_bar
     
     ## make subproblems
-    size_sub = (2,5,5)
+    size_sub = kwargs.pop('duald_size_sub', (2,5,5))
     subproblems = \
         duald.decompose_with_image_connectivity(
             im_shape, nlabel, 
