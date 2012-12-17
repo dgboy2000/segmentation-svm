@@ -591,7 +591,7 @@ class SVMSegmenter(object):
         ## training
         if self.retrain:
             
-            if not self.debug and not os.path.isdir(outdir):
+            if not self.debug and not os.path.exists(outdir):
                 os.makedirs(outdir)
 
             if self.isroot:
