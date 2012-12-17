@@ -784,7 +784,7 @@ if __name__=='__main__':
         
         
     #sample_list = ['01/']
-    for fold in config.folds:
+    for fold in config.folds[0]:
         svm_segmenter.process_all_samples(fold) 
         #break
     sys.exit(1)

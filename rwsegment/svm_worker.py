@@ -15,7 +15,7 @@ def broadcast(task, *args, **kwargs):
     ndata = len(args[0])
     all = np.arange(ndata)
 
-    logger.info('main process sending {} data to workers'.format(ndata))
+    #logger.info('main process sending {} data to workers'.format(ndata))
     ## send
     for iproc in range(1,nproc):
        some = all[np.mod(all, nproc-1) == (iproc-1)]
