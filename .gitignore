@@ -28,7 +28,7 @@ pip-log.txt
 
 
 rwsegment/lfunctions/build*
-rwsegment/ffd/build*
+rwsegment/ffd/build*/**
 
 segmentation/*
 learning/*

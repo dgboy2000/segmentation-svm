@@ -794,7 +794,6 @@ if __name__=='__main__':
     else:
         folds = config.folds[options.fold:options.fold+1]
     for fold in folds:
-        svm_segmenter.process_all_samples(fold) 
-        #break
+       svm_segmenter.process_all_samples(fold) 
     sys.exit(1)
     
