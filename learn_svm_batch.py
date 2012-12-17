@@ -225,7 +225,7 @@ class SVMSegmenter(object):
                         if np.all(seg[islices]==self.labelset[0]) or \
                            np.all(seeds[islices]>=0):
                             continue
-                        logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
+                        #logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
                         
                         ## append to training set
@@ -248,7 +248,7 @@ class SVMSegmenter(object):
                 if len(images) == self.select_vol.stop:
                     break 
 
-            nmaxvol = 200
+            nmaxvol = 100
             if len(images) > nmaxvol:
                 randomizer = np.random.RandomState(seed=0)
                 iselect = randomizer.permutation(np.arange(len(images)))[:nmaxvol] 
