@@ -103,6 +103,7 @@ class SVMSegmenter(object):
             'duald_gamma': kwargs.pop('duald_gamma'),
             'duald_niter': kwargs.pop('duald_niter'),
             'duald_epsilon': 1e-3, 
+            'duald_size_sub': (2,10,10),
             }
         
         ## parameters for svm api
@@ -224,7 +225,7 @@ class SVMSegmenter(object):
                         if np.all(seg[islices]==self.labelset[0]) or \
                            np.all(seeds[islices]>=0):
                             continue
-                        logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
+                        #logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
                         bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
                         
                         ## append to training set
@@ -247,7 +248,7 @@ class SVMSegmenter(object):
                 if len(images) == self.select_vol.stop:
                     break 
 
-            nmaxvol = 200
+            nmaxvol = 100
             if len(images) > nmaxvol:
                 randomizer = np.random.RandomState(seed=0)
                 iselect = randomizer.permutation(np.arange(len(images)))[:nmaxvol] 
@@ -256,11 +257,15 @@ class SVMSegmenter(object):
                 images = [images[i] for i in iselect]
                 segmentations = [segmentations[i] for i in iselect]
                 metadata = [metadata[i] for i in iselect]
+		    
 
             ntrain = len(images)
             logger.info('Learning with {} training examples'\
                 .format(ntrain))
-            self.training_set = (images, segmentations, metadata) 
+            self.training_set = (
+			    images[self.select_vol], 
+				segmentations[self.select_vol], 
+				metadata[self.select_vol]) 
 
  
     def train_svm(self, fold, outdir=''):
@@ -741,6 +746,12 @@ if __name__=='__main__':
         default=1e2, type=float,
         help='',
         )
+    opt.add_option(
+        '--fold', dest='fold', 
+        default=-1, type=int,
+        help='',
+        )
+
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -777,9 +788,12 @@ if __name__=='__main__':
         duald_niter=options.duald_niter,
         )
         
-        
-    #sample_list = ['01/']
-    for fold in config.folds:
+    
+    if options.fold < 0:
+        folds = config.folds
+    else:
+        folds = config.folds[options.fold:options.fold+1]
+    for fold in folds:
         svm_segmenter.process_all_samples(fold) 
         #break
     sys.exit(1)

@@ -53,7 +53,7 @@ class SVMRWMeanAPI(object):
         elif self.loss_type=='laplacian':
             loss = loss_functions.laplacian_loss(z,y_,mask=flat_mask)
         elif self.loss_type=='linear':
-            loss = loss_function.linear_loss(z,y,mask=flat_mask)
+            loss = loss_functions.linear_loss(z,y_,mask=flat_mask)
         else:
            raise Exception('wrong loss type')
            sys.exit(1)

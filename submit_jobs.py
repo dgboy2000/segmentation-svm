@@ -53,9 +53,9 @@ export MPI_BUFS_PER_HOST=64
 def icetestq():
     return '''
 ## Params for icetestq
-#PBS -l select=2:ncpus=12:mpiprocs=4:mem=24000000kb
+#PBS -l select=4:ncpus=12:mpiprocs=4:mem=24000000kb
 #PBS -l walltime=00:19:59
-NP=8
+NP=16
 
 export MPI_DSM_VERBOSE=1
 export MPI_OPENMP_INTEROP=1
@@ -124,23 +124,23 @@ if __name__=='__main__':
     #    queue='icetestq')
 
     make_job(
-        '2012.12.13.test_duald_icepar156q',
+       '2012.12.17.test_duald_icepar156q',
         'mpirun -np $NP python learn_svm_batch.py ' \
-            '--parallel --crop 2 -t 0 '\
-            '--loss none --loss_factor 1000 '\
+            '--parallel --crop 2 --fold 1 '\
+            '--loss none --loss_factor 1000 --one_iter '\
             '--latent  --duald_niter 10 '\
             '--Cprime 1.0 -C 1.0 ',
         queue='icetestq')
 
 
-    #C = [1e-1, 1e0, 1e1, 1e2]#, 1e3, 1e4]
+    #C = [1e-1, 1e0, 1e1, 1e2]
     #Cp = [1e-2, 1e0, 1e2, 1e6]
     #for c in C:
     #    make_job(
     #        '2012.12.13.exp_latent_DDACI_crop2_Lsdloss_x1000_C{}'.format(c),
     #        'mpirun -np $NP python learn_svm_batch.py ' \
     #            '--parallel --crop 2 '\
-    #            '--loss squareddiff --loss_factor 1000 '\
+    #            '--loss squareddiff --loss_factor 1000 --one_iter '\
     #            '--latent --duald_niter 10 '\
     #            '-C {} '.format(c))
     #
@@ -149,7 +149,7 @@ if __name__=='__main__':
     #            '2012.12.13.exp_latent_DDACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
     #            'mpirun -np $NP python learn_svm_batch.py ' \
     #                '--parallel --crop 2 '\
-    #                '--loss none --loss_factor 1000 '\
+    #                '--loss none --loss_factor 1000 --one_iter '\
     #                '--latent --duald_niter 10 '\
     #                ' --Cprime {} -C {} '.format(cprime, c))
 

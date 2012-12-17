@@ -131,6 +131,8 @@ def solve_at_once(Lu,B,list_xm,list_Omega,list_x0, pca, **kwargs):
     ## intermediary matrices
     LL  = sparse.kron(np.eye(nlabel), Lu)
     BB  = sparse.kron(np.eye(nlabel), B)
+    LL.eliminate_zeros()
+    BB.eliminate_zeros()
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T

@@ -172,7 +172,8 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     #Omega = sparse.spdiags(omega, 0, n,n)
     Omega_bar = sparse.spdiags(np.tile(omega,nlabel), 0, n*nlabel,n*nlabel)
     
-    B_bar = sparse.kron(np.eye(nlabel), B)
+    B_bar = sparse.kron(np.eye(nlabel), B).tocsr()
+    B_bar.eliminate_zeros()
     
     x0_bar = np.asmatrix(np.c_[list_x0].ravel()).T
     xm_bar = np.asmatrix(np.c_[list_xm].ravel()).T
@@ -181,7 +182,7 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     q_bar = B_bar*xm_bar - Omega_bar*x0_bar
     
     ## make subproblems
-    size_sub = (2,5,5)
+    size_sub = kwargs.pop('duald_size_sub', (2,5,5))
     subproblems = \
         duald.decompose_with_image_connectivity(
             im_shape, nlabel, 
@@ -209,8 +210,10 @@ def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
     nlabel = len(list_xm)
     
     ## intermediary matrices
-    LL = sparse.kron(np.eye(nlabel), Lu)
-    BB = sparse.kron(np.eye(nlabel), B)
+    LL = sparse.kron(np.eye(nlabel), Lu).tocsr()
+    BB = sparse.kron(np.eye(nlabel), B).tocsr()
+    LL.eliminate_zeros()
+    BB.eliminate_zeros()
 
     x0 = np.asmatrix(np.c_[list_x0].ravel()).T
     xm = np.asmatrix(np.c_[list_xm].ravel()).T
