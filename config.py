@@ -68,6 +68,9 @@ def is_TWIX():
 def is_danny_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/goodmand'
 
+def is_puneet_igloo():
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/puneet'
+
 def is_py_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'\
     and os.path.isdir('/home/mudigondpk') and not os.path.isdir('/home/pawan')
@@ -88,6 +91,9 @@ elif is_py_igloo():
 elif is_danny_igloo():
   dir_reg     = '/workdir/baudinpy/01_register/'
   dir_work    = '/workdir/goodmand/segmentation_out/'
+elif is_puneet_igloo():
+  dir_reg     = '/workdir/baudinpy/01_register/'
+  dir_work    = '/workdir/puneet/segmentation_out/'
 elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
