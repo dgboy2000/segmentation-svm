@@ -591,10 +591,10 @@ class SVMSegmenter(object):
         ## training
         if self.retrain:
             
-            if not self.debug and not os.path.exists(outdir):
-                os.makedirs(outdir)
-
             if self.isroot:
+                if not self.debug and not os.path.exists(outdir):
+                    os.makedirs(outdir)
+
                 w,xi = self.train_svm(fold, outdir=outdir)
                 if self.debug:
                     pass
@@ -748,7 +748,7 @@ if __name__=='__main__':
         )
     opt.add_option(
         '--fold', dest='fold', 
-        default=-1, type=int,
+        default=0, type=int,
         help='',
         )
 
