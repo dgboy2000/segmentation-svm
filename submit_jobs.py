@@ -126,7 +126,7 @@ if __name__=='__main__':
     #make_job(
     #   '2012.12.17.test_duald_icepar156q',
     #    'mpirun -np $NP python learn_svm_batch.py ' \
-    #        '--parallel --crop 2 --fold 1 '\
+    #        '--parallel --crop 2 '\
     #        '--loss none --loss_factor 1000 --one_iter '\
     #        '--latent  --duald_niter 10 '\
     #        '--Cprime 1.0 -C 1.0 ',
@@ -153,7 +153,6 @@ if __name__=='__main__':
                     '--loss none --loss_factor 1000 --one_iter '\
                     '--latent --duald_niter 10 '\
                     ' --Cprime {} -C {} '.format(cprime, c))
-
         #make_job(
         #    '2012.12.06.exp_latent_DACI_crop2_Lsdloss_x1000_C{}'.format(c),
         #    'mpirun -np $NP python learn_svm_batch.py ' \
