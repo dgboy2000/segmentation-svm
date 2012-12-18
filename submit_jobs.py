@@ -133,16 +133,14 @@ if __name__=='__main__':
     #    queue='icetestq')
 
 
-    #C = [1e-1, 1e0, 1e1, 1e2]
-    #Cp = [1e-2, 1e0, 1e2, 1e6]
     C = [1e-1, 1e0]
-    Cp = []
+    Cp = [1e-2, 1e0, 1e2, 1e6]
 
     for c in C:
         make_job(
             '2012.12.13.exp_latent_DDACI_crop2_Lsdloss_x1000_C{}'.format(c),
             'mpirun -np $NP python learn_svm_batch.py ' \
-                '--parallel --crop 2 --fold 1 '\
+                '--parallel --crop 2 --fold 0 '\
                 '--loss squareddiff --loss_factor 1000 --one_iter '\
                 '--latent --duald_niter 10 '\
                 '-C {} '.format(c))
@@ -151,7 +149,7 @@ if __name__=='__main__':
             make_job(
                 '2012.12.13.exp_latent_DDACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 'mpirun -np $NP python learn_svm_batch.py ' \
-                    '--parallel --crop 2 --fold 1 '\
+                    '--parallel --crop 2 --fold 0 '\
                     '--loss none --loss_factor 1000 --one_iter '\
                     '--latent --duald_niter 10 '\
                     ' --Cprime {} -C {} '.format(cprime, c))

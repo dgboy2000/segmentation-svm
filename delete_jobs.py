@@ -4,6 +4,8 @@ import subprocess
 
 if __name__=='__main__':
     kill_run = False
+    iname = sys.argv.index('-n') + 1
+    jname = sys.argv[iname]
     if '-r' in sys.argv:
        #kill running
        kill_run = True
@@ -15,7 +17,7 @@ if __name__=='__main__':
         line = ' '.join(output[i*6:i*6+6])
         name = output[i*6+2]
         service = output[i*6]
-        if name=='baudinpy':
+        if name==jname:
             if output[i*6+4]=='R' and not kill_run:
                 continue
             print name, service
