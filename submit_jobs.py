@@ -10,8 +10,6 @@ header = \
 # standard error output
 #PBS -j oe
 
-# queueName
-#PBS -q iceq
 '''
 
 ## resources blocs to allocate
@@ -20,6 +18,9 @@ header = \
 
 def icemem48gbq():
     return '''
+# queueName
+#PBS -q iceq
+
 # Params for icemem48gbq
 #PBS -l select=1:ncpus=12:mpiprocs=1:mem=44gb
 #PBS -l walltime=23:59:00
@@ -28,6 +29,9 @@ NP=1
 
 def icemem72gbq():
     return '''
+# queueName
+#PBS -q iceq
+
 # Params for icemem72gbq
 #PBS -l select=1:ncpus=12:mpiprocs=1:mem=68gb
 #PBS -l walltime=23:59:00
@@ -36,6 +40,27 @@ NP=1
 
 def icepar156q():
     return '''
+## Params for icepar156q
+# queueName
+#PBS -q iceq
+
+#PBS -l select=8:ncpus=12:mpiprocs=4:mem=24000000kb
+#PBS -l walltime=03:59:59
+NP=32
+
+export MPI_DSM_VERBOSE=1
+export MPI_OPENMP_INTEROP=1
+export OMP_NUM_THREADS=12
+#export MPI_DSM_CPULIST=0,3,6,9:allhosts
+export MPI_BUFS_PER_PROC=32
+export MPI_BUFS_PER_HOST=64
+'''
+
+def iceres():
+    return '''
+# queueName
+#PBS -q R335542
+
 ## Params for icepar156q
 #PBS -l select=8:ncpus=12:mpiprocs=4:mem=24000000kb
 #PBS -l walltime=03:59:59
@@ -49,9 +74,11 @@ export MPI_BUFS_PER_PROC=32
 export MPI_BUFS_PER_HOST=64
 '''
 
-
 def icetestq():
     return '''
+# queueName
+#PBS -q iceq
+
 ## Params for icetestq
 #PBS -l select=4:ncpus=12:mpiprocs=4:mem=24000000kb
 #PBS -l walltime=00:19:59
@@ -133,7 +160,7 @@ if __name__=='__main__':
     #    queue='icetestq')
 
 
-    C = [1e1, 1e2]
+    C = [1e-1, 1e0]
     Cp = [1e-2, 1e0, 1e2, 1e6]
 
     for c in C:
@@ -143,7 +170,8 @@ if __name__=='__main__':
                 '--parallel --crop 2 --fold 0 '\
                 '--loss squareddiff --loss_factor 1000 --one_iter '\
                 '--latent --duald_niter 10 '\
-                '-C {} '.format(c))
+                '-C {} '.format(c),
+            queue='iceres')
     
         for cprime in Cp:
             make_job(
@@ -152,7 +180,9 @@ if __name__=='__main__':
                     '--parallel --crop 2 --fold 0 '\
                     '--loss none --loss_factor 1000 --one_iter '\
                     '--latent --duald_niter 10 '\
-                    ' --Cprime {} -C {} '.format(cprime, c))
+                    ' --Cprime {} -C {} '.format(cprime, c),
+                 queue='iceres')
+
         #make_job(
         #    '2012.12.06.exp_latent_DACI_crop2_Lsdloss_x1000_C{}'.format(c),
         #    'mpirun -np $NP python learn_svm_batch.py ' \
