@@ -71,6 +71,9 @@ def is_danny_igloo():
 def is_puneet_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/puneet'
 
+def is_pawan_igloo():
+  return "HOME" in os.environ and os.environ["HOME"] == '/home/mudigondpk'
+
 def is_py_igloo():
   return "HOME" in os.environ and os.environ["HOME"] == '/home/baudinpy'\
     and os.path.isdir('/home/mudigondpk') and not os.path.isdir('/home/pawan')
@@ -94,6 +97,9 @@ elif is_danny_igloo():
 elif is_puneet_igloo():
   dir_reg     = '/workdir/baudinpy/01_register/'
   dir_work    = '/workdir/puneet/segmentation_out/'
+elif is_pawan_igloo():
+  dir_reg     = '/workdir/baudinpy/01_register/'
+  dir_work    = '/workdir/mudigondpk/segmentation_out/'
 elif is_py_machine():
   dir_reg     = '..\\rwtrain\\01_register\\'
   dir_work    = './'
