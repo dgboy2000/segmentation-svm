@@ -35,8 +35,8 @@ class Entropy_no_D(Entropy):
     
 class Variance(BaseAnchorAPI):
     def __init__(self, ianchor, anchor, variance):
-        1/0
-        weights = 1. / (1. + variance) 
+        #1/0
+        weights = np.min(1. / (1. + variance), axis=0)
         super(Variance,self).__init__(ianchor, anchor, weights=weights)
   
 class Variance_no_D(Variance):

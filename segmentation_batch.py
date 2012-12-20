@@ -39,7 +39,6 @@ class SegmentationBatch(object):
         self.model_name = kwargs.pop('name', None)
         self.force_recompute_prior = False
         self.sweights = kwargs.pop('sweights', 1)
-        omega = kwargs.pop('omega', 0)
         
         self.params  = {
             'beta'             : 100,     # contrast parameter
@@ -53,12 +52,11 @@ class SegmentationBatch(object):
         
         
         self.laplacian_function = \
-           lambda im,i,j: wflib.weight_std(im,i,j, beta=100, omega=omega)
+           lambda im,i,j: wflib.weight_std(im,i,j, beta=100)
 
         self.prior_models = [
            {'name': 'constant',  'default': 0},
-           #{'name': 'entropy',   'default': 0},
-           {'name': 'spatial',   'default': 0},
+           {'name': 'entropy',   'default': 0},
            {'name': 'intensity', 'default': 0.0},
            {'name': 'variance',  'default': 0.0},
            {'name': 'variance cmap', 'default': 0.0},
@@ -100,15 +98,15 @@ class SegmentationBatch(object):
         im_avg, im_var = prior['intensity']
         
         self.prior_models[0]['api'] = models.Constant(imask, average)
-        #self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
-        self.prior_models[1]['api'] = models.Spatial(imask, average, sweights=self.sweights)
+        self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
+        #self.prior_models[1]['api'] = models.Spatial(imask, average, sweights=self.sweights)
         self.prior_models[2]['api'] = models.Intensity(im_avg, im_var)
         self.prior_models[3]['api'] = models.Variance_no_D(imask, average, variance=variance)
         self.prior_models[4]['api'] = models.Variance_no_D_Cmap(imask, average, variance=variance)
  
         ## init anchor_api
         anchor_api = svm_rw_functions.MetaAnchorApi(
-            nlabel, self.prior_models, weights=self.anchor_weights)
+            self.prior_models, weights=self.anchor_weights)
 
         ## start segmenting
         #import ipdb; ipdb.set_trace()
@@ -206,26 +204,11 @@ if __name__=='__main__':
     if not '-s' in sys.argv:
         sys.exit()
 
-    labelset = config.labelset
-    n = len(labelset)
-
-    #
-    weights = [1e-2]*n
-    weights[0] = 1e-4
-    #weights[8] = 1.
-    #weights[9] = 1.
-    omega = 0#1e-4
-    sweights = [1]*n
-    sweights[0] = 1e-2 #run segmentation_batch.py --basis allmuscles --folder 2012.11.30.test -s
-    
+   
     segmenter = SegmentationBatch(
-       anchor_weights=weights + [0]*n + [0]*n + [0]*n + [0]*n, 
-       name='constant1e-2', omega=omega)
-    # segmenter = SegmentationBatch(
-        # anchor_weights=[0]*n + weights + [0]*n + [0]*n + [0]*n, 
-        # name='entropy1e-2', omega=omega, sweights=sweights)
-    #for fold in config.folds:
-    for fold in [['F26/']]:
+        anchor_weights=[0,1e0,0,0,0], 
+        name='entropy1e0')
+    for fold in config.folds:
         segmenter.process_all_samples(fold, fold=fold)
 
 
