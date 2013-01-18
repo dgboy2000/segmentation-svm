@@ -3,14 +3,12 @@ import numpy as np
 class LaplacianWeights(object):
     def __init__(self, nlabel, functions, weights=None):
         self.functions = functions
-        self.nlabel = nlabel
         if weights is None:
             self.weights = \
                 [f['default'] for f in functions]
         else: self.weights = weights
 
     def __call__(self, im, i, j):
-        nlabel = self.nlabel
         tot_wij = 0
         for k, lfunc in enumerate(self.functions):
             wij = lfunc['func'](im, i, j)

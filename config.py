@@ -39,15 +39,6 @@ vols = {
     'M44/': {'AB':28},
     }
  
-folds = [ 
-   ['01/', '03/', '05/', '07/', '10/', '12/'],
-   ['09/', '11/', '13/', '15/', 'M29/', '16/'],
-   ['17/', 'F23/', 'F27_2/', 'F37/','18/', 'F26/'],
-   ['F60/', 'M26/', 'M28/', 'M44/', 'F32/', 'F42/'],
-   ['02/', '04/', '06/', '08/', 'M23/', 'M26_2/'],
-   ]
-   
-labelset = [0,13,14,15,16]
 gray = 'gray.hdr'
 seg = 'seg.hdr'
 water = 'water.hdr'
@@ -201,6 +192,15 @@ if basis=='default':
         }
         
     labelset = [0,13,14,15,16]
+    folds = [ 
+       ['01/', '03/', '05/', '07/', '10/', '12/'],
+       ['09/', '11/', '13/', '15/', 'M29/', '16/'],
+       ['17/', 'F23/', 'F27_2/', 'F37/','18/', 'F26/'],
+       ['F60/', 'M26/', 'M28/', 'M44/', 'F32/', 'F42/'],
+       ['02/', '04/', '06/', '08/', 'M23/', 'M26_2/'],
+       ]
+   
+
 elif basis=='allmuscles':
     dir_prior = dir_work + '/prior_allm/'
     dir_pca_prior = dir_work + '/prior_pca_allm/'
@@ -221,6 +221,8 @@ elif basis=='allmuscles':
         'M44/': {'AB':28},
         }
     labelset = [0,1,3,4,5,7,8,10,11,12,13,14,15,16]
+    folds = [[key] for key in vols]
+         
 else:
     raise Exception('unknown basis {}'.format(basis))
     sys.exit(1)

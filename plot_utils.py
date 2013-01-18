@@ -1,8 +1,8 @@
 import os
 import numpy as np
 
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot
 
 
@@ -52,7 +52,7 @@ def plot_dice_labels(
                 values[0].extend(method['values'][label])
                 
         ## boxplot
-        import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         positions = [i + -0.4 + (imethod + 0.5)*width for i in range(nbox)]
         bp = pyplot.boxplot(
             values,
@@ -60,8 +60,8 @@ def plot_dice_labels(
             widths=width,
             vert=0,
             whis=1.5,
-            notch=1,
-            bootstrap=1000,
+            notch=True,
+            bootstrap=None,#10000,
             )
             
         ## improve boxes
@@ -80,7 +80,7 @@ def plot_dice_labels(
             alpha=0.3)
         legends.append((title,r))
      
-    pyplot.title(r'$\mathrm{Dice\ coefficients}$')
+    #pyplot.title(r'$\mathrm{Dice\ coefficients}$')
     pyplot.yticks(range(nbox), yticks, rotation=0)
     
     pyplot.subplots_adjust(left=space_l, right=0.95, top=1-space_t, bottom=0.1)
@@ -98,7 +98,101 @@ def plot_dice_labels(
         loc=3, prop={'size':12})
     
     return fig
+   
+def plot_loss(*args, **kwargs):
+    figsize = kwargs.pop('figsize', 10)
+    ratio = kwargs.pop('ratio', 10)
+    ## make figure
+    size = [figsize,int(ratio*figsize)]
+    fig = pyplot.figure(figsize=size)
     
+    nplot = len(args)
+    if nplot==1: nplots = (1,1)
+    elif nplot==2: nplots = (2,1)
+    elif nplot==3: nplots = (3,1)
+    elif nplot==4: nplots = (2,2)
+
+    for iplot, loss_series_list in enumerate(args):
+        ax1 = fig.add_subplot(*(nplots + (iplot+1,)))
+     
+        ## prepare boxes
+        nseries = len(loss_series_list)
+    
+        ## init
+        legends = []
+        xticks = []
+        for iseries in range(nseries):
+            series = loss_series_list[iseries]
+            title = series['title']
+            print  'name of the series {} ({} methods)'.format(series['name'], len(series['methods']))
+    
+            avg = []
+            std = []
+            xticks_ = []
+            for method in series['methods']:
+                values = []
+                print 'name of the method {}'.format(method['name']),
+                if not 'ideal_loss' in method['values']: continue
+                values.extend(method['values']['ideal_loss'])
+                print '({} samples)'.format(len(values))
+                avg.append(np.mean(values))
+                std.append(np.std(values))
+                xticks_.append(method['x'])
+            if len(xticks_) > len(xticks): 
+                xticks = [x for x in xticks_]
+    
+            xs = range(len(avg))
+            print avg
+            print xs
+            ## plot
+            p = pyplot.plot(
+                xs,
+                avg,
+                #yerr=std,
+                color=colors[iseries],
+                linestyle='-',
+                linewidth=2,
+                marker='o',
+                )
+                
+            ## make legend
+            r = pyplot.Rectangle(
+                (0,0),0,0,
+                facecolor=colors[iseries], 
+                edgecolor=colors[iseries],
+                alpha=0.3)
+            legends.append((title,r))
+        
+        
+        pyplot.subplots_adjust(left=0.1, right=0.95, top=0.95, bottom=0.1)
+        
+        ## plot grid
+        #from matplotlib.ticker import MultipleLocator
+        #minorLocator   = MultipleLocator(0.5)
+        #ax1.xaxis.set_minor_locator(minorLocator) 
+        #ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
+
+        bounds = [0,len(xticks)-1,0.05,0.25]
+        pyplot.axis(bounds)
+        pyplot.grid(1) 
+        #pyplot.title(r'Average $\Delta(z_k, \hat{y_k})$')
+        print 'xticks', xticks
+        pyplot.legend(
+             [l[1] for l in legends], 
+             [l[0] for l in legends], 
+             loc=1, prop={'size':12})
+
+        if iplot/nplots[0]>0:
+            pyplot.xticks(range(len(xticks)), xticks, position=(0,-0.02))
+            pyplot.xlabel(r'$\lambda^{\prime}$', size=15)
+        else:
+            pyplot.xticks(range(len(xticks)), [])
+       
+
+    return fig
+
+
+
 def plot_dice_series( 
         dices_series_list,
         labelset=labelset,
@@ -247,7 +341,7 @@ from matplotlib.colors import ListedColormap
 mycmap = ListedColormap(colorlist[:,:3], 'segmentation')
 mycmap.set_bad(color=(0,0,0,0))
 
-colors = [r'blue', r'green', r'red', r'yellow', r'purple', r'orange']
+colors = [r'blue', r'green', r'red', r'yellow', r'purple', r'orange', r'black']
 
 
 

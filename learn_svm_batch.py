@@ -153,7 +153,7 @@ class SVMSegmenter(object):
                 ]
             self.prior_models = [
                 {'name': 'constant',  'default': 0.0},
-                {'name': 'entropy',   'default': 1.0}, #1e-2 is better
+                {'name': 'entropy',   'default': 1e0}, #1e-2 is better
                 {'name': 'intensity', 'default': 0.0},
                 ]
 
@@ -284,7 +284,7 @@ class SVMSegmenter(object):
             wref = [f['default'] for f in self.laplacian_functions] + \
                    [m['default'] for m in self.prior_models ]
             w0 = wref
-            wbad = [0.,0.,0.,1.,0.,0.,1.] ## rubish init for struct  svm
+            wbad = [0.,0.,0.,1.,0.,0.,1.] ## rubbish init for struct  svm
             if self.use_latent:
                 if self.one_iteration:
                     self.svmparams.pop('latent_niter_max',0) # remove kwarg

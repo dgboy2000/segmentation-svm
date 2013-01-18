@@ -22,9 +22,8 @@ class Entropy(BaseAnchorAPI):
         nlabel = len(self.anchor)
         entropy = -np.sum(np.log(self.anchor + 1e-10)*self.anchor,axis=0)
         entropy[entropy<0] = 0
-        #entropy = \
-        #    np.tile((np.log(nlabel) - entropy) / np.log(nlabel),(nlabel,1))
         entropy = (np.log(nlabel) - entropy) / np.log(nlabel)
+        #entropy = (np.max(entropy) - entropy) / np.max(entropy) # temp
         self.weights = entropy
 
 class Entropy_no_D(Entropy):

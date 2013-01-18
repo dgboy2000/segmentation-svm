@@ -10,6 +10,12 @@ if __name__=='__main__':
        #kill running
        kill_run = True
  
+    if '-s' in sys.argv:
+        istart = sys.argv.index('-s')+1
+        start = int(sys.argv[istart])
+    else:
+        start = 0
+
     output = subprocess.check_output('qstat').split()
     output = output[14:] # remove header
     
@@ -17,6 +23,7 @@ if __name__=='__main__':
         line = ' '.join(output[i*6:i*6+6])
         name = output[i*6+2]
         service = output[i*6]
+        if int(service[:6])<start: continue
         if name==jname:
             if output[i*6+4]=='R' and not kill_run:
                 continue
