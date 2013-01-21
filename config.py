@@ -144,6 +144,7 @@ elif sys.argv[0]=='batch_rwpca.py':
     if not debug:
         utils_logging.LOG_OUTPUT_DIR = dir_log
 
+print utils_logging.LOG_OUTPUT_DIR
 
 #logger = utils_logging.get_logger('config', utils_logging.DEBUG)
 #logger.info('current code version: {}'.format(current_code_version))

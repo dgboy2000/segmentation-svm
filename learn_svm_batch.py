@@ -303,11 +303,11 @@ class SVMSegmenter(object):
                     if os.path.isfile(outdir + 'niter.txt'):
                         ## continue previous work
                         niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
-                        ys = np.load(outdir + 'ys.npy')
+                        ys = np.load(outdir + 'ys_{}.npy'.format(niter))
                         w = np.loadtxt(outdir + 'w_{}.txt'.format(niter)).tolist()
                         
-                        curr_iter = niter + 1
-                        logger.info('latent svm: iteration {}, with w={}'.format(curr_iter,w))
+                        niter = niter + 1
+                        logger.info('latent svm: iteration {}, with w={}'.format(niter,w))
                         w,xi,ys,info = self.svm.train(
                             images, 
                             segmentations, 
@@ -318,21 +318,22 @@ class SVMSegmenter(object):
                             **self.trainparams)
                     else:
                         ## start learning
-                        niter = 1
+                        niter = 0
                         logger.info('latent svm: first iteration. w0 = {}'.format(w0))
                         w,xi,ys,info = self.svm.train(
                             images, segmentations, metadata, w0=w0, wref=wref, **self.trainparams)
                        
                     # save output for next iteration
-                    if not self.debug and not info['converged']:
+                    if not self.debug:
                         np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
                         np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
-                        np.save(outdir + 'ys.npy', ys)
+                        np.save(outdir + 'ys_{}.npy'.format(niter), ys)
                         
                         #logger.warning('Exiting program. Run script again to continue.')
                         #if self.use_parallel:
                         #    for n in range(1, self.MPI_size):
                         #        self.comm.send(('stop',1, {}),dest=n)
+                    if not info['converged']:
                         logger.info('you should run command line: qsub -k oe {}'.format(self.start_script))
 
                 else:
