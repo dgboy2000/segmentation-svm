@@ -51,10 +51,15 @@ class SVMWorker(object):
             outdata.append((ind,data))
             
         ## send back data
+        logger.debug('worker #{} sending back xks'.format(self.rank))
         for i, data in outdata:
-            logger.debug('worker #{} sending back xk for subproblem #{}'\
-                .format(self.rank, i))
             self.comm.send(data, dest=0, tag=i)
+
+        data = None
+        outdata = None
+        Pk = None
+        qk = None
+        gtk = None
         gc.collect()
         
     def do_mvc(self, ndata, **kwargs):

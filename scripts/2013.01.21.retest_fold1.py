@@ -25,6 +25,8 @@ def make_job(name, outdir, commands):
     f.close()
 
 
+NP = 8
+
 C = [1e-2]
 Cp = [1e0, 1e2, 1e6]
 for fold in [1]:
@@ -33,32 +35,19 @@ for fold in [1]:
             make_job(
                 '2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 '~/svmdata/segmentation_out/learning/',
-                ['mpirun', '-np', 8, 'python', 'learn_svm_batch.py ',
+                ['mpirun', '-np', NP, 'python', 'learn_svm_batch.py ',
                     '--parallel', '--crop', 2, '--fold', fold, 
                     '--loss none', '--loss_factor', 1000,
                     '--latent', '--one_iter', '--duald_niter', 10, '--duald_gamma', 1e1,
                     '--Cprime', cprime, '-C', c],
                  )
-
             make_job(
                 '2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 '~/svmdata/segmentation_out/learning/',
-                ['mpirun', '-np', 8, 'python', 'learn_svm_batch.py ',
+                ['mpirun', '-np', NP, 'python', 'learn_svm_batch.py ',
                     '--parallel', '--crop', 2, '--fold', fold, 
                     '--loss none', '--loss_factor', 1000, 
                     '--Cprime', cprime, '-C', c],
                 )
  
 
-## run scripts
-##file_log = '{}.log.txt'.format(os.path.abspath(file_script))
-#file_log = 'test.txt'
-#f = open(file_log, 'w')
-#f.close()
-#nohup_command = ['nohup', 'sh', file_script, ' &>', 'nohup2.out', '&']
-#nohup_command = 'nohup ls /home/baudinpy &> {}'.format(file_log)
-#print 'nohup command: {}'.format(nohup_command)
-#os.system(nohup_command)
-#proc = subprocess.Popen(nohup_command, shell=True, stdout=f,stderr=f)
-#proc.communicate()
-#f.close()
