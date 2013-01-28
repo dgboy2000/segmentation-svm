@@ -225,20 +225,20 @@ if __name__=='__main__':
     #    anchor_weights=w[4:], 
     #    name='svm_C100_Cp1e-2')
 
-    w = [0,0,1,0,1e-2,0,0]
-    segmenter = SegmentationBatch(
-        laplacian_weights=w[:4],
-        anchor_weights=w[4:], 
-        name='constant1e-2')
-    for fold in config.folds:
-        segmenter.process_all_samples(fold, fold=fold)
+    #w = [0,0,1,0,1e-2,0,0]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:4],
+    #    anchor_weights=w[4:], 
+    #    name='constant1e-2')
+    #for fold in config.folds:
+    #    segmenter.process_all_samples(fold, fold=fold)
 
-    w = [0,0,1,0,1e-2,0,1e-2]
+    w = [0,0,1,0,0,1,0]
     segmenter = SegmentationBatch(
         laplacian_weights=w[:4],
         anchor_weights=w[4:], 
-        name='constant1e-2Intensity1e-2')
-    for fold in config.folds:
+        name='entropy1e0')
+    for fold in config.folds[1:2]:
         segmenter.process_all_samples(fold, fold=fold)
 
     #w = [0,0,1,0,0,1e-2,0]

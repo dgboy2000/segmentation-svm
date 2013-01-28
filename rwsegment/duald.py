@@ -307,11 +307,9 @@ def solver_gt(nlabel, P_bar, q_bar, gt_bar, **kwargs):
         ])
 
     # solver with mosek
-    logger.info('a')
     objective = solver.ObjectiveAPI(P, q, G=G, h=h,F=F, **kwargs)
     constsolver = solver.ConstrainedSolver(objective)
     x = constsolver.solve(gt_bar) 
-    logger.info('b')
     energy = float(0.5 * x.T*P*x + x.T*q)
    
     ## garbage collect
