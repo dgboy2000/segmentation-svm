@@ -15,6 +15,7 @@ def plot_dice_labels(
         figsize=10,
         space_l=0.15,
         space_t=0.1,
+        colors_=None,
         ratio=1):
         
     ## make figure
@@ -24,6 +25,10 @@ def plot_dice_labels(
     dpi = fig.get_dpi()
     size_p = [size[0]*dpi, size[1]*dpi]
     
+    if colors_ is None:
+        colors_ = colors    
+
+
     ## prepare boxes
     nmethod = len(dices_list)
     width = 0.8/(nmethod)
@@ -33,7 +38,7 @@ def plot_dice_labels(
         yticks = [muscles[l] for l in labelset]
     else:
         nbox = 1
-        yticks = ['allmuscles']
+        yticks = ['{} muscles'.format(len(labelset))]
     
     ## init
     legends = []
@@ -54,7 +59,7 @@ def plot_dice_labels(
         ## boxplot
         #import ipdb; ipdb.set_trace()
         positions = [i + -0.4 + (imethod + 0.5)*width for i in range(nbox)]
-        bp = pyplot.boxplot(
+        bp = ax1.boxplot(
             values,
             positions=positions,
             widths=width,
@@ -65,25 +70,27 @@ def plot_dice_labels(
             )
             
         ## improve boxes
-        pyplot.setp(bp['boxes'],    color=colors[imethod], zorder=0)
-        pyplot.setp(bp['medians'],  color=colors[imethod])
+        pyplot.setp(bp['boxes'],    color=colors_[imethod], zorder=0)
+        pyplot.setp(bp['medians'],  color=colors_[imethod])
         pyplot.setp(bp['whiskers'], color='black')
         pyplot.setp(bp['fliers'],   color='red', marker='+')
         for box in bp['boxes']:
-            pyplot.fill(box.get_xdata(), box.get_ydata(), color=colors[imethod], alpha=0.3)
+            pyplot.fill(box.get_xdata(), box.get_ydata(), color=colors_[imethod], alpha=0.3)
         
         ## make legend
         r = pyplot.Rectangle(
             (0,0),0,0,
-            facecolor=colors[imethod], 
-            edgecolor=colors[imethod],
-            alpha=0.3)
+            facecolor=colors_[imethod], 
+            edgecolor=colors_[imethod],
+            alpha=0.3,
+            figure=fig,
+            )
         legends.append((title,r))
      
-    #pyplot.title(r'$\mathrm{Dice\ coefficients}$')
-    pyplot.yticks(range(nbox), yticks, rotation=0)
+    pyplot.xlabel(r'$\mathrm{Dice\ coefficients}$', figure=fig)
+    pyplot.yticks(range(nbox), yticks, rotation=0, figure=fig)
     
-    pyplot.subplots_adjust(left=space_l, right=0.95, top=1-space_t, bottom=0.1)
+    #fig.subplots_adjust(left=space_l, right=0.95, top=1-space_t, bottom=0)
     
     ## plot grid
     from matplotlib.ticker import MultipleLocator
@@ -91,8 +98,8 @@ def plot_dice_labels(
     ax1.xaxis.set_minor_locator(minorLocator) 
     ax1.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
 
-    pyplot.axis([0, 1, nbox-0.5, -0.5])
-    pyplot.legend(
+    ax1.axis([0, 1, nbox-0.5, -0.5])
+    ax1.legend(
         [l[1] for l in legends], 
         [l[0] for l in legends], 
         loc=3, prop={'size':12})
@@ -306,8 +313,8 @@ muscles = [
    'adductor\nmagnus',
    '',
    'adductor\nbrevis',
-   '',
    'sartorius',
+   '',
    'biceps\nfemoris (L)',
    'biceps\nfemoris (S)',
    'gracilis',
@@ -345,9 +352,13 @@ colors = [r'blue', r'green', r'red', r'yellow', r'purple', r'orange', r'black']
 
 
 
-def plot_dices_per_slice(dices_list):
-    fig = pyplot.figure()
+def plot_dices_per_slice(
+        dices_list, ratio=1,figsize=10,
+        ):
+    size = [figsize,int(ratio*figsize)]
+    fig = pyplot.figure(figsize=size)
     ax1 = fig.add_subplot(111)
+ 
     nbox = len(dices_list)
     width = 0.8/(nbox) 
     legends   = []
@@ -355,30 +366,31 @@ def plot_dices_per_slice(dices_list):
 
     for i, dices in enumerate(dices_list):
         legend = dices['title']
-        print 'nsample:',dices['nsample']
+        #print 'nsample:',dices['nsample']
         left = []
         vals = []
         err = []
         minv = []
         maxv = []
-        for l in dices.keys():
-            if str(l).isdigit():
-                n = len(dices[l])
-                if n == 0:
-                    minv.append(0)
-                    maxv.append(0)
-                    vals.append(0)
-                elif n<=4:  
-                    minv.append(0)
-                    maxv.append(np.mean(dices[l]))
-                    vals.append(np.mean(dices[l]))
-                else:
-                    v = np.sort(dices[l]) 
-                    vals.append(np.median(dices[l]))
-                    minv.append(np.mean(v[:n/4]))
-                    maxv.append(np.mean(v[(n*3)/4:]))
-                left.append(l)
-        bp = pyplot.barh(
+        nval = []
+        for s in dices['values']:
+            n = len(dices['values'][s])
+            nval.append(n)
+            if n == 0:
+                minv.append(0)
+                maxv.append(0)
+                vals.append(0)
+            elif n<=4:  
+                minv.append(0)
+                maxv.append(np.mean(dices['values'][s]))
+                vals.append(np.mean(dices['values'][s]))
+            else:
+                v = np.sort(dices['values'][s]) 
+                vals.append(np.median(dices['values'][s]))
+                minv.append(np.mean(v[:n/4]))
+                maxv.append(np.mean(v[(n*3)/4:]))
+            left.append(s)
+        bp = ax1.barh(
             np.array(left),
             np.array(maxv),
             height=[width for w in left],
@@ -386,27 +398,35 @@ def plot_dices_per_slice(dices_list):
             alpha=0.3,
             )
        
-        bp = pyplot.barh(
+        bp = ax1.barh(
             np.array(left),
             np.array(vals),
             height=[width for w in left],
             color=(0,0,1),
             alpha=0.8,
             )
-        bp = pyplot.barh(
+        bp = ax1.barh(
             np.array(left),
             np.array(minv),
             height=[width for w in left],
             color=(0,0,0.5),
             alpha=1,
             )
+        #bp = ax1.barh(
+        #    np.array(left),
+        #    np.array(nval)/100.,
+        #    height=[width for w in left],
+        #    color=(1,0,0),
+        #    alpha=1,
+        #    )
+
         legends.append(legend)
         r = pyplot.Rectangle((0,0),0,0,facecolor=colors[i], edgecolor=colors[i],alpha=0.3)
         legends_box.append(r)
    
-    pyplot.xlabel(r'$\mathrm{slices}$') 
-    pyplot.subplots_adjust(left=0.1, right=0.98, top=0.95, bottom=0.1)
-    pyplot.title(r'$\mathrm{Dice\ coefficients\ per\ slice\ for\ method:' + legend + '}$')
+    pyplot.ylabel(r'$\mathrm{slice\ indices}$', figure=fig) 
+    pyplot.xlabel(r'$\mathrm{Dice\ coefficients}$', figure=fig) 
+    #fig.subplots_adjust(left=0.1, right=0.98, top=0.95, bottom=0.1)
 
     #pyplot.yticks(range(nset), yticks)
     from matplotlib.ticker import MultipleLocator
@@ -414,9 +434,7 @@ def plot_dices_per_slice(dices_list):
     ax1.xaxis.set_minor_locator(minorLocator) 
     ax1.xaxis.grid(True, linestyle='-', which='both',color='lightgrey', alpha=0.9)
 
-
-    #pyplot.axis([0.5,1,nset -  0.5,-0.5])
-    #pyplot.legend(legends_box, legends, loc=3)
+    return fig
 
 
 def plot_cross(gray, sol, seg):

@@ -13,6 +13,19 @@ class Constant(BaseAnchorAPI):
         anchor, weights = super(Constant, self).get_anchor_and_weights(i, D_,**kwargs)
         return anchor, weights # *1
  
+class Constant_Cmap(Constant):
+    def make_cmap(self, im):
+        fim = ndimage.gaussian_gradient_magnitude(im,2)
+        fim = fim/np.std(fim)
+        alpha = 1e0
+        cmap = np.exp(-fim.ravel()*alpha) + 1e-10
+        return cmap
+
+    def get_anchor_and_weights(self, i, D, image=None, **kwargs):
+        anchor, weights = super(Constant_Cmap, self).get_anchor_and_weights(i, D, **kwargs)
+        return anchor, weights* self.make_cmap(image)[i]
+
+
 class Uniform(BaseAnchorAPI):
     pass
     
@@ -22,8 +35,8 @@ class Entropy(BaseAnchorAPI):
         nlabel = len(self.anchor)
         entropy = -np.sum(np.log(self.anchor + 1e-10)*self.anchor,axis=0)
         entropy[entropy<0] = 0
-        entropy = (np.log(nlabel) - entropy) / np.log(nlabel)
-        #entropy = (np.max(entropy) - entropy) / np.max(entropy) # temp
+        #entropy = (np.log(nlabel) - entropy) / np.log(nlabel)
+        entropy = (np.max(entropy) - entropy) / np.max(entropy) # temp
         self.weights = entropy
 
 class Entropy_no_D(Entropy):

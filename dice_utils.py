@@ -67,9 +67,9 @@ def compute_dice_coef(seg1, seg2, labelset=None):
 
 if __name__=='__main__':
     import config
-    dir_seg1 = config.dir_work + 'segmentation/2012.09.10.segmentation_all/' 
-    dir_seg2 = config.dir_work + 'segmentation/2012.09.25.segmentation_variance_allm/' 
-    dir_seg3 = config.dir_work + 'segmentation/2012.09.26.segmentation_variance_allm/' 
+    #dir_seg1 = config.dir_work + 'segmentation/2012.09.10.segmentation_all/' 
+    #dir_seg2 = config.dir_work + 'segmentation/2012.09.25.segmentation_variance_allm/' 
+    #dir_seg3 = config.dir_work + 'segmentation/2012.09.26.segmentation_variance_allm/' 
 
     folder_list = [
         dir_seg3 + 'mean',

@@ -62,8 +62,8 @@ class SegmentationBatch(object):
            {'name': 'constant',  'default': 0},
            {'name': 'entropy',   'default': 0},
            {'name': 'intensity', 'default': 0.0},
-           #{'name': 'variance',  'default': 0.0},
-           #{'name': 'variance cmap', 'default': 0.0},
+           {'name': 'variance',  'default': 0.0},
+           {'name': 'constant cmap', 'default': 0.0},
            ]
         self.laplacian_weights = laplacian_weights
         self.anchor_weights = anchor_weights
@@ -105,8 +105,8 @@ class SegmentationBatch(object):
         self.prior_models[1]['api'] = models.Entropy_no_D(imask, average)
         #self.prior_models[1]['api'] = models.Spatial(imask, average, sweights=self.sweights)
         self.prior_models[2]['api'] = models.Intensity(im_avg, im_var)
-        #self.prior_models[3]['api'] = models.Variance_no_D(imask, average, variance=variance)
-        #self.prior_models[4]['api'] = models.Variance_no_D_Cmap(imask, average, variance=variance)
+        self.prior_models[3]['api'] = models.Variance_no_D(imask, average, variance=variance)
+        self.prior_models[4]['api'] = models.Constant_Cmap(imask, average)
  
         ## init anchor_api
         laplacian_function = svm_rw_functions.LaplacianWeights(
@@ -225,31 +225,49 @@ if __name__=='__main__':
     #    anchor_weights=w[4:], 
     #    name='svm_C100_Cp1e-2')
 
-    w = [0,0,1,0,1e-2,0,0]
+    w = [0,1,0,1e-2,0,0,0,0]
     segmenter = SegmentationBatch(
-        laplacian_weights=w[:4],
-        anchor_weights=w[4:], 
-        name='constant1e-2')
+        laplacian_weights=w[:3],
+        anchor_weights=w[3:], 
+        name='registration')
     for fold in config.folds:
-        segmenter.process_all_samples(fold, fold=fold)
+        segmenter.compute_mean_segmentation(fold, fold=fold)
 
-    w = [0,0,1,0,1e-2,0,1e-2]
-    segmenter = SegmentationBatch(
-        laplacian_weights=w[:4],
-        anchor_weights=w[4:], 
-        name='constant1e-2Intensity1e-2')
-    for fold in config.folds:
-        segmenter.process_all_samples(fold, fold=fold)
-
-    #w = [0,0,1,0,0,1e-2,0]
+    #w = [0,1,0,1e-2,0,0,0,0]
     #segmenter = SegmentationBatch(
-    #    laplacian_weights=w[:4],
-    #    anchor_weights=w[4:], 
-    #    name='entropyn1e-2')
-    #for fold in config.folds:
-    #    segmenter.process_all_samples(fold, fold=fold)
+    #    laplacian_weights=w[:3],
+    #    anchor_weights=w[3:], 
+    #    name='constant1e-2')
+    #segmenter.process_all_samples(config.vols.keys())
+    #
+    #w = [0,1,0,1e-2,0,1e-2,0,0]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:3],
+    #    anchor_weights=w[3:], 
+    #    name='constant1e-2Intensity1e-2')
+    #segmenter.process_all_samples(config.vols.keys())
 
-    #for fold in config.folds:
-    #    segmenter.process_all_samples(fold, fold=fold)
+    #w = [0,1,0,0,1e-2,0,0,0]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:3],
+    #    anchor_weights=w[3:], 
+    #    name='entropy1e-2')
+    #segmenter.process_all_samples(config.vols.keys())
+    ##
+    #w = [0,1,0,0,0,0,1e-1,0]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:3],
+    #    anchor_weights=w[3:], 
+    #    name='variance1e-1')
+    #segmenter.process_all_samples(config.vols.keys())
+
+    #w = [0,1,0,0,0,0,0,1e-2]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:3],
+    #    anchor_weights=w[3:],                            
+    #    name='constantcmap1e-2')
+    #segmenter.process_all_samples(config.vols.keys())
+
+
 
 

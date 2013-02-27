@@ -223,9 +223,21 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
     file_segprior = outdir + 'segprior.hdr'
     file_entropymap = outdir + 'entropymap.hdr'
    
-    if (not force_recompute) and os.path.exists(file_prior) and os.path.exists(file_mask):
+    if (not force_recompute) and os.path.exists(outdir + '/data.npz') and os.path.exists(file_mask):
         mask  = io_analyze.load(file_mask).astype(bool)
-        prior = np.load(file_prior)
+        #prior = np.load(file_prior)
+        labelset = np.load(outdir + '/labelset.npy')
+        intensity = np.load(outdir + '/intensity.npy')
+        data = np.load(outdir + '/data.npz')['data']
+        variance = np.load(outdir + '/variance.npz')['variance']
+        imask = np.load(outdir + '/imask.npz')['imask']
+        prior = {
+            'labelset': labelset,
+            'data': data,
+            'variance': variance,
+            'imask': imask,
+            'intensity': intensity,
+            }
     else:
         if pca:
             _prior, mask = load_or_compute_prior_and_mask(test, fold=fold)
@@ -272,11 +284,17 @@ def load_or_compute_prior_and_mask(test, force_recompute=False, pca=False, fold=
             axis=0)
         entropymap = entropymap / np.log(nlabel) * 2**15
             
-        np.savez(file_prior,**prior)
+        #np.savez(file_prior,**prior)
+        #np.savez_compressed(file_prior,**prior)
+        np.save(outdir + 'labelset', prior['labelset'])
+        np.save(outdir + 'intensity.npy', prior['intensity'])
+        np.savez_compressed(outdir + 'imask.npz', imask=prior['imask'])
+        np.savez_compressed(outdir + 'data.npz', data=prior['data'].astype(np.float32))
+        np.savez_compressed(outdir + 'variance.npz', variance=prior['variance'].astype(np.float32))
         
         io_analyze.save(file_mask, mask.astype(np.int32))
         io_analyze.save(file_segprior, segprior.astype(np.int32))
-        io_analyze.save(file_entropymap, entropymap.astype(np.int32))
+        #io_analyze.save(file_entropymap, entropymap.astype(np.int32))
         
     return prior, mask
     

@@ -64,13 +64,18 @@ if __name__=='__main__':
         'x':'',
         }
 
-    methods = [method_enty1e0, method_const1e_2, method_enty1e_2, method_entyn1e_2, method_const1e_2_I1e_2]
+    #get_values(method_enty1e0, filename='dice.txt')
+    #get_values(method_const1e_2, filename='dice.txt')
+    #get_values(method_enty1e_2, filename='dice.txt')
+    #get_values(method_entyn1e_2, filename='dice.txt')
+    #get_values(method_const1e_2_I1e_2, filename='dice.txt')
 
-    get_values(method_enty1e0, filename='dice.txt')
-    get_values(method_const1e_2, filename='dice.txt')
-    get_values(method_enty1e_2, filename='dice.txt')
-    get_values(method_entyn1e_2, filename='dice.txt')
-    get_values(method_const1e_2_I1e_2, filename='dice.txt')
+    #methods = [method_enty1e0, method_const1e_2, method_enty1e_2, method_entyn1e_2, method_const1e_2_I1e_2]
+    
+
+    ## intensity comparison 
+
+
 
     ## make plot
     fig = plot_utils.plot_dice_labels(methods, labelset=[13,14,15,16], perlabel=True, ratio=0.5)
