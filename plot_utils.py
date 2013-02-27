@@ -182,7 +182,7 @@ def plot_loss(*args, **kwargs):
              [l[0] for l in legends], 
              loc=1, prop={'size':12})
 
-        if iplot/nplots[0]>0:
+        if iplot == (nplots[1]-1):
             pyplot.xticks(range(len(xticks)), xticks, position=(0,-0.02))
             pyplot.xlabel(r'$\lambda^{\prime}$', size=15)
         else:

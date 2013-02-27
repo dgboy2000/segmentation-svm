@@ -303,7 +303,11 @@ class SVMSegmenter(object):
                     if os.path.isfile(outdir + 'niter.txt'):
                         ## continue previous work
                         niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
-                        ys = np.load(outdir + 'ys_{}.npy'.format(niter))
+                        if not os.path.exists('ys_{}.npz'.format(niter)):
+                            ys = np.load(outdir + 'ys_{}.npy'.format(niter))
+                        else:
+                            ys = np.load(outdir + 'ys_{}.npz'.format(niter))['ys']
+                           
                         w = np.loadtxt(outdir + 'w_{}.txt'.format(niter)).tolist()
                         
                         niter = niter + 1
@@ -327,7 +331,8 @@ class SVMSegmenter(object):
                     if not self.debug:
                         np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
                         np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
-                        np.save(outdir + 'ys_{}.npy'.format(niter), ys)
+                        #np.save(outdir + 'ys_{}.npy'.format(niter), ys)
+                        np.savez_compressed(outdir + 'ys_{}.npz'.format(niter), {'ys':ys})
                         
                         #logger.warning('Exiting program. Run script again to continue.')
                         #if self.use_parallel:

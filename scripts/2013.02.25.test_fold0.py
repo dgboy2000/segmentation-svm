@@ -27,13 +27,15 @@ def make_job(name, outdir, commands):
 
 NP = 8
 
-C = [1e-1]
-Cp = [1e0, 1e2, 1e6]
-for fold in [1]:
+folds = [0]
+C = [1e-1, 1e0, 1e1, 1e2]
+Cp = [1e-3, 1e-2, 1e0, 1e2, 1e6]
+
+for fold in folds:
     for c in C:
         for cprime in Cp:
             make_job(
-                '2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                '2013.02.25.exp_latent_DDACI_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 '~/svmdata/segmentation_out/learning/',
                 ['mpirun', '-np', NP, 'python', 'learn_svm_batch.py ',
                     '--parallel', '--crop', 2, '--fold', fold, 
@@ -42,7 +44,7 @@ for fold in [1]:
                     '--Cprime', cprime, '-C', c],
                  )
             make_job(
-                '2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
+                '2013.02.25.exp_baseline_crop2_Lnone_x1000_Cp{}_C{}'.format(cprime, c),
                 '~/svmdata/segmentation_out/learning/',
                 ['mpirun', '-np', NP, 'python', 'learn_svm_batch.py ',
                     '--parallel', '--crop', 2, '--fold', fold, 
