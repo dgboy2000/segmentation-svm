@@ -1,4 +1,4 @@
-'''
+''''
     Work in progress code.
     Do not copy, do not distribute without permission !
     
@@ -233,6 +233,23 @@ def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
         addq = 0 
     else:
         addq = addlin
+            
+    ## long range connexions
+    if kwargs.has_key('LR_weight'):
+        LR_ind = kwargs.pop('LR_indices')
+        LR_prob = kwargs.pop('LR_contour_probability')
+        LR_w = kwargs.pop('LR_weight')
+        LR_pairs = kwargs.pop('LR_pairs')
+        
+        ## build transition matrices
+        # positive correlation
+        is_pos = LR_prob < 0.5
+        #ind_pos = LR_ind[is_pos]
+        Tp = sparse.coo_matrix(
+            (LR_prob*is_pos*2, LR_pairs),
+            
+        
+        
 
     ## solve
     optim_solver = kwargs.pop('optim_solver','unconstrained')
@@ -294,7 +311,8 @@ def solve_per_label(Lu, B, list_xm, omega, list_x0, **kwargs):
     
     ## compute tolerance depending on the Laplacian
     rtol = kwargs.pop('rtol', 1e-6)
-
+        
+    
     for s in range(nlabel - 1):## don't need to solve the last one !
         
         ## prior
