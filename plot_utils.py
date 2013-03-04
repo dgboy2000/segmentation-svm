@@ -107,17 +107,21 @@ def plot_dice_labels(
     return fig
    
 def plot_loss(*args, **kwargs):
+    _colors = kwargs.pop('colors', colors)
     figsize = kwargs.pop('figsize', 10)
     ratio = kwargs.pop('ratio', 10)
     ## make figure
     size = [figsize,int(ratio*figsize)]
     fig = pyplot.figure(figsize=size)
-    
+   
+  
     nplot = len(args)
     if nplot==1: nplots = (1,1)
     elif nplot==2: nplots = (2,1)
     elif nplot==3: nplots = (3,1)
     elif nplot==4: nplots = (2,2)
+
+    styles = kwargs.pop('styles', ['-']*nplot)
 
     for iplot, loss_series_list in enumerate(args):
         ax1 = fig.add_subplot(*(nplots + (iplot+1,)))
@@ -156,8 +160,8 @@ def plot_loss(*args, **kwargs):
                 xs,
                 avg,
                 #yerr=std,
-                color=colors[iseries],
-                linestyle='-',
+                color=_colors[iseries],
+                linestyle=styles[iseries],
                 linewidth=2,
                 marker='o',
                 )
@@ -165,8 +169,8 @@ def plot_loss(*args, **kwargs):
             ## make legend
             r = pyplot.Rectangle(
                 (0,0),0,0,
-                facecolor=colors[iseries], 
-                edgecolor=colors[iseries],
+                facecolor=_colors[iseries], 
+                edgecolor=_colors[iseries],
                 alpha=0.3)
             legends.append((title,r))
         
@@ -189,7 +193,7 @@ def plot_loss(*args, **kwargs):
              [l[0] for l in legends], 
              loc=1, prop={'size':12})
 
-        if iplot/nplots[0]>0:
+        if iplot>=2:
             pyplot.xticks(range(len(xticks)), xticks, position=(0,-0.02))
             pyplot.xlabel(r'$\lambda^{\prime}$', size=15)
         else:

@@ -1,9 +1,12 @@
 import sys
+import gc
 import numpy as np
 from scipy import sparse
 
 import utils_logging
 import mosek
+
+logger = utils_logging.get_logger('solver_mosek', utils_logging.INFO)
 
 class ObjectiveAPI(object):
     def __init__(self,P,q,G=1,h=0,F=1,**kwargs):
@@ -58,7 +61,6 @@ class ObjectiveAPI(object):
         return self.P
         
 
-import utils_logging
 class ConstrainedSolver(object):
     def __init__(self, objective, **kwargs):
         '''
@@ -84,7 +86,7 @@ class ConstrainedSolver(object):
         self.maxiter = kwargs.pop('maxiter',100)
 
     def solve(self, x0, **kwargs):
-
+ 
         A,b = self.objective.get_Ab(x0)
         Q,c = self.objective.get_Qc(x0)
 
@@ -175,7 +177,6 @@ class ConstrainedSolver(object):
         # Input the objective sense (minimize/maximize) 
         task.putobjsense(mosek.objsense.minimize)
         
-        #import ipdb; ipdb.set_trace()
         # Optimize 
         task.optimize() 
         
@@ -190,9 +191,14 @@ class ConstrainedSolver(object):
         # Output a solution 
         xx = [0 for i in range(NUMVAR)] 
         task.getsolutionslice(mosek.soltype.itr, mosek.solitem.xx, 0,NUMVAR, xx)
-      
+         
+        ## garbage collect
+        task.__del__()
+        env.__del__()
+        gc.collect()
+
         u = np.mat(xx).T 
-        x = self.objective.F*u + x0
-        #import ipdb; ipdb.set_trace()
+        x = self.objective.F*u + x0 
+
         return x
 

@@ -1,0 +1,904 @@
+nohup: ignoring input
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = defaultusing basis = default
+
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1using basis = default
+
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-13 16:37:25,774 - learn_svm_batch - process 1 - host torch - 14204/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,774 - learn_svm_batch - process 1 - host torch - 14203/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-13 16:37:25,779 - learn_svm_batch - process 7 - host torch - 14201/16035MB - INFO - --------------------------
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-13 16:37:25,779 - learn_svm_batch - process 7 - host torch - 14200/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:25,790 - learn_svm_batch - process 0 - host torch - 14198/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--latent', '--one_iter', '--duald_niter', '10', '--duald_gamma', '10.0', '--Cprime', '1.0', '-C', '0.1', '--folder', '2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1']
+2013-02-13 16:37:25,790 - learn_svm_batch - process 0 - host torch - 14198/16035MB - INFO - using parallel?: True
+2013-02-13 16:37:25,790 - learn_svm_batch - process 0 - host torch - 14198/16035MB - INFO - using latent?: True
+2013-02-13 16:37:25,791 - learn_svm_batch - process 0 - host torch - 14198/16035MB - INFO - train data: all
+2013-02-13 16:37:25,791 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-13 16:37:25,791 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-13 16:37:25,791 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - using loss type: none
+2013-02-13 16:37:25,791 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 1.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-13 16:37:25,792 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - Computing one iteration at a time ?: True
+2013-02-13 16:37:25,792 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1/svm/
+2013-02-13 16:37:25,792 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,792 - learn_svm_batch - process 0 - host torch - 14197/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:25,792 - learn_svm_batch - process 5 - host torch - 14197/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,793 - learn_svm_batch - process 5 - host torch - 14197/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-13 16:37:25,847 - learn_svm_batch - process 2 - host torch - 14178/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,848 - learn_svm_batch - process 2 - host torch - 14177/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:25,848 - learn_svm_batch - process 4 - host torch - 14177/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,848 - learn_svm_batch - process 6 - host torch - 14177/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,849 - learn_svm_batch - process 4 - host torch - 14177/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:25,849 - learn_svm_batch - process 6 - host torch - 14177/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:25,853 - learn_svm_batch - process 3 - host torch - 14177/16035MB - INFO - --------------------------
+2013-02-13 16:37:25,854 - learn_svm_batch - process 3 - host torch - 14177/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-13 16:37:26,841 - svm_rw_api - process 1 - host torch - 13286/16035MB - INFO - using loss type: none
+2013-02-13 16:37:26,841 - svm_rw_api - process 1 - host torch - 13284/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:26,887 - learn_svm_batch - process 1 - host torch - 13222/16035MB - DEBUG - started worker #1
+2013-02-13 16:37:26,887 - svm_worker - process 1 - host torch - 13221/16035MB - INFO - Starting worker 1
+2013-02-13 16:37:26,918 - svm_rw_api - process 7 - host torch - 13213/16035MB - INFO - using loss type: none
+2013-02-13 16:37:26,919 - svm_rw_api - process 7 - host torch - 13212/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:26,922 - svm_rw_api - process 2 - host torch - 13255/16035MB - INFO - using loss type: none
+2013-02-13 16:37:26,923 - svm_rw_api - process 2 - host torch - 13255/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:26,951 - svm_rw_api - process 5 - host torch - 13326/16035MB - INFO - using loss type: none
+2013-02-13 16:37:26,952 - svm_rw_api - process 5 - host torch - 13326/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:26,955 - learn_svm_batch - process 7 - host torch - 13346/16035MB - DEBUG - started worker #7
+2013-02-13 16:37:26,956 - svm_worker - process 7 - host torch - 13346/16035MB - INFO - Starting worker 7
+2013-02-13 16:37:26,960 - learn_svm_batch - process 2 - host torch - 13368/16035MB - DEBUG - started worker #2
+2013-02-13 16:37:26,960 - svm_worker - process 2 - host torch - 13368/16035MB - INFO - Starting worker 2
+2013-02-13 16:37:26,977 - learn_svm_batch - process 5 - host torch - 13461/16035MB - DEBUG - started worker #5
+2013-02-13 16:37:26,978 - svm_worker - process 5 - host torch - 13460/16035MB - INFO - Starting worker 5
+2013-02-13 16:37:27,072 - svm_rw_api - process 3 - host torch - 13228/16035MB - INFO - using loss type: none
+2013-02-13 16:37:27,072 - svm_rw_api - process 3 - host torch - 13227/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:27,089 - svm_rw_api - process 6 - host torch - 13266/16035MB - INFO - using loss type: none
+2013-02-13 16:37:27,090 - svm_rw_api - process 6 - host torch - 13275/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:27,091 - svm_rw_api - process 4 - host torch - 13292/16035MB - INFO - using loss type: none
+2013-02-13 16:37:27,091 - svm_rw_api - process 4 - host torch - 13292/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:27,100 - learn_svm_batch - process 3 - host torch - 13313/16035MB - DEBUG - started worker #3
+2013-02-13 16:37:27,100 - svm_worker - process 3 - host torch - 13313/16035MB - INFO - Starting worker 3
+2013-02-13 16:37:27,118 - learn_svm_batch - process 6 - host torch - 13335/16035MB - DEBUG - started worker #6
+2013-02-13 16:37:27,118 - svm_worker - process 6 - host torch - 13337/16035MB - INFO - Starting worker 6
+2013-02-13 16:37:27,119 - learn_svm_batch - process 4 - host torch - 13357/16035MB - DEBUG - started worker #4
+2013-02-13 16:37:27,120 - svm_worker - process 4 - host torch - 13357/16035MB - INFO - Starting worker 4
+2013-02-13 16:37:27,325 - svm_rw_api - process 0 - host torch - 13310/16035MB - INFO - using loss type: none
+2013-02-13 16:37:27,325 - svm_rw_api - process 0 - host torch - 13310/16035MB - INFO - loss is scaled by 1e+03
+2013-02-13 16:37:27,350 - learn_svm_batch - process 0 - host torch - 13315/16035MB - INFO - loading training data: 17/
+2013-02-13 16:37:29,735 - learn_svm_batch - process 0 - host torch - 13268/16035MB - INFO - loading training data: 05/
+2013-02-13 16:37:32,180 - learn_svm_batch - process 0 - host torch - 13220/16035MB - INFO - loading training data: 03/
+2013-02-13 16:37:34,587 - learn_svm_batch - process 0 - host torch - 13176/16035MB - INFO - loading training data: 01/
+2013-02-13 16:37:36,992 - learn_svm_batch - process 0 - host torch - 13131/16035MB - INFO - loading training data: F32/
+2013-02-13 16:37:39,355 - learn_svm_batch - process 0 - host torch - 13097/16035MB - INFO - loading training data: 07/
+2013-02-13 16:37:41,732 - learn_svm_batch - process 0 - host torch - 13050/16035MB - INFO - loading training data: F27_2/
+2013-02-13 16:37:44,077 - learn_svm_batch - process 0 - host torch - 13016/16035MB - INFO - loading training data: F42/
+2013-02-13 16:37:46,434 - learn_svm_batch - process 0 - host torch - 12981/16035MB - INFO - loading training data: 18/
+2013-02-13 16:37:48,839 - learn_svm_batch - process 0 - host torch - 12938/16035MB - INFO - loading training data: M26/
+2013-02-13 16:37:51,279 - learn_svm_batch - process 0 - host torch - 12895/16035MB - INFO - loading training data: M28/
+2013-02-13 16:37:53,623 - learn_svm_batch - process 0 - host torch - 12861/16035MB - INFO - loading training data: 04/
+2013-02-13 16:37:56,024 - learn_svm_batch - process 0 - host torch - 12818/16035MB - INFO - loading training data: 10/
+2013-02-13 16:37:58,444 - learn_svm_batch - process 0 - host torch - 12774/16035MB - INFO - loading training data: M44/
+2013-02-13 16:38:00,815 - learn_svm_batch - process 0 - host torch - 12738/16035MB - INFO - loading training data: 02/
+2013-02-13 16:38:03,226 - learn_svm_batch - process 0 - host torch - 12693/16035MB - INFO - loading training data: 12/
+2013-02-13 16:38:05,638 - learn_svm_batch - process 0 - host torch - 12648/16035MB - INFO - loading training data: F23/
+2013-02-13 16:38:08,075 - learn_svm_batch - process 0 - host torch - 12607/16035MB - INFO - loading training data: M26_2/
+2013-02-13 16:38:10,416 - learn_svm_batch - process 0 - host torch - 12573/16035MB - INFO - loading training data: 08/
+2013-02-13 16:38:12,832 - learn_svm_batch - process 0 - host torch - 12528/16035MB - INFO - loading training data: F37/
+2013-02-13 16:38:15,178 - learn_svm_batch - process 0 - host torch - 12494/16035MB - INFO - loading training data: M23/
+2013-02-13 16:38:17,600 - learn_svm_batch - process 0 - host torch - 12456/16035MB - INFO - loading training data: 06/
+2013-02-13 16:38:20,005 - learn_svm_batch - process 0 - host torch - 12413/16035MB - INFO - loading training data: F26/
+2013-02-13 16:38:22,347 - learn_svm_batch - process 0 - host torch - 12380/16035MB - INFO - loading training data: F60/
+2013-02-13 16:38:24,678 - learn_svm_batch - process 0 - host torch - 12347/16035MB - INFO - selected training: [  1   8  14  18  27  31  40  50  55  75  79  85 103 113 122 142 145 150
+ 162 187 202 204 222 240 242 247 263 266 279 301 302 316 318 351 355 356
+ 358 389 390 399 401 404 409 425 428 441 443 451 453 458 478 489 490 493
+ 500 506 535 542 546 553 558 561 563 567 579 582 585 590 592 593 602 609
+ 614 626 631 641 648 656 666 667 669 670 680 683 685 691 695 706 715 728
+ 733 744 745 756 760 762 766 769 773 774]
+2013-02-13 16:38:24,680 - learn_svm_batch - process 0 - host torch - 12347/16035MB - INFO - Learning with 100 training examples
+2013-02-13 16:38:24,684 - learn_svm_batch - process 0 - host torch - 12393/16035MB - DEBUG - started root learning
+2013-02-13 16:38:24,931 - learn_svm_batch - process 0 - host torch - 12010/16035MB - INFO - latent svm: iteration 1, with w=[1.3961527065670444e-09, 0.3657959777001749, 4.232556478423292e-09, 1.2087955407636334e-08, 1.4283256585127712e-10, 0.07909081809689797, 0.008502612426891829]
+2013-02-13 16:38:24,931 - latent_svm - process 0 - host torch - 12010/16035MB - DEBUG - iteration (latent) #1
+2013-02-13 16:38:24,932 - latent_svm - process 0 - host torch - 12010/16035MB - DEBUG - annotation consistent inference (with w=[1.396e-09, 0.3658, 4.233e-09, 1.209e-08, 1.428e-10, 0.07909, 0.008503])
+2013-02-13 16:38:25,609 - rwsegment - process 0 - host torch - 12010/16035MB - INFO - start dd solver (nb subp: 107)
+iteration 0
+2013-02-13 16:38:30,975 - svm_worker - process 1 - host torch - 12010/16035MB - INFO - worker #1: processing #16 subproblems
+2013-02-13 16:38:30,980 - svm_worker - process 2 - host torch - 12010/16035MB - INFO - worker #2: processing #16 subproblems
+2013-02-13 16:38:30,985 - svm_worker - process 3 - host torch - 12010/16035MB - INFO - worker #3: processing #15 subproblems
+2013-02-13 16:38:30,990 - svm_worker - process 4 - host torch - 12010/16035MB - INFO - worker #4: processing #15 subproblems
+2013-02-13 16:38:31,009 - svm_worker - process 5 - host torch - 12010/16035MB - INFO - worker #5: processing #15 subproblems
+2013-02-13 16:38:31,014 - svm_worker - process 6 - host torch - 12010/16035MB - INFO - worker #6: processing #15 subproblems
+2013-02-13 16:38:31,019 - svm_worker - process 7 - host torch - 12010/16035MB - INFO - worker #7: processing #15 subproblems
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+Traceback (most recent call last):
+  File "learn_svm_batch.py", line 803, in <module>
+    svm_segmenter.process_all_samples(fold) 
+  File "learn_svm_batch.py", line 639, in process_all_samples
+    self.process_sample(fold)
+  File "learn_svm_batch.py", line 615, in process_sample
+    worker.work()
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 148, in work
+    self.do_duald(ndata, **opts)
+  File "/home/baudinpy/segmentation-svm/rwsegment/svm_worker.py", line 50, in do_duald
+    data = duald.solver_gt(nlabel,Pk,qk,gtk)
+  File "/home/baudinpy/segmentation-svm/rwsegment/duald.py", line 312, in solver_gt
+    x = constsolver.solve(gt_bar) 
+  File "/home/baudinpy/segmentation-svm/rwsegment/solver_mosek.py", line 181, in solve
+    task.optimize() 
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 199, in accept
+    return fun(*[ t(a) for (t,a) in zip(argtlst,args) ])
+  File "/home/baudinpy/local/epd-7.3-2-rh5-x86_64/lib/python2.7/site-packages/mosek/__init__.py", line 5078, in optimize
+    raise Error(rescode(result),msg)
+mosek.Error: (1001) The license has expired.
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-25 22:14:06,456 - learn_svm_batch - process 7 - host torch - 12367/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,457 - learn_svm_batch - process 7 - host torch - 12367/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-25 22:14:06,464 - learn_svm_batch - process 1 - host torch - 12366/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,463 - learn_svm_batch - process 3 - host torch - 12367/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,464 - learn_svm_batch - process 1 - host torch - 12366/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:14:06,465 - learn_svm_batch - process 3 - host torch - 12366/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-25 22:14:06,482 - learn_svm_batch - process 4 - host torch - 12365/16035MB - INFO - --------------------------
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-25 22:14:06,483 - learn_svm_batch - process 4 - host torch - 12365/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:14:06,485 - learn_svm_batch - process 2 - host torch - 12366/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,486 - learn_svm_batch - process 2 - host torch - 12366/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:14:06,488 - learn_svm_batch - process 6 - host torch - 12366/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,490 - learn_svm_batch - process 6 - host torch - 12366/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1
+using basis = default
+2013-02-25 22:14:06,516 - learn_svm_batch - process 5 - host torch - 12365/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,517 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--Cprime', '1.0', '-C', '0.1', '--folder', '2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1']
+2013-02-25 22:14:06,518 - learn_svm_batch - process 5 - host torch - 12365/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:14:06,518 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - using parallel?: True
+2013-02-25 22:14:06,519 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - using latent?: False
+2013-02-25 22:14:06,519 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - train data: all
+2013-02-25 22:14:06,520 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-25 22:14:06,520 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-25 22:14:06,520 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - using loss type: none
+2013-02-25 22:14:06,521 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 1.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-25 22:14:06,521 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - Computing one iteration at a time ?: False
+2013-02-25 22:14:06,521 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1.0_C0.1/svm/
+2013-02-25 22:14:06,522 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - --------------------------
+2013-02-25 22:14:06,522 - learn_svm_batch - process 0 - host torch - 12365/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:14:08,675 - svm_rw_api - process 1 - host torch - 11478/16035MB - INFO - using loss type: none
+2013-02-25 22:14:08,676 - svm_rw_api - process 1 - host torch - 11478/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:08,700 - svm_rw_api - process 5 - host torch - 11508/16035MB - INFO - using loss type: none
+2013-02-25 22:14:08,702 - svm_rw_api - process 5 - host torch - 11506/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:08,774 - learn_svm_batch - process 1 - host torch - 11518/16035MB - DEBUG - started worker #1
+2013-02-25 22:14:08,776 - svm_worker - process 1 - host torch - 11517/16035MB - INFO - Starting worker 1
+2013-02-25 22:14:08,791 - learn_svm_batch - process 5 - host torch - 11524/16035MB - DEBUG - started worker #5
+2013-02-25 22:14:08,792 - svm_worker - process 5 - host torch - 11523/16035MB - INFO - Starting worker 5
+2013-02-25 22:14:08,917 - svm_rw_api - process 2 - host torch - 11468/16035MB - INFO - using loss type: none
+2013-02-25 22:14:08,917 - svm_rw_api - process 2 - host torch - 11468/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:08,939 - svm_rw_api - process 7 - host torch - 11494/16035MB - INFO - using loss type: none
+2013-02-25 22:14:08,940 - svm_rw_api - process 7 - host torch - 11492/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:09,012 - svm_rw_api - process 3 - host torch - 11457/16035MB - INFO - using loss type: none
+2013-02-25 22:14:09,013 - svm_rw_api - process 3 - host torch - 11457/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:09,014 - learn_svm_batch - process 2 - host torch - 11478/16035MB - DEBUG - started worker #2
+2013-02-25 22:14:09,015 - svm_worker - process 2 - host torch - 11478/16035MB - INFO - Starting worker 2
+2013-02-25 22:14:09,024 - learn_svm_batch - process 7 - host torch - 11487/16035MB - DEBUG - started worker #7
+2013-02-25 22:14:09,025 - svm_worker - process 7 - host torch - 11486/16035MB - INFO - Starting worker 7
+2013-02-25 22:14:09,111 - learn_svm_batch - process 3 - host torch - 11451/16035MB - DEBUG - started worker #3
+2013-02-25 22:14:09,112 - svm_worker - process 3 - host torch - 11451/16035MB - INFO - Starting worker 3
+2013-02-25 22:14:09,155 - svm_rw_api - process 4 - host torch - 11470/16035MB - INFO - using loss type: none
+2013-02-25 22:14:09,156 - svm_rw_api - process 4 - host torch - 11470/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:09,221 - learn_svm_batch - process 4 - host torch - 11516/16035MB - DEBUG - started worker #4
+2013-02-25 22:14:09,221 - svm_worker - process 4 - host torch - 11516/16035MB - INFO - Starting worker 4
+2013-02-25 22:14:09,222 - svm_rw_api - process 6 - host torch - 11516/16035MB - INFO - using loss type: none
+2013-02-25 22:14:09,222 - svm_rw_api - process 6 - host torch - 11516/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:09,309 - learn_svm_batch - process 6 - host torch - 11522/16035MB - DEBUG - started worker #6
+2013-02-25 22:14:09,310 - svm_worker - process 6 - host torch - 11522/16035MB - INFO - Starting worker 6
+2013-02-25 22:14:09,386 - svm_rw_api - process 0 - host torch - 11491/16035MB - INFO - using loss type: none
+2013-02-25 22:14:09,386 - svm_rw_api - process 0 - host torch - 11491/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:14:09,407 - learn_svm_batch - process 0 - host torch - 11497/16035MB - INFO - loading training data: 17/
+2013-02-25 22:14:12,826 - learn_svm_batch - process 0 - host torch - 11451/16035MB - INFO - loading training data: 05/
+2013-02-25 22:14:16,755 - learn_svm_batch - process 0 - host torch - 11403/16035MB - INFO - loading training data: 03/
+2013-02-25 22:14:19,161 - learn_svm_batch - process 0 - host torch - 11359/16035MB - INFO - loading training data: 01/
+2013-02-25 22:14:22,700 - learn_svm_batch - process 0 - host torch - 11315/16035MB - INFO - loading training data: F32/
+2013-02-25 22:14:25,875 - learn_svm_batch - process 0 - host torch - 11280/16035MB - INFO - loading training data: 07/
+2013-02-25 22:14:29,610 - learn_svm_batch - process 0 - host torch - 11234/16035MB - INFO - loading training data: F27_2/
+2013-02-25 22:14:33,595 - learn_svm_batch - process 0 - host torch - 11200/16035MB - INFO - loading training data: F42/
+2013-02-25 22:14:36,789 - learn_svm_batch - process 0 - host torch - 11167/16035MB - INFO - loading training data: 18/
+2013-02-25 22:14:39,323 - learn_svm_batch - process 0 - host torch - 11123/16035MB - INFO - loading training data: M26/
+2013-02-25 22:14:42,551 - learn_svm_batch - process 0 - host torch - 11081/16035MB - INFO - loading training data: M28/
+2013-02-25 22:14:45,695 - learn_svm_batch - process 0 - host torch - 11046/16035MB - INFO - loading training data: 04/
+2013-02-25 22:14:49,105 - learn_svm_batch - process 0 - host torch - 11002/16035MB - INFO - loading training data: 10/
+2013-02-25 22:14:52,536 - learn_svm_batch - process 0 - host torch - 10958/16035MB - INFO - loading training data: M44/
+2013-02-25 22:14:55,074 - learn_svm_batch - process 0 - host torch - 10921/16035MB - INFO - loading training data: 02/
+2013-02-25 22:14:57,509 - learn_svm_batch - process 0 - host torch - 10876/16035MB - INFO - loading training data: 12/
+2013-02-25 22:15:01,610 - learn_svm_batch - process 0 - host torch - 10832/16035MB - INFO - loading training data: F23/
+2013-02-25 22:15:04,729 - learn_svm_batch - process 0 - host torch - 10791/16035MB - INFO - loading training data: M26_2/
+2013-02-25 22:15:08,864 - learn_svm_batch - process 0 - host torch - 10757/16035MB - INFO - loading training data: 08/
+2013-02-25 22:15:12,118 - learn_svm_batch - process 0 - host torch - 10713/16035MB - INFO - loading training data: F37/
+2013-02-25 22:15:14,850 - learn_svm_batch - process 0 - host torch - 10680/16035MB - INFO - loading training data: M23/
+2013-02-25 22:15:18,565 - learn_svm_batch - process 0 - host torch - 10641/16035MB - INFO - loading training data: 06/
+2013-02-25 22:15:21,713 - learn_svm_batch - process 0 - host torch - 10596/16035MB - INFO - loading training data: F26/
+2013-02-25 22:15:25,203 - learn_svm_batch - process 0 - host torch - 10562/16035MB - INFO - loading training data: F60/
+2013-02-25 22:15:28,263 - learn_svm_batch - process 0 - host torch - 10530/16035MB - INFO - selected training: [  1   8  14  18  27  31  40  50  55  75  79  85 103 113 122 142 145 150
+ 162 187 202 204 222 240 242 247 263 266 279 301 302 316 318 351 355 356
+ 358 389 390 399 401 404 409 425 428 441 443 451 453 458 478 489 490 493
+ 500 506 535 542 546 553 558 561 563 567 579 582 585 590 592 593 602 609
+ 614 626 631 641 648 656 666 667 669 670 680 683 685 691 695 706 715 728
+ 733 744 745 756 760 762 766 769 773 774]
+2013-02-25 22:15:28,266 - learn_svm_batch - process 0 - host torch - 10530/16035MB - INFO - Learning with 100 training examples
+2013-02-25 22:15:28,270 - learn_svm_batch - process 0 - host torch - 10576/16035MB - DEBUG - started root learning
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:31,812 - learn_svm_batch - process 3 - host torch - 12390/16035MB - INFO - --------------------------
+2013-02-25 22:15:31,813 - learn_svm_batch - process 3 - host torch - 12390/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:31,859 - learn_svm_batch - process 7 - host torch - 12380/16035MB - INFO - --------------------------
+2013-02-25 22:15:31,860 - learn_svm_batch - process 7 - host torch - 12380/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:31,879 - learn_svm_batch - process 1 - host torch - 12378/16035MB - INFO - --------------------------
+2013-02-25 22:15:31,881 - learn_svm_batch - process 1 - host torch - 12378/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:31,906 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--latent', '--one_iter', '--duald_niter', '10', '--duald_gamma', '10.0', '--Cprime', '100.0', '-C', '0.1', '--folder', '2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1']
+2013-02-25 22:15:31,906 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - using parallel?: True
+2013-02-25 22:15:31,907 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - using latent?: True
+2013-02-25 22:15:31,907 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - train data: all
+2013-02-25 22:15:31,908 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-25 22:15:31,908 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-25 22:15:31,908 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - using loss type: none
+2013-02-25 22:15:31,909 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 100.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-25 22:15:31,909 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - Computing one iteration at a time ?: True
+2013-02-25 22:15:31,909 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1/svm/
+2013-02-25 22:15:31,910 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - --------------------------
+2013-02-25 22:15:31,910 - learn_svm_batch - process 0 - host torch - 12374/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:31,923 - learn_svm_batch - process 4 - host torch - 12359/16035MB - INFO - --------------------------
+2013-02-25 22:15:31,924 - learn_svm_batch - process 4 - host torch - 12359/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:32,004 - learn_svm_batch - process 6 - host torch - 12359/16035MB - INFO - --------------------------
+2013-02-25 22:15:32,004 - learn_svm_batch - process 6 - host torch - 12359/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:32,021 - learn_svm_batch - process 2 - host torch - 12353/16035MB - INFO - --------------------------
+2013-02-25 22:15:32,022 - learn_svm_batch - process 2 - host torch - 12352/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:32,099 - learn_svm_batch - process 5 - host torch - 12325/16035MB - INFO - --------------------------
+2013-02-25 22:15:32,100 - learn_svm_batch - process 5 - host torch - 12325/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:33,528 - svm_rw_api - process 7 - host torch - 11525/16035MB - INFO - using loss type: none
+2013-02-25 22:15:33,528 - svm_rw_api - process 4 - host torch - 11525/16035MB - INFO - using loss type: none
+2013-02-25 22:15:33,529 - svm_rw_api - process 4 - host torch - 11524/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:33,529 - svm_rw_api - process 7 - host torch - 11524/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:33,594 - learn_svm_batch - process 4 - host torch - 11537/16035MB - DEBUG - started worker #4
+2013-02-25 22:15:33,595 - svm_worker - process 4 - host torch - 11536/16035MB - INFO - Starting worker 4
+2013-02-25 22:15:33,616 - learn_svm_batch - process 7 - host torch - 11541/16035MB - DEBUG - started worker #7
+2013-02-25 22:15:33,617 - svm_worker - process 7 - host torch - 11539/16035MB - INFO - Starting worker 7
+2013-02-25 22:15:33,681 - svm_rw_api - process 6 - host torch - 11538/16035MB - INFO - using loss type: none
+2013-02-25 22:15:33,683 - svm_rw_api - process 6 - host torch - 11537/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:33,751 - learn_svm_batch - process 6 - host torch - 11521/16035MB - DEBUG - started worker #6
+2013-02-25 22:15:33,752 - svm_worker - process 6 - host torch - 11519/16035MB - INFO - Starting worker 6
+2013-02-25 22:15:33,789 - svm_rw_api - process 3 - host torch - 11528/16035MB - INFO - using loss type: none
+2013-02-25 22:15:33,790 - svm_rw_api - process 3 - host torch - 11528/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:33,846 - learn_svm_batch - process 3 - host torch - 11541/16035MB - DEBUG - started worker #3
+2013-02-25 22:15:33,847 - svm_worker - process 3 - host torch - 11540/16035MB - INFO - Starting worker 3
+2013-02-25 22:15:33,864 - svm_rw_api - process 5 - host torch - 11565/16035MB - INFO - using loss type: none
+2013-02-25 22:15:33,865 - svm_rw_api - process 5 - host torch - 11565/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:33,908 - learn_svm_batch - process 5 - host torch - 11557/16035MB - DEBUG - started worker #5
+2013-02-25 22:15:33,914 - svm_worker - process 5 - host torch - 11551/16035MB - INFO - Starting worker 5
+2013-02-25 22:15:34,040 - svm_rw_api - process 2 - host torch - 11475/16035MB - INFO - using loss type: none
+2013-02-25 22:15:34,041 - svm_rw_api - process 2 - host torch - 11474/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:34,074 - learn_svm_batch - process 2 - host torch - 11504/16035MB - DEBUG - started worker #2
+2013-02-25 22:15:34,075 - svm_worker - process 2 - host torch - 11513/16035MB - INFO - Starting worker 2
+2013-02-25 22:15:34,075 - svm_rw_api - process 1 - host torch - 11517/16035MB - INFO - using loss type: none
+2013-02-25 22:15:34,076 - svm_rw_api - process 1 - host torch - 11517/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:34,104 - learn_svm_batch - process 1 - host torch - 11539/16035MB - DEBUG - started worker #1
+2013-02-25 22:15:34,105 - svm_worker - process 1 - host torch - 11539/16035MB - INFO - Starting worker 1
+2013-02-25 22:15:34,682 - svm_rw_api - process 0 - host torch - 11492/16035MB - INFO - using loss type: none
+2013-02-25 22:15:34,682 - svm_rw_api - process 0 - host torch - 11492/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:34,707 - learn_svm_batch - process 0 - host torch - 11498/16035MB - INFO - loading training data: 17/
+2013-02-25 22:15:37,673 - learn_svm_batch - process 0 - host torch - 11451/16035MB - INFO - loading training data: 05/
+2013-02-25 22:15:41,610 - learn_svm_batch - process 0 - host torch - 11403/16035MB - INFO - loading training data: 03/
+2013-02-25 22:15:44,297 - learn_svm_batch - process 0 - host torch - 11361/16035MB - INFO - loading training data: 01/
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,774 - learn_svm_batch - process 0 - host torch - 12380/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--Cprime', '100.0', '-C', '0.1', '--folder', '2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,787 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - using parallel?: True
+2013-02-25 22:15:45,788 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - using latent?: False
+2013-02-25 22:15:45,788 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - train data: all
+2013-02-25 22:15:45,789 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-25 22:15:45,789 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-25 22:15:45,789 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - using loss type: none
+2013-02-25 22:15:45,790 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 100.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-25 22:15:45,790 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - Computing one iteration at a time ?: False
+2013-02-25 22:15:45,791 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1/svm/
+2013-02-25 22:15:45,791 - learn_svm_batch - process 0 - host torch - 12377/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,792 - learn_svm_batch - process 0 - host torch - 12376/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,836 - learn_svm_batch - process 3 - host torch - 12349/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,837 - learn_svm_batch - process 3 - host torch - 12348/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:45,837 - learn_svm_batch - process 4 - host torch - 12348/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,838 - learn_svm_batch - process 4 - host torch - 12347/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,839 - learn_svm_batch - process 6 - host torch - 12347/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,839 - learn_svm_batch - process 6 - host torch - 12347/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,857 - learn_svm_batch - process 5 - host torch - 12343/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,858 - learn_svm_batch - process 5 - host torch - 12343/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,870 - learn_svm_batch - process 7 - host torch - 12342/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,870 - learn_svm_batch - process 7 - host torch - 12342/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp100.0_C0.1
+using basis = default
+2013-02-25 22:15:45,886 - learn_svm_batch - process 2 - host torch - 12342/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,887 - learn_svm_batch - process 2 - host torch - 12342/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:45,907 - learn_svm_batch - process 1 - host torch - 12340/16035MB - INFO - --------------------------
+2013-02-25 22:15:45,907 - learn_svm_batch - process 1 - host torch - 12340/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:47,515 - svm_rw_api - process 5 - host torch - 11478/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,516 - svm_rw_api - process 5 - host torch - 11477/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,562 - learn_svm_batch - process 5 - host torch - 11495/16035MB - DEBUG - started worker #5
+2013-02-25 22:15:47,575 - svm_worker - process 5 - host torch - 11478/16035MB - INFO - Starting worker 5
+2013-02-25 22:15:47,607 - svm_rw_api - process 7 - host torch - 11491/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,608 - svm_rw_api - process 7 - host torch - 11504/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,643 - learn_svm_batch - process 7 - host torch - 11570/16035MB - DEBUG - started worker #7
+2013-02-25 22:15:47,644 - svm_worker - process 7 - host torch - 11569/16035MB - INFO - Starting worker 7
+2013-02-25 22:15:47,728 - svm_rw_api - process 3 - host torch - 11556/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,730 - svm_rw_api - process 3 - host torch - 11554/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,769 - learn_svm_batch - process 3 - host torch - 11529/16035MB - DEBUG - started worker #3
+2013-02-25 22:15:47,770 - svm_worker - process 3 - host torch - 11529/16035MB - INFO - Starting worker 3
+2013-02-25 22:15:47,870 - svm_rw_api - process 4 - host torch - 11410/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,871 - svm_rw_api - process 4 - host torch - 11409/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,929 - learn_svm_batch - process 4 - host torch - 11304/16035MB - DEBUG - started worker #4
+2013-02-25 22:15:47,930 - svm_worker - process 4 - host torch - 11303/16035MB - INFO - Starting worker 4
+2013-02-25 22:15:47,943 - svm_rw_api - process 2 - host torch - 11327/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,944 - svm_rw_api - process 2 - host torch - 11327/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,955 - svm_rw_api - process 6 - host torch - 11358/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,956 - svm_rw_api - process 6 - host torch - 11357/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,971 - svm_rw_api - process 0 - host torch - 11386/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,972 - svm_rw_api - process 0 - host torch - 11385/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,978 - svm_rw_api - process 1 - host torch - 11429/16035MB - INFO - using loss type: none
+2013-02-25 22:15:47,979 - svm_rw_api - process 1 - host torch - 11429/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:15:47,993 - learn_svm_batch - process 2 - host torch - 11451/16035MB - DEBUG - started worker #2
+2013-02-25 22:15:47,994 - svm_worker - process 2 - host torch - 11451/16035MB - INFO - Starting worker 2
+2013-02-25 22:15:48,003 - learn_svm_batch - process 6 - host torch - 11473/16035MB - DEBUG - started worker #6
+2013-02-25 22:15:48,004 - svm_worker - process 6 - host torch - 11473/16035MB - INFO - Starting worker 6
+2013-02-25 22:15:48,006 - learn_svm_batch - process 1 - host torch - 11494/16035MB - DEBUG - started worker #1
+2013-02-25 22:15:48,006 - svm_worker - process 1 - host torch - 11494/16035MB - INFO - Starting worker 1
+2013-02-25 22:15:48,020 - learn_svm_batch - process 0 - host torch - 11500/16035MB - INFO - loading training data: 17/
+2013-02-25 22:15:51,191 - learn_svm_batch - process 0 - host torch - 11452/16035MB - INFO - loading training data: 05/
+2013-02-25 22:15:54,114 - learn_svm_batch - process 0 - host torch - 11404/16035MB - INFO - loading training data: 03/
+2013-02-25 22:15:56,823 - learn_svm_batch - process 0 - host torch - 11361/16035MB - INFO - loading training data: 01/
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:15:58,443 - learn_svm_batch - process 7 - host torch - 12392/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,444 - learn_svm_batch - process 7 - host torch - 12392/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:15:58,525 - learn_svm_batch - process 1 - host torch - 12378/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,526 - learn_svm_batch - process 1 - host torch - 12378/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:15:58,564 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--latent', '--one_iter', '--duald_niter', '10', '--duald_gamma', '10.0', '--Cprime', '1000000.0', '-C', '0.1', '--folder', '2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1']
+2013-02-25 22:15:58,565 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - using parallel?: True
+2013-02-25 22:15:58,565 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - using latent?: True
+2013-02-25 22:15:58,566 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - train data: all
+2013-02-25 22:15:58,566 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-25 22:15:58,566 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-25 22:15:58,567 - learn_svm_batch - process 0 - host torch - 12373/16035MB - INFO - using loss type: none
+2013-02-25 22:15:58,567 - learn_svm_batch - process 0 - host torch - 12372/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 1000000.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-25 22:15:58,567 - learn_svm_batch - process 0 - host torch - 12372/16035MB - INFO - Computing one iteration at a time ?: True
+2013-02-25 22:15:58,568 - learn_svm_batch - process 0 - host torch - 12372/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1/svm/
+2013-02-25 22:15:58,568 - learn_svm_batch - process 0 - host torch - 12372/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,568 - learn_svm_batch - process 0 - host torch - 12372/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:15:58,611 - learn_svm_batch - process 4 - host torch - 12349/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,611 - learn_svm_batch - process 4 - host torch - 12349/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_latent_DDACI_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:15:58,631 - learn_svm_batch - process 5 - host torch - 12343/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,638 - learn_svm_batch - process 5 - host torch - 12343/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:58,652 - learn_svm_batch - process 2 - host torch - 12341/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,663 - learn_svm_batch - process 3 - host torch - 12340/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,664 - learn_svm_batch - process 2 - host torch - 12340/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:58,664 - learn_svm_batch - process 6 - host torch - 12340/16035MB - INFO - --------------------------
+2013-02-25 22:15:58,664 - learn_svm_batch - process 6 - host torch - 12340/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:15:58,664 - learn_svm_batch - process 3 - host torch - 12340/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:00,033 - svm_rw_api - process 3 - host torch - 11459/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,034 - svm_rw_api - process 3 - host torch - 11458/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,063 - learn_svm_batch - process 3 - host torch - 11448/16035MB - DEBUG - started worker #3
+2013-02-25 22:16:00,064 - svm_worker - process 3 - host torch - 11448/16035MB - INFO - Starting worker 3
+2013-02-25 22:16:00,074 - svm_rw_api - process 7 - host torch - 11482/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,075 - svm_rw_api - process 7 - host torch - 11482/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,101 - learn_svm_batch - process 7 - host torch - 11497/16035MB - DEBUG - started worker #7
+2013-02-25 22:16:00,101 - svm_worker - process 7 - host torch - 11497/16035MB - INFO - Starting worker 7
+2013-02-25 22:16:00,351 - svm_rw_api - process 0 - host torch - 11353/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,352 - svm_rw_api - process 0 - host torch - 11351/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,358 - svm_rw_api - process 4 - host torch - 11386/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,358 - svm_rw_api - process 4 - host torch - 11385/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,382 - learn_svm_batch - process 0 - host torch - 11345/16035MB - INFO - loading training data: 17/
+2013-02-25 22:16:00,393 - svm_rw_api - process 2 - host torch - 11369/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,395 - svm_rw_api - process 2 - host torch - 11366/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,437 - svm_rw_api - process 6 - host torch - 11374/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,438 - learn_svm_batch - process 4 - host torch - 11380/16035MB - DEBUG - started worker #4
+2013-02-25 22:16:00,438 - svm_rw_api - process 6 - host torch - 11380/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,438 - svm_worker - process 4 - host torch - 11380/16035MB - INFO - Starting worker 4
+2013-02-25 22:16:00,460 - learn_svm_batch - process 2 - host torch - 11382/16035MB - DEBUG - started worker #2
+2013-02-25 22:16:00,461 - svm_worker - process 2 - host torch - 11382/16035MB - INFO - Starting worker 2
+2013-02-25 22:16:00,468 - learn_svm_batch - process 6 - host torch - 11396/16035MB - DEBUG - started worker #6
+2013-02-25 22:16:00,468 - svm_worker - process 6 - host torch - 11396/16035MB - INFO - Starting worker 6
+2013-02-25 22:16:00,503 - svm_rw_api - process 5 - host torch - 11411/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,503 - svm_rw_api - process 5 - host torch - 11411/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,514 - svm_rw_api - process 1 - host torch - 11450/16035MB - INFO - using loss type: none
+2013-02-25 22:16:00,520 - svm_rw_api - process 1 - host torch - 11447/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:00,552 - learn_svm_batch - process 5 - host torch - 11449/16035MB - DEBUG - started worker #5
+2013-02-25 22:16:00,552 - svm_worker - process 5 - host torch - 11449/16035MB - INFO - Starting worker 5
+2013-02-25 22:16:00,569 - learn_svm_batch - process 1 - host torch - 11460/16035MB - DEBUG - started worker #1
+2013-02-25 22:16:00,569 - svm_worker - process 1 - host torch - 11460/16035MB - INFO - Starting worker 1
+2013-02-25 22:16:03,460 - learn_svm_batch - process 0 - host torch - 11449/16035MB - INFO - loading training data: 05/
+2013-02-25 22:16:06,773 - learn_svm_batch - process 0 - host torch - 11401/16035MB - INFO - loading training data: 03/
+2013-02-25 22:16:09,625 - learn_svm_batch - process 0 - host torch - 11359/16035MB - INFO - loading training data: 01/
+2013-02-25 22:16:12,189 - learn_svm_batch - process 0 - host torch - 11315/16035MB - INFO - loading training data: F32/
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:16:13,399 - learn_svm_batch - process 5 - host torch - 12381/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,405 - learn_svm_batch - process 5 - host torch - 12380/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:13,418 - learn_svm_batch - process 4 - host torch - 12379/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,419 - learn_svm_batch - process 4 - host torch - 12379/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:16:13,463 - learn_svm_batch - process 2 - host torch - 12371/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,464 - learn_svm_batch - process 2 - host torch - 12371/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:13,464 - learn_svm_batch - process 3 - host torch - 12371/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,465 - learn_svm_batch - process 3 - host torch - 12371/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:13,476 - learn_svm_batch - process 0 - host torch - 12370/16035MB - INFO - passed these command line arguments: ['learn_svm_batch.py', '--parallel', '--crop', '2', '--fold', '1', '--loss', 'none', '--loss_factor', '1000', '--Cprime', '1000000.0', '-C', '0.1', '--folder', '2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1']
+2013-02-25 22:16:13,476 - learn_svm_batch - process 0 - host torch - 12370/16035MB - INFO - using parallel?: True
+2013-02-25 22:16:13,476 - learn_svm_batch - process 0 - host torch - 12370/16035MB - INFO - using latent?: False
+2013-02-25 22:16:13,477 - learn_svm_batch - process 0 - host torch - 12370/16035MB - INFO - train data: all
+2013-02-25 22:16:13,499 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - laplacian functions (in order): std_b10, std_b50, std_b100, inv_b100o1
+2013-02-25 22:16:13,500 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - prior models (in order): constant, entropy, intensity
+2013-02-25 22:16:13,500 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - using loss type: none
+2013-02-25 22:16:13,500 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - SVM parameters: {'C': 0.1, 'latent_epsilon': 0.001, 'epsilon': 1e-05, 'latent_use_parallel': False, 'Cprime': 1000000.0, 'use_parallel': True, 'latent_niter_max': 100, 'nitermax': 100}
+2013-02-25 22:16:13,501 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - Computing one iteration at a time ?: False
+2013-02-25 22:16:13,501 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - writing svm output to: /home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1/svm/
+2013-02-25 22:16:13,501 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,502 - learn_svm_batch - process 0 - host torch - 12367/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:16:13,546 - learn_svm_batch - process 7 - host torch - 12341/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,559 - learn_svm_batch - process 7 - host torch - 12338/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:13,572 - learn_svm_batch - process 6 - host torch - 12337/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,577 - learn_svm_batch - process 6 - host torch - 12337/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+/home/baudinpy/svmdata/segmentation_out/learning/2013.01.21.exp_baseline_crop2_Lnone_x1000_Cp1000000.0_C0.1
+using basis = default
+2013-02-25 22:16:13,614 - learn_svm_batch - process 1 - host torch - 12358/16035MB - INFO - --------------------------
+2013-02-25 22:16:13,615 - learn_svm_batch - process 1 - host torch - 12358/16035MB - INFO - test data: ['09/', '11/', '13/', '15/', 'M29/', '16/']
+2013-02-25 22:16:15,010 - svm_rw_api - process 7 - host torch - 11518/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,010 - svm_rw_api - process 7 - host torch - 11517/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,054 - learn_svm_batch - process 7 - host torch - 11485/16035MB - DEBUG - started worker #7
+2013-02-25 22:16:15,055 - svm_worker - process 7 - host torch - 11484/16035MB - INFO - Starting worker 7
+2013-02-25 22:16:15,118 - svm_rw_api - process 5 - host torch - 11483/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,119 - svm_rw_api - process 5 - host torch - 11483/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,167 - learn_svm_batch - process 5 - host torch - 11540/16035MB - DEBUG - started worker #5
+2013-02-25 22:16:15,167 - svm_worker - process 5 - host torch - 11540/16035MB - INFO - Starting worker 5
+2013-02-25 22:16:15,303 - svm_rw_api - process 3 - host torch - 11541/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,303 - svm_rw_api - process 3 - host torch - 11541/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,343 - learn_svm_batch - process 3 - host torch - 11533/16035MB - DEBUG - started worker #3
+2013-02-25 22:16:15,343 - svm_worker - process 3 - host torch - 11532/16035MB - INFO - Starting worker 3
+2013-02-25 22:16:15,404 - svm_rw_api - process 6 - host torch - 11521/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,404 - svm_rw_api - process 6 - host torch - 11521/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,445 - learn_svm_batch - process 6 - host torch - 11433/16035MB - DEBUG - started worker #6
+2013-02-25 22:16:15,446 - svm_worker - process 6 - host torch - 11431/16035MB - INFO - Starting worker 6
+2013-02-25 22:16:15,517 - svm_rw_api - process 2 - host torch - 11335/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,517 - svm_rw_api - process 2 - host torch - 11334/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,526 - svm_rw_api - process 0 - host torch - 11372/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,527 - svm_rw_api - process 0 - host torch - 11372/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,561 - learn_svm_batch - process 0 - host torch - 11353/16035MB - INFO - loading training data: 17/
+2013-02-25 22:16:15,565 - learn_svm_batch - process 2 - host torch - 11371/16035MB - DEBUG - started worker #2
+2013-02-25 22:16:15,566 - svm_worker - process 2 - host torch - 11369/16035MB - INFO - Starting worker 2
+2013-02-25 22:16:15,579 - svm_rw_api - process 4 - host torch - 11411/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,580 - svm_rw_api - process 4 - host torch - 11411/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,607 - svm_rw_api - process 1 - host torch - 11452/16035MB - INFO - using loss type: none
+2013-02-25 22:16:15,608 - svm_rw_api - process 1 - host torch - 11452/16035MB - INFO - loss is scaled by 1e+03
+2013-02-25 22:16:15,638 - learn_svm_batch - process 4 - host torch - 11473/16035MB - DEBUG - started worker #4
+2013-02-25 22:16:15,639 - svm_worker - process 4 - host torch - 11473/16035MB - INFO - Starting worker 4
+2013-02-25 22:16:15,659 - learn_svm_batch - process 1 - host torch - 11485/16035MB - DEBUG - started worker #1
+2013-02-25 22:16:15,659 - svm_worker - process 1 - host torch - 11485/16035MB - INFO - Starting worker 1
+2013-02-25 22:16:18,432 - learn_svm_batch - process 0 - host torch - 11447/16035MB - INFO - loading training data: 05/
+
+=====================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   EXIT CODE: 15
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+=====================================================================================
+APPLICATION TERMINATED WITH THE EXIT STRING: Terminated (signal 15)

@@ -225,6 +225,7 @@ if __name__=='__main__':
     #    anchor_weights=w[4:], 
     #    name='svm_C100_Cp1e-2')
 
+<<<<<<< HEAD
     w = [0,1,0,1e-2,0,0,0,0]
     segmenter = SegmentationBatch(
         laplacian_weights=w[:3],
@@ -246,6 +247,23 @@ if __name__=='__main__':
     #    anchor_weights=w[3:], 
     #    name='constant1e-2Intensity1e-2')
     #segmenter.process_all_samples(config.vols.keys())
+=======
+    #w = [0,0,1,0,1e-2,0,0]
+    #segmenter = SegmentationBatch(
+    #    laplacian_weights=w[:4],
+    #    anchor_weights=w[4:], 
+    #    name='constant1e-2')
+    #for fold in config.folds:
+    #    segmenter.process_all_samples(fold, fold=fold)
+
+    w = [0,0,1,0,0,1,0]
+    segmenter = SegmentationBatch(
+        laplacian_weights=w[:4],
+        anchor_weights=w[4:], 
+        name='entropy1e0')
+    for fold in config.folds[1:2]:
+        segmenter.process_all_samples(fold, fold=fold)
+>>>>>>> 11a33b11ae9e2d6c594e9402cb223b96ce2500db
 
     #w = [0,1,0,0,1e-2,0,0,0]
     #segmenter = SegmentationBatch(

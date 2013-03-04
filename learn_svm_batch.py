@@ -68,6 +68,8 @@ class SVMSegmenter(object):
         self.one_iteration = kwargs.pop('one_iteration', False)
         self.start_script  = kwargs.pop('start_script', '')       
         self.use_mosek     = kwargs.pop('use_mosek',True)
+        self.opt_nolearn   = kwargs.pop('opt_nolearn', False)
+        self.opt_distance_transform   = kwargs.pop('opt_distance_transform', False)
 
         crop = kwargs.pop('crop','none')
         if crop=='none':
@@ -212,6 +214,16 @@ class SVMSegmenter(object):
                 ## load segmentation
                 seg = io_analyze.load(file_seg).astype(int)
                 seg.flat[~np.in1d(seg.ravel(),self.labelset)] = self.labelset[0]
+ 
+                use_distance_transform = self.opt_distance_transform
+                if use_distance_transform:
+                    import dist2vol
+                    Dtmap = dist2vol.distance_to_volume(seg, self.labelset, beta=1e-2)
+                    #io_analyze.save('dt_0.hdr', Dtmap[0])
+                    #io_analyze.save('dt_1.hdr', Dtmap[1])
+                    #assert np.all(self.labelset[np.argmax(Dtmap,axis=0)]==seg)
+                else:
+                    Dtmap = np.asarray([seg==label for label in self.labelset])
 
                 if self.crop:
                     ## if split training images into smaller sets
@@ -226,7 +238,7 @@ class SVMSegmenter(object):
                            np.all(seeds[islices]>=0):
                             continue
                         #logger.debug('ivol {}, slices: start end: {} {}'.format(len(images),istart, iend))
-                        bin = (seg[islices].ravel()==np.c_[self.labelset]) # make bin vector z
+                        bin = np.r_[[Dtmap[l][islices].ravel() for l in range(len(self.labelset))]] # make bin vector z
                         
                         ## append to training set
                         images.append(im[islices])
@@ -238,7 +250,8 @@ class SVMSegmenter(object):
                             break 
 
                 else:
-                    bin = (seg.ravel()==np.c_[self.labelset])# make bin vector z                
+                    #bin = (seg.ravel()==np.c_[self.labelset])# make bin vector z                
+                    bin = np.r_[[Dtmap[l].ravel() for l in range(len(self.labelset))]] # make bin vector z
                     ## append to training set
                     images.append(im)
                     segmentations.append(bin)
@@ -302,10 +315,18 @@ class SVMSegmenter(object):
                     # if we're computing one iteration at a time
                     if os.path.isfile(outdir + 'niter.txt'):
                         ## continue previous work
-                        niter = np.loadtxt(outdir + 'niter.txt',dtype=int)
-                        ys = np.load(outdir + 'ys_{}.npy'.format(niter))
+                        niter = np.loadtxt(outdir + 'niter.txt',dtype=int)                          
                         w = np.loadtxt(outdir + 'w_{}.txt'.format(niter)).tolist()
                         
+                        if self.opt_nolearn:
+                            logger.info('no learning: iteration {}, with w={}'.format(niter,w))
+                            return w, 0
+    
+                        if not os.path.exists('ys_{}.npz'.format(niter)):
+                            ys = np.load(outdir + 'ys_{}.npy'.format(niter))
+                        else:
+                            ys = np.load(outdir + 'ys_{}.npz'.format(niter))['ys']
+ 
                         niter = niter + 1
                         logger.info('latent svm: iteration {}, with w={}'.format(niter,w))
                         w,xi,ys,info = self.svm.train(
@@ -327,7 +348,8 @@ class SVMSegmenter(object):
                     if not self.debug:
                         np.savetxt(outdir + 'niter.txt', [niter], fmt='%d')
                         np.savetxt(outdir + 'w_{}.txt'.format(niter), w)
-                        np.save(outdir + 'ys_{}.npy'.format(niter), ys)
+                        #np.save(outdir + 'ys_{}.npy'.format(niter), ys)
+                        np.savez_compressed(outdir + 'ys_{}.npz'.format(niter), {'ys':ys})
                         
                         #logger.warning('Exiting program. Run script again to continue.')
                         #if self.use_parallel:
@@ -752,7 +774,17 @@ if __name__=='__main__':
         default=0, type=int,
         help='',
         )
-
+    opt.add_option(
+        '--nolearn', dest='nolearn', 
+        default=False, action="store_true",
+        help='',
+        )     
+     opt.add_option(
+        '--distt', dest='distance_transform', 
+        default=False, action="store_true",
+        help='',
+        )     
+ 
     (options, args) = opt.parse_args()
 
     use_parallel = bool(options.parallel)
@@ -787,6 +819,8 @@ if __name__=='__main__':
         scale_only=options.scale_only,
         duald_gamma=options.duald_gamma,
         duald_niter=options.duald_niter,
+        opt_nolearn=options.nolearn,
+        opt_distance_transform=options.distance_transform,
         )
         
     

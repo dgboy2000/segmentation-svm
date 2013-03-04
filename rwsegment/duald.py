@@ -214,9 +214,12 @@ def dd_solver_gt(nlabel, Lu, q_bar, gt_bar, subproblems, D=0, **kwargs):
             for lmbdak,qk_bar in zip(lmbdas,qks):
                 qks_.append(qk_bar + lmbdak)
             res = svm_worker.broadcast('duald', nlabels, Pks, qks_, gtks)
+            _size = 0
             for xk,sub_dual in res:
+                _size += xk.nbytes
                 xks.append(xk)
                 dual += sub_dual
+            print 'nbytes = {}'.format(_size)
         else:
             for lmbdak,subk, Pk_bar, qk_bar, gtk_bar in zip(lmbdas,subs, Pks, qks, gtks):
                 qk_bar_ = qk_bar + lmbdak
@@ -274,6 +277,7 @@ def solver_gt(nlabel, P_bar, q_bar, gt_bar, **kwargs):
     
     gt_cols = gt_bar.reshape((nlabel,-1)).T
     
+ 
     ''' Gx >= h '''
     # ground truth constraints
     npixel = P.shape[0]/nlabel
@@ -306,9 +310,15 @@ def solver_gt(nlabel, P_bar, q_bar, gt_bar, **kwargs):
     objective = solver.ObjectiveAPI(P, q, G=G, h=h,F=F, **kwargs)
     constsolver = solver.ConstrainedSolver(objective)
     x = constsolver.solve(gt_bar) 
-    
     energy = float(0.5 * x.T*P*x + x.T*q)
-    
+   
+    ## garbage collect
+    objective = None
+    constsolver = None
+    G = None
+    F = None
+    gc.collect() 
+
     return x, energy
     
 ##------------------------------------------------------------------------------

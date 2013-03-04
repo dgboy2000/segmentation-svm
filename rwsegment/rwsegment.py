@@ -7,6 +7,7 @@
 
 import sys
 import os
+import gc
 import numpy as np
 from scipy import sparse
         
@@ -192,7 +193,7 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
     niter = kwargs.pop('duald_niter', 3)
     gamma = kwargs.pop('duald_gamma',1e2)
     epsilon = kwargs.pop('duald_epsilon',1e-3)
-
+ 
     logger.info('start dd solver (nb subp: {})'.format(len(subproblems)))
     x,info = duald.dd_solver_gt(
         nlabel, Lu, q_bar, gt_bar, 
@@ -203,6 +204,10 @@ def solve_dd_ground_truth(im_shape, marked, Lu, B, list_xm, omega, list_x0, list
         epsilon=epsilon,
         )
     #import ipdb; ipdb.set_trace()
+
+    ## garbage collection
+    gc.collect()
+
     return x.reshape((nlabel,-1))
     
 def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
