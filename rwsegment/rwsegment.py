@@ -246,7 +246,15 @@ def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
         is_pos = LR_prob < 0.5
         #ind_pos = LR_ind[is_pos]
         Tp = sparse.coo_matrix(
-            (LR_prob*is_pos*2, LR_pairs),
+            (2*(0.5 - LR_prob)*is_pos, LR_pairs),
+            shape=Lu.shape)
+            
+        # negative correlation
+        is_pos = LR_prob < 0.5
+        Tn = sparse.coo_matrix(
+            (2*(1 - LR_prob)*is_pos, LR_pairs),
+            shape=Lu.shape)
+        
             
         
         
