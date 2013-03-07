@@ -74,6 +74,12 @@ def segment(
     ## seeds values 
     seeds_prob = kwargs.pop('seeds_prob', None)
     
+    ## long range connexions
+    if kwargs.has_key('LR_weight'):
+        LR = {k: kwargs[k] for k in ('LR_pairs', 'LR_weight', 'LR_probability')}
+    else:
+        LR = None
+    
     ## compute laplacian
     logger.debug('compute laplacian')
     laplacian = kwargs.pop('laplacian', None)
@@ -83,6 +89,7 @@ def segment(
             marked=marked,
             beta=beta, 
             weight_function=laplacian_function,
+            LR=LR,
             )
     else: Lu, B, D, border = laplacian
         
@@ -126,6 +133,7 @@ def segment(
             per_label = False
     else:
         addq = None
+        
 
     ## solve RW system
     if ground_truth is not None:
@@ -234,29 +242,6 @@ def solve_at_once(Lu, B, list_xm, omega, list_x0, list_GT=[], **kwargs):
     else:
         addq = addlin
             
-    ## long range connexions
-    if kwargs.has_key('LR_weight'):
-        LR_ind = kwargs.pop('LR_indices')
-        LR_prob = kwargs.pop('LR_contour_probability')
-        LR_w = kwargs.pop('LR_weight')
-        LR_pairs = kwargs.pop('LR_pairs')
-        
-        ## build transition matrices
-        # positive correlation
-        is_pos = LR_prob < 0.5
-        #ind_pos = LR_ind[is_pos]
-        Tp = sparse.coo_matrix(
-            (2*(0.5 - LR_prob)*is_pos, LR_pairs),
-            shape=Lu.shape)
-            
-        # negative correlation
-        is_pos = LR_prob < 0.5
-        Tn = sparse.coo_matrix(
-            (2*(1 - LR_prob)*is_pos, LR_pairs),
-            shape=Lu.shape)
-        
-            
-        
         
 
     ## solve
@@ -611,6 +596,7 @@ def compute_laplacians(
         marked=None,
         beta=1., 
         weight_function=None,
+        LR=None,
         ):
     ''' compute laplacian matrix for using with Random Walks
     args:
@@ -632,9 +618,10 @@ def compute_laplacians(
     all_j = np.r_[tuple([inds.take(np.arange(1,im.shape[d]), axis=d).ravel() \
             for d in range(im.ndim)])]
 
+            
     ## select only unknown pairs
+    is_unknown = np.ones(npix, dtype=bool)
     if marked is not None:
-        is_unknown = np.ones(npix, dtype=bool)
         is_unknown[marked] = False
         is_unknown_i = is_unknown[all_i]
         is_unknown_j = is_unknown[all_j]
@@ -660,13 +647,50 @@ def compute_laplacians(
     ## weight function may depend on label
     data =  weight_function(im,i,j)
 
+    ## long range connections
+    ##('LR_pairs', 'LR_weight', 'LR_probability')
+    if LR is not None:
+        LR_pairs = LR.pop['LR_pairs']
+        LR_probs = LR.pop['LR_probabilities']
+        LR_weight = LR.pop['LR_weight']
+        
+        LR_ukwn_i = is_unknown[LR_pairs[0]]
+        LR_ukwn_j = is_unknown[LR_pairs[1]]
+        LR_ukwn_p = np.logical_or(LR_ukwn_i, LR_ukwn_j)
+        LR_i = LR_pairs[0][LR_ukwn_p]
+        LR_j = LR_pairs[1][LR_ukwn_p]
+        
+        LR_border_p = np.logical_xor(LR_ukwn_i, LR_ukwn_j)
+        
+        ## positive correlations
+        LR_pos = LR_probs[LR_ukwn_p] < 0.5
+        i = np.append(i, LR_i[LR_pos])
+        j = np.append(j, LR_j[LR_pos])
+        LR_pos_w = LR_weight*(1 - LR_probs[LR_pos])*2
+        data *= (1.0 - LR_weight)
+        data = np.append(data, LR_pos_w)
+        
+        ## negative correlations
+        LR_neg = LR_probs[LR_ukwn_p] >= 0.5
+        LR_neg_w = LR_weight*LR_probs[LR_neg]*2
+        
+        ## matrix of negative correlations
+        Tn = sparse.coo_matrix(
+            (LR_neg_w, (LR_i[LR_neg], LR_j[LR_neg])),
+            shape=(npix,npix))
+        LR['Tn'] = Tn
+        Tn_sum = Tn.sum(axis=0)
+    else:
+        Tn_sum = 0
+    
     ## affinity matrix
     logger.debug('laplacian matrix')
     A = sparse.coo_matrix((data, (i,j)), shape=(npix,npix))
     A = A + A.T
     
     ## laplacian matrix
-    L = (sparse.spdiags(A.sum(axis=0),0,npix,npix) - A).tocsr()
+    D = sparse.spdiags(A.sum(axis=0) + Tn_sum,0,npix,npix) 
+    L = (D - A).tocsr()
     
     ## return laplacian
     if marked is None:
